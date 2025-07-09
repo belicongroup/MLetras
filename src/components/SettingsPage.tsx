@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Settings, Moon, Bell, Trash2, Info, Shield, Palette } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
 const SettingsPage = () => {
+  const { theme, toggleTheme } = useTheme();
   const [settings, setSettings] = useState({
     autoScroll: true,
-    darkMode: true,
     notifications: false,
     boldText: false,
   });
@@ -82,8 +83,8 @@ const SettingsPage = () => {
               </p>
             </div>
             <Switch
-              checked={settings.darkMode}
-              onCheckedChange={() => updateSetting('darkMode')}
+              checked={theme === 'dark'}
+              onCheckedChange={toggleTheme}
             />
           </div>
         </CardContent>
