@@ -273,4 +273,28 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.2);
   }
+
+  /* Remove focus rings and active states from buttons */
+  button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  button:active {
+    transform: none !important;
+  }
+
+  /* Remove purple overlay from button interactions */
+  .btn-no-focus:focus,
+  .btn-no-focus:focus-visible,
+  .btn-no-focus:active {
+    outline: none !important;
+    box-shadow: none !important;
+    background-color: inherit !important;
+  }
 }

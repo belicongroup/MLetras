@@ -142,7 +142,7 @@ const LyricsPage = () => {
               variant="ghost"
               size="sm"
               onClick={() => navigate('/')}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground btn-no-focus"
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
@@ -158,7 +158,7 @@ const LyricsPage = () => {
               variant="ghost"
               size="sm"
               onClick={toggleAutoScroll}
-              className={`transition-smooth ${
+              className={`transition-smooth btn-no-focus ${
                 autoScrollSpeed === 'off' 
                   ? "text-muted-foreground hover:text-foreground"
                   : autoScrollSpeed === 'slow'
@@ -175,7 +175,7 @@ const LyricsPage = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsBoldText(!isBoldText)}
-              className={`transition-smooth ${
+              className={`transition-smooth btn-no-focus ${
                 isBoldText 
                   ? "text-primary bg-primary/10" 
                   : "text-muted-foreground hover:text-foreground"
@@ -187,7 +187,7 @@ const LyricsPage = () => {
               variant="ghost"
               size="sm"
               onClick={handleToggleLike}
-              className={`transition-smooth ${
+              className={`transition-smooth btn-no-focus ${
                 isLiked(songData?.id || '') 
                   ? "text-primary hover:text-primary/80" 
                   : "text-muted-foreground hover:text-primary"

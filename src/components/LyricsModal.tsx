@@ -95,7 +95,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                 variant="ghost"
                 size="sm"
                 onClick={toggleAutoScroll}
-                className={`transition-smooth ${
+                className={`transition-smooth btn-no-focus ${
                   autoScrollSpeed !== 'off' 
                     ? "text-primary bg-primary/10" 
                     : "text-muted-foreground hover:text-foreground"
@@ -108,7 +108,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsBoldText(!isBoldText)}
-                className={`transition-smooth ${
+                className={`transition-smooth btn-no-focus ${
                   isBoldText 
                     ? "text-primary bg-primary/10" 
                     : "text-muted-foreground hover:text-foreground"
@@ -120,7 +120,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                 variant="ghost"
                 size="sm"
                 onClick={onToggleLike}
-                className={`transition-smooth ${
+                className={`transition-smooth btn-no-focus ${
                   isLiked 
                     ? "text-primary hover:text-primary/80" 
                     : "text-muted-foreground hover:text-primary"
@@ -132,7 +132,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground btn-no-focus"
               >
                 <X className="w-4 h-4" />
               </Button>
