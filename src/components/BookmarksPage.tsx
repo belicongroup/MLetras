@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useNavigate } from "react-router-dom";
+import { geniusApi } from "@/services/geniusApi";
 
 interface Folder {
   id: string;
@@ -57,12 +58,32 @@ const BookmarksPage = () => {
   };
 
   const handleSongSelect = async (song: any) => {
+    // Navigate to lyrics page with loading state
     navigate('/lyrics', {
       state: {
-        song,
-        isLoadingLyrics: false
+        song: { ...song, lyrics: 'Loading...' },
+        isLoadingLyrics: true
       }
     });
+    
+    // Fetch lyrics and update the page
+    try {
+      const lyrics = await geniusApi.getSongLyrics(song.id);
+      navigate('/lyrics', {
+        state: {
+          song: { ...song, lyrics },
+          isLoadingLyrics: false
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch lyrics:', error);
+      navigate('/lyrics', {
+        state: {
+          song: { ...song, lyrics: 'Lyrics not available for this song.' },
+          isLoadingLyrics: false
+        }
+      });
+    }
   };
 
   if (showLikedSongs) {
