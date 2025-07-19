@@ -74,14 +74,19 @@ class GeniusApiService {
   }
 
   async getSongLyrics(songId: string): Promise<string> {
+    console.log('Fetching lyrics for song ID:', songId);
+    
     try {
       const data = await this.makeRequest(`/song/lyrics/?id=${songId}`);
+      console.log('Lyrics API response:', data);
       
       // Handle the actual API response structure
       if (data?.response?.lyrics?.lyrics?.body?.plain) {
+        console.log('Lyrics found, length:', data.response.lyrics.lyrics.body.plain.length);
         return data.response.lyrics.lyrics.body.plain;
       }
       
+      console.log('No lyrics found in response');
       return 'Lyrics not available for this song.';
     } catch (error) {
       console.error('Lyrics fetch error:', error);

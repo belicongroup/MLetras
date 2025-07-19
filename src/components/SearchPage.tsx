@@ -34,10 +34,14 @@ const SearchPage = () => {
   };
 
   const handleSongSelect = async (song: Song) => {
+    console.log('Song selected:', song);
+    
     if (!song.lyrics) {
+      console.log('Fetching lyrics for song ID:', song.id);
       setIsLoadingLyrics(true);
       try {
         const lyrics = await geniusApi.getSongLyrics(song.id);
+        console.log('Lyrics fetched:', lyrics?.substring(0, 100) + '...');
         song.lyrics = lyrics;
       } catch (error) {
         console.error('Failed to fetch lyrics:', error);
@@ -46,6 +50,8 @@ const SearchPage = () => {
         setIsLoadingLyrics(false);
       }
     }
+    
+    console.log('Setting selected song:', song);
     setSelectedSong(song);
   };
 
