@@ -364,5 +364,122 @@
     ring-offset: none !important;
     --tw-ring-offset-shadow: none !important;
     --tw-ring-shadow: none !important;
+    background-color: inherit !important;
+    background: inherit !important;
+  }
+
+  /* Remove background color changes on focus/active states */
+  button:focus,
+  button:focus-visible,
+  button:active,
+  button:focus:hover,
+  button:focus-visible:hover,
+  button:active:hover {
+    background-color: inherit !important;
+    background: inherit !important;
+    color: inherit !important;
+  }
+
+  /* Specific removal for shadcn button variants */
+  .bg-primary:focus,
+  .bg-primary:focus-visible,
+  .bg-primary:active,
+  .bg-secondary:focus,
+  .bg-secondary:focus-visible,
+  .bg-secondary:active,
+  .bg-destructive:focus,
+  .bg-destructive:focus-visible,
+  .bg-destructive:active {
+    background-color: inherit !important;
+    background: inherit !important;
+  }
+
+  /* Remove any hover state changes on focus */
+  button:hover:focus,
+  button:hover:focus-visible,
+  button:hover:active {
+    background-color: inherit !important;
+    background: inherit !important;
+  }
+
+  /* Override any transition effects that might cause color changes */
+  button {
+    transition: none !important;
+  }
+
+  /* Remove any pseudo-element overlays */
+  button::before,
+  button::after {
+    display: none !important;
+  }
+
+  /* Specific override for transition-smooth class */
+  .transition-smooth {
+    transition: none !important;
+  }
+
+  /* Remove all possible focus states for buttons with specific classes */
+  .btn-no-focus,
+  .btn-no-focus:focus,
+  .btn-no-focus:focus-visible,
+  .btn-no-focus:active,
+  .btn-no-focus:hover:focus,
+  .btn-no-focus:hover:focus-visible,
+  .btn-no-focus:hover:active {
+    outline: none !important;
+    box-shadow: none !important;
+    background-color: inherit !important;
+    background: inherit !important;
+    color: inherit !important;
+    border: none !important;
+    transform: none !important;
+  }
+
+  /* Override any Tailwind focus utilities */
+  .focus\:bg-primary:focus,
+  .focus\:bg-secondary:focus,
+  .focus\:bg-accent:focus,
+  .focus\:text-primary:focus,
+  .focus\:text-secondary:focus {
+    background-color: inherit !important;
+    background: inherit !important;
+    color: inherit !important;
+  }
+
+  /* Remove any active state color changes */
+  .active\:bg-primary:active,
+  .active\:bg-secondary:active,
+  .active\:bg-accent:active {
+    background-color: inherit !important;
+    background: inherit !important;
+  }
+
+  /* Nuclear option - disable all focus states for buttons */
+  button * {
+    pointer-events: none;
+  }
+
+  button:focus * {
+    pointer-events: auto;
+  }
+
+  /* Force remove any remaining focus indicators */
+  button:focus,
+  button:focus-visible,
+  button:active {
+    background: inherit !important;
+    background-color: inherit !important;
+    color: inherit !important;
+    border-color: inherit !important;
+    box-shadow: none !important;
+    outline: none !important;
+    transform: none !important;
+  }
+
+  /* Override any CSS custom properties that might cause color changes */
+  button {
+    --tw-bg-opacity: inherit !important;
+    --tw-text-opacity: inherit !important;
+    --tw-border-opacity: inherit !important;
   }
 }
