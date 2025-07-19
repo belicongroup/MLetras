@@ -20,6 +20,8 @@ const LyricsPage = () => {
   
   const [isBoldText, setIsBoldText] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>('off');
+  const [isScrollPaused, setIsScrollPaused] = useState(false);
+  const [lastScrollSpeed, setLastScrollSpeed] = useState<'slow' | 'medium' | 'fast'>('slow');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   const scrollSpeeds = {
@@ -30,7 +32,7 @@ const LyricsPage = () => {
   };
 
   useEffect(() => {
-    if (autoScrollSpeed === 'off' || !scrollContainerRef.current) return;
+    if (autoScrollSpeed === 'off' || isScrollPaused || !scrollContainerRef.current) return;
     
     const container = scrollContainerRef.current;
     const speed = scrollSpeeds[autoScrollSpeed];
@@ -44,13 +46,35 @@ const LyricsPage = () => {
     
     const interval = setInterval(scroll, 1000 / speed);
     return () => clearInterval(interval);
-  }, [autoScrollSpeed, songData?.lyrics]);
+  }, [autoScrollSpeed, isScrollPaused, songData?.lyrics]);
 
   const toggleAutoScroll = () => {
     const speeds: Array<'off' | 'slow' | 'medium' | 'fast'> = ['off', 'slow', 'medium', 'fast'];
     const currentIndex = speeds.indexOf(autoScrollSpeed);
     const nextIndex = (currentIndex + 1) % speeds.length;
-    setAutoScrollSpeed(speeds[nextIndex]);
+    const newSpeed = speeds[nextIndex];
+    
+    // Save the last speed when turning on auto-scroll
+    if (newSpeed !== 'off') {
+      setLastScrollSpeed(newSpeed as 'slow' | 'medium' | 'fast');
+    }
+    
+    setAutoScrollSpeed(newSpeed);
+    setIsScrollPaused(false); // Reset pause state when changing speed
+  };
+
+  const handleLyricsClick = () => {
+    if (autoScrollSpeed === 'off') return; // Do nothing if auto-scroll is off
+    
+    if (isScrollPaused) {
+      // Resume scrolling at the last speed
+      setAutoScrollSpeed(lastScrollSpeed);
+      setIsScrollPaused(false);
+    } else {
+      // Pause scrolling but remember the current speed
+      setLastScrollSpeed(autoScrollSpeed as 'slow' | 'medium' | 'fast');
+      setIsScrollPaused(true);
+    }
   };
 
   const handleToggleLike = () => {
@@ -153,7 +177,8 @@ const LyricsPage = () => {
               </div>
             ) : songData.lyrics ? (
               <div 
-                className={`whitespace-pre-line leading-relaxed transition-smooth text-center text-lg ${
+                onClick={handleLyricsClick}
+                className={`whitespace-pre-line leading-relaxed transition-smooth text-center text-lg cursor-pointer ${
                   isBoldText ? "font-semibold" : "font-normal"
                 }`}
               >
