@@ -223,7 +223,7 @@ const BookmarksPage = () => {
         </div>
 
         {/* Folders Grid */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-3">
           {folders.map((folder) => (
             <Card key={folder.id} className="glass border-border/50 hover:border-primary/30 transition-smooth group">
               <CardHeader className="p-3 pb-2">
