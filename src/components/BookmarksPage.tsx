@@ -111,9 +111,9 @@ const BookmarksPage = () => {
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [folders, setFolders] = useState<Folder[]>([
-    { id: "1", name: "Rock Classics", songCount: 3, color: "from-red-500 to-pink-500", songs: [] },
-    { id: "2", name: "Feel Good", songCount: 5, color: "from-yellow-500 to-orange-500", songs: [] },
-    { id: "3", name: "Workout", songCount: 2, color: "from-green-500 to-emerald-500", songs: [] },
+    { id: "1", name: "Corridos", songCount: 0, color: "from-red-500 to-pink-500", songs: [] },
+    { id: "2", name: "Tumbado", songCount: 0, color: "from-yellow-500 to-orange-500", songs: [] },
+    { id: "3", name: "Para Bailar", songCount: 0, color: "from-green-500 to-emerald-500", songs: [] },
   ]);
   
   const [newFolderName, setNewFolderName] = useState("");
