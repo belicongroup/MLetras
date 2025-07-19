@@ -5,6 +5,7 @@ import { Heart, X, Type, RotateCcw, Loader2, Play, Music, ExternalLink } from "l
 import { Card } from "@/components/ui/card";
 import { useSettings } from "@/contexts/SettingsContext";
 import { usePinch } from "@use-gesture/react";
+import { translations } from "@/lib/translations";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +31,7 @@ interface LyricsModalProps {
 
 const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLyrics }: LyricsModalProps) => {
   const { settings } = useSettings();
+  const t = translations[settings.language];
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>(settings.autoScrollSpeed);
   const [fontSize, setFontSize] = useState(18); // Default font size
@@ -203,7 +205,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                     ? "text-red-500 bg-red-500/10"
                     : "text-red-500 hover:text-red-600"
                 }`}
-                title={`Auto-scroll: ${autoScrollSpeed}`}
+                title={`${t.autoScroll}: ${autoScrollSpeed}`}
               >
                 <Play className={`w-4 h-4 ${autoScrollSpeed !== 'off' && hasUserInteracted ? "animate-pulse" : ""}`} />
               </Button>
@@ -234,7 +236,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                     onBlur={(e) => e.target.blur()}
                     onFocus={(e) => e.target.blur()}
                     className="transition-smooth btn-no-focus text-muted-foreground hover:text-foreground"
-                    title="Listen on streaming services"
+                    title={t.listenOnStreamingServices}
                   >
                     <Music className="w-4 h-4" />
                   </Button>
@@ -247,7 +249,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                     <div className="w-4 h-4 bg-green-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>Spotify</span>
+                    <span>{t.spotify}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -257,7 +259,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                     <div className="w-4 h-4 bg-pink-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>Apple Music</span>
+                    <span>{t.appleMusic}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -267,7 +269,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                     <div className="w-4 h-4 bg-red-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>YouTube</span>
+                    <span>{t.youtube}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -277,7 +279,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                     <div className="w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>Search for chords</span>
+                    <span>{t.searchForChords}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -314,7 +316,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                   <div className="p-4 bg-primary/10 rounded-2xl mb-4">
                     <Loader2 className="w-8 h-8 text-primary animate-spin" />
                   </div>
-                  <h3 className="font-semibold mb-2">Loading lyrics...</h3>
+                  <h3 className="font-semibold mb-2">{t.loadingLyrics}</h3>
                 </div>
               ) : song.lyrics ? (
                 <div 
@@ -336,9 +338,9 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                   <div className="p-4 bg-muted/30 rounded-2xl mb-4">
                     <RotateCcw className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="font-semibold mb-2">Lyrics not available</h3>
+                  <h3 className="font-semibold mb-2">{t.lyricsNotAvailable}</h3>
                   <p className="text-sm text-muted-foreground">
-                    We couldn't find the lyrics for this song.
+                    {t.lyricsNotAvailableSubtitle}
                   </p>
                 </div>
               )}

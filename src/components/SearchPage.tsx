@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Loader2, Music2, Heart, Clock } from "lucide-react";
+import { translations } from "@/lib/translations";
+import { useSettings } from "@/contexts/SettingsContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,13 +16,15 @@ const SwipeableHistoryItem = ({
   onSelect, 
   onLike, 
   onDelete, 
-  isLiked 
+  isLiked,
+  deleteText
 }: { 
   historyItem: SearchHistoryItem & { hasLyrics: boolean }; 
   onSelect: () => void; 
   onLike: () => void; 
   onDelete: () => void; 
   isLiked: boolean;
+  deleteText: string;
 }) => {
   const [showDeleteButton, setShowDeleteButton] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
@@ -98,7 +102,7 @@ const SwipeableHistoryItem = ({
             onClick={handleDeleteClick}
             className="text-white font-medium text-sm hover:bg-destructive/80 px-2 py-1 rounded"
           >
-            Delete
+            {deleteText}
           </button>
         </div>
       )}
@@ -108,6 +112,8 @@ const SwipeableHistoryItem = ({
 
 const SearchPage = () => {
   const navigate = useNavigate();
+  const { settings } = useSettings();
+  const t = translations[settings.language];
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
@@ -273,7 +279,13 @@ const SearchPage = () => {
           <Music2 className="w-8 h-8 text-white" />
         </div>
         <h2 className="text-mobile-hero mb-2">
-          Find Your <span className="bg-gradient-primary bg-clip-text text-transparent">Lyrics</span>
+          {t.findYourLyrics.split(' ').map((word, index) => 
+            word === 'Lyrics' ? (
+              <span key={index} className="bg-gradient-primary bg-clip-text text-transparent"> {word}</span>
+            ) : (
+              <span key={index}>{index > 0 ? ' ' : ''}{word}</span>
+            )
+          )}
         </h2>
       </div>
 
@@ -281,7 +293,7 @@ const SearchPage = () => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
         <Input
-          placeholder="Search by song title or artist..."
+          placeholder={t.searchPlaceholder}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 h-12 bg-card/50 border-border/50 focus:border-primary/50 transition-smooth"
@@ -298,7 +310,7 @@ const SearchPage = () => {
         <div className="space-y-3">
           <h3 className="text-mobile-title flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            Recent Searches
+            {t.recentSearches}
           </h3>
           {searchHistoryItems.slice(0, 10).map((historyItem) => (
             <SwipeableHistoryItem
@@ -314,6 +326,7 @@ const SearchPage = () => {
               })}
               onDelete={() => removeFromHistory(historyItem.id)}
               isLiked={isLiked(historyItem.id)}
+              deleteText={t.delete}
             />
           ))}
         </div>
@@ -322,7 +335,7 @@ const SearchPage = () => {
       {/* Search Results */}
       {searchResults.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-mobile-title">Search Results</h3>
+          <h3 className="text-mobile-title">{t.searchResults}</h3>
           {searchResults.map((song) => (
             <Card key={song.id} className="glass border-border/50 hover:border-primary/30 transition-smooth">
               <CardContent className="p-4">
@@ -357,9 +370,9 @@ const SearchPage = () => {
       {searchQuery && !isSearching && searchResults.length === 0 && (
         <div className="text-center py-8">
           <Music2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No lyrics found</h3>
+          <h3 className="text-lg font-semibold mb-2">{t.noLyricsFound}</h3>
           <p className="text-muted-foreground">
-            Try searching for a different song or artist
+            {t.noLyricsFoundSubtitle}
           </p>
         </div>
       )}
@@ -367,7 +380,7 @@ const SearchPage = () => {
       {showHistory && searchHistoryItems.length === 0 && (
         <div className="text-center py-8">
           <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No recent searches</h3>
+          <h3 className="text-lg font-semibold mb-2">{t.noRecentSearches}</h3>
         </div>
       )}
 

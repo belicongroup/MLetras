@@ -4,10 +4,14 @@ import SearchPage from "@/components/SearchPage";
 import BookmarksPage from "@/components/BookmarksPage";
 import SettingsPage from "@/components/SettingsPage";
 import { Button } from "@/components/ui/button";
+import { translations } from "@/lib/translations";
+import { useSettings } from "@/contexts/SettingsContext";
 
 type Tab = "search" | "bookmarks" | "settings";
 
 const Index = () => {
+  const { settings } = useSettings();
+  const t = translations[settings.language];
   const [activeTab, setActiveTab] = useState<Tab>("search");
 
   const renderContent = () => {
@@ -44,7 +48,7 @@ const Index = () => {
             }`}
           >
             <Search className="w-5 h-5" />
-            <span className="text-xs">Search</span>
+            <span className="text-xs">{t.search}</span>
           </Button>
           
           <Button
@@ -58,7 +62,7 @@ const Index = () => {
             }`}
           >
             <Heart className="w-5 h-5" />
-            <span className="text-xs">Saved</span>
+            <span className="text-xs">{t.bookmarks}</span>
           </Button>
           
           <Button
@@ -72,7 +76,7 @@ const Index = () => {
             }`}
           >
             <Settings className="w-5 h-5" />
-            <span className="text-xs">Settings</span>
+            <span className="text-xs">{t.settings}</span>
           </Button>
         </div>
       </nav>

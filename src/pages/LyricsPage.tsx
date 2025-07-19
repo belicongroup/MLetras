@@ -7,6 +7,7 @@ import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useSettings } from "@/contexts/SettingsContext";
 import { usePinch } from "@use-gesture/react";
+import { translations } from "@/lib/translations";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,7 @@ const LyricsPage = () => {
   const isLoadingLyrics = location.state?.isLoadingLyrics || false;
   const { isLiked, toggleLike } = useLikedSongs();
   const { settings } = useSettings();
+  const t = translations[settings.language];
   
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>(settings.autoScrollSpeed);
@@ -194,8 +196,8 @@ const LyricsPage = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">No song data found</h2>
-          <Button onClick={() => navigate('/')}>Go back to search</Button>
+          <h2 className="text-xl font-semibold mb-2">{t.noSongDataFound}</h2>
+          <Button onClick={() => navigate('/')}>{t.goBackToSearch}</Button>
         </div>
       </div>
     );
@@ -260,7 +262,7 @@ const LyricsPage = () => {
                     ? "text-red-500 bg-red-500/10"
                     : "text-red-500 hover:text-red-600"
                 }`}
-                title={`Auto-scroll: ${autoScrollSpeed}`}
+                title={`${t.autoScroll}: ${autoScrollSpeed}`}
               >
                 <Play className={`w-4 h-4 ${autoScrollSpeed !== 'off' && hasUserInteracted && !isScrollPaused ? "animate-pulse" : ""}`} />
               </Button>
@@ -291,7 +293,7 @@ const LyricsPage = () => {
                     onBlur={(e) => e.target.blur()}
                     onFocus={(e) => e.target.blur()}
                     className="transition-smooth btn-no-focus text-muted-foreground hover:text-foreground"
-                    title="Listen on streaming services"
+                    title={t.listenOnStreamingServices}
                   >
                     <Music className="w-4 h-4" />
                   </Button>
@@ -304,7 +306,7 @@ const LyricsPage = () => {
                     <div className="w-4 h-4 bg-green-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>Spotify</span>
+                    <span>{t.spotify}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -314,7 +316,7 @@ const LyricsPage = () => {
                     <div className="w-4 h-4 bg-pink-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>Apple Music</span>
+                    <span>{t.appleMusic}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -324,7 +326,7 @@ const LyricsPage = () => {
                     <div className="w-4 h-4 bg-red-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>YouTube</span>
+                    <span>{t.youtube}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -334,7 +336,7 @@ const LyricsPage = () => {
                     <div className="w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
-                    <span>Search for chords</span>
+                    <span>{t.searchForChords}</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -367,7 +369,7 @@ const LyricsPage = () => {
                 <div className="p-4 bg-primary/10 rounded-2xl mb-4">
                   <div className="w-8 h-8 text-primary animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
-                <h3 className="font-semibold mb-2">Loading lyrics...</h3>
+                <h3 className="font-semibold mb-2">{t.loadingLyrics}</h3>
               </div>
             ) : songData.lyrics ? (
               <div 

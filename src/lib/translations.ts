@@ -78,6 +78,8 @@ export interface Translations {
   close: string;
   back: string;
   search: string;
+  to: string;
+  from: string;
 }
 
 export const translations: Record<'en' | 'es', Translations> = {
@@ -161,6 +163,8 @@ export const translations: Record<'en' | 'es', Translations> = {
     close: "Close",
     back: "Back",
     search: "Search",
+    to: "to",
+    from: "From",
   },
   es: {
     // Search Page
@@ -242,6 +246,8 @@ export const translations: Record<'en' | 'es', Translations> = {
     close: "Cerrar",
     back: "Atrás",
     search: "Buscar",
+    to: "a",
+    from: "De",
   },
 };
 

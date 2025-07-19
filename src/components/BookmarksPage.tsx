@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useNavigate } from "react-router-dom";
 import { geniusApi, Song } from "@/services/geniusApi";
+import { translations } from "@/lib/translations";
+import { useSettings } from "@/contexts/SettingsContext";
 import {
   DndContext,
   closestCenter,
@@ -37,10 +39,13 @@ interface Folder {
 }
 
 // Sortable Folder Item Component
-const SortableFolderItem = ({ folder, onDelete, onClick }: { 
+const SortableFolderItem = ({ folder, onDelete, onClick, deleteText, songText, songsText }: { 
   folder: Folder; 
   onDelete: (id: string) => void; 
   onClick: () => void;
+  deleteText: string;
+  songText: string;
+  songsText: string;
 }) => {
   const {
     attributes,
@@ -119,7 +124,7 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
             <div>
               <h4 className="font-semibold">{folder.name}</h4>
               <p className="text-sm text-muted-foreground">
-                {folder.songs.length} {folder.songs.length === 1 ? 'song' : 'songs'}
+                {folder.songs.length} {folder.songs.length === 1 ? songText : songsText}
               </p>
             </div>
           </div>
@@ -129,12 +134,12 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
       {/* Delete button */}
       {showDeleteButton && (
         <div className="absolute right-0 top-0 h-full bg-destructive flex items-center justify-center px-4">
-          <button 
-            onClick={handleDeleteClick}
-            className="text-white font-medium text-sm hover:bg-destructive/80 px-2 py-1 rounded"
-          >
-            Delete
-          </button>
+                      <button 
+              onClick={handleDeleteClick}
+              className="text-white font-medium text-sm hover:bg-destructive/80 px-2 py-1 rounded"
+            >
+              {deleteText}
+            </button>
         </div>
       )}
     </div>
@@ -143,6 +148,8 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
 
 const BookmarksPage = () => {
   const navigate = useNavigate();
+  const { settings } = useSettings();
+  const t = translations[settings.language];
   const { likedSongs, toggleLike } = useLikedSongs();
   const [showLikedSongs, setShowLikedSongs] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
@@ -399,16 +406,16 @@ const BookmarksPage = () => {
             <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
               <Music2 className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No songs yet</h3>
+            <h3 className="text-lg font-semibold mb-2">{t.noSongsFound}</h3>
             <p className="text-muted-foreground mb-4">
-              Add songs to this folder to get started
+              {t.noSongsFoundSubtitle}
             </p>
             <Button 
               onClick={() => setShowAddSongDialog(true)}
               className="bg-gradient-primary hover:bg-gradient-accent"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Songs
+              {t.addSong}
             </Button>
           </div>
         )}
@@ -417,12 +424,12 @@ const BookmarksPage = () => {
         <Dialog open={showAddSongDialog} onOpenChange={setShowAddSongDialog}>
           <DialogContent className="w-[90%] glass border-border/50 max-h-[80vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>Add Songs to {selectedFolder.name}</DialogTitle>
+              <DialogTitle>{t.addSong} {t.to} {selectedFolder.name}</DialogTitle>
             </DialogHeader>
             <Tabs defaultValue="liked" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="liked">From Liked Songs</TabsTrigger>
-                <TabsTrigger value="search">Search New</TabsTrigger>
+                <TabsTrigger value="liked">{t.from} {t.likedSongs}</TabsTrigger>
+                <TabsTrigger value="search">{t.searchSongs}</TabsTrigger>
               </TabsList>
               
               <TabsContent value="liked" className="space-y-3 max-h-96 overflow-y-auto">
@@ -450,7 +457,7 @@ const BookmarksPage = () => {
                 ) : (
                   <div className="text-center py-6">
                     <Heart className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">No liked songs yet</p>
+                    <p className="text-sm text-muted-foreground">{t.noSongsFound}</p>
                   </div>
                 )}
               </TabsContent>
@@ -459,7 +466,7 @@ const BookmarksPage = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
-                    placeholder="Search for songs..."
+                    placeholder={t.searchSongs}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
@@ -494,7 +501,7 @@ const BookmarksPage = () => {
                   {searchQuery && !isSearching && searchResults.length === 0 && (
                     <div className="text-center py-6">
                       <Search className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">No results found</p>
+                      <p className="text-sm text-muted-foreground">{t.noSongsFound}</p>
                     </div>
                   )}
                 </div>
@@ -520,8 +527,8 @@ const BookmarksPage = () => {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h2 className="text-mobile-title">Liked Songs</h2>
-            <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
+                      <h2 className="text-mobile-title">{t.likedSongs}</h2>
+          <p className="text-sm text-muted-foreground">{likedSongs.length} {t.songs}</p>
           </div>
         </div>
 
@@ -557,9 +564,9 @@ const BookmarksPage = () => {
             <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
               <Heart className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No liked songs yet</h3>
+            <h3 className="text-lg font-semibold mb-2">{t.noSongsFound}</h3>
             <p className="text-muted-foreground">
-              Start searching and liking songs to see them here
+              {t.noSongsFoundSubtitle}
             </p>
           </div>
         )}
@@ -580,10 +587,16 @@ const BookmarksPage = () => {
             <Heart className="w-6 h-6 text-white" />
           </div>
           <h2 className="text-mobile-hero mb-2">
-            Your <span className="bg-gradient-primary bg-clip-text text-transparent">Collection</span>
+            {t.bookmarks.split(' ').map((word, index) => 
+              word === 'Collection' ? (
+                <span key={index} className="bg-gradient-primary bg-clip-text text-transparent"> {word}</span>
+              ) : (
+                <span key={index}>{index > 0 ? ' ' : ''}{word}</span>
+              )
+            )}
           </h2>
           <p className="text-muted-foreground">
-            Organize your favorite lyrics in custom folders
+            {t.bookmarks}
           </p>
         </div>
 
@@ -598,8 +611,8 @@ const BookmarksPage = () => {
                 <Heart className="w-5 h-5 text-white fill-current" />
               </div>
               <div>
-                <h3 className="font-semibold">Liked Songs</h3>
-                <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
+                <h3 className="font-semibold">{t.likedSongs}</h3>
+                <p className="text-sm text-muted-foreground">{likedSongs.length} {t.songs}</p>
               </div>
             </div>
           </CardContent>
@@ -608,21 +621,21 @@ const BookmarksPage = () => {
         {/* Custom Folders Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-mobile-title">Your Folders</h3>
+            <h3 className="text-mobile-title">{t.folders}</h3>
             <Dialog open={isCreating} onOpenChange={setIsCreating}>
               <DialogTrigger asChild>
                 <Button size="sm" className="bg-gradient-primary hover:bg-gradient-accent transition-smooth">
                   <FolderPlus className="w-4 h-4 mr-2" />
-                  New Folder
+                  {t.createFolder}
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[90%] glass border-border/50">
                 <DialogHeader>
-                  <DialogTitle>Create New Folder</DialogTitle>
+                  <DialogTitle>{t.createFolder}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <Input
-                    placeholder="Enter folder name..."
+                    placeholder={t.folderName}
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
                     className="bg-card/50 border-border/50"
@@ -632,14 +645,14 @@ const BookmarksPage = () => {
                       variant="ghost" 
                       onClick={() => setIsCreating(false)}
                     >
-                      Cancel
+                      {t.cancel}
                     </Button>
                     <Button 
                       onClick={handleCreateFolder}
                       disabled={!newFolderName.trim()}
                       className="bg-gradient-primary hover:bg-gradient-accent"
                     >
-                      Create
+                      {t.save}
                     </Button>
                   </div>
                 </div>
@@ -658,6 +671,9 @@ const BookmarksPage = () => {
                 folder={folder}
                 onDelete={handleDeleteFolder}
                 onClick={() => setSelectedFolder(folder)}
+                deleteText={t.delete}
+                songText={t.song}
+                songsText={t.songs}
               />
             ))}
           </SortableContext>
@@ -667,16 +683,16 @@ const BookmarksPage = () => {
               <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
                 <FolderPlus className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No folders yet</h3>  
+              <h3 className="text-lg font-semibold mb-2">{t.noSongsFound}</h3>  
               <p className="text-muted-foreground mb-4">
-                Create your first folder to organize your favorite lyrics
+                {t.noSongsFoundSubtitle}
               </p>
               <Button 
                 onClick={() => setIsCreating(true)}
                 className="bg-gradient-primary hover:bg-gradient-accent"
               >
                 <FolderPlus className="w-4 h-4 mr-2" />
-                Create Folder
+                {t.createFolder}
               </Button>
             </div>
           )}
