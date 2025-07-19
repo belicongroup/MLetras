@@ -297,4 +297,72 @@
     box-shadow: none !important;
     background-color: inherit !important;
   }
+
+  /* More aggressive focus removal for all buttons */
+  button,
+  button:focus,
+  button:focus-visible,
+  button:active,
+  button:hover:focus,
+  button:hover:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Remove ring focus from shadcn buttons */
+  [data-radix-focus-guard] {
+    outline: none !important;
+  }
+
+  /* Remove any remaining focus styles */
+  *:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Specific removal for button elements */
+  button[data-state="active"],
+  button[data-state="pressed"],
+  button[data-state="focused"] {
+    outline: none !important;
+    box-shadow: none !important;
+    background-color: inherit !important;
+  }
+
+  /* Remove shadcn button focus rings */
+  button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    ring: none !important;
+    ring-offset: none !important;
+  }
+
+  /* Override shadcn button ring styles */
+  .inline-flex:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    ring: none !important;
+    ring-offset: none !important;
+  }
+
+  /* Remove all ring styles */
+  [class*="ring-"] {
+    box-shadow: none !important;
+  }
+
+  /* Force remove focus styles from all interactive elements */
+  button:focus,
+  button:focus-visible,
+  button:active,
+  .btn-no-focus:focus,
+  .btn-no-focus:focus-visible,
+  .btn-no-focus:active {
+    outline: none !important;
+    box-shadow: none !important;
+    ring: none !important;
+    ring-offset: none !important;
+    --tw-ring-offset-shadow: none !important;
+    --tw-ring-shadow: none !important;
+  }
 }
