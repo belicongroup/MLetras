@@ -97,9 +97,13 @@ const LyricsPage = () => {
               size="sm"
               onClick={toggleAutoScroll}
               className={`transition-smooth ${
-                autoScrollSpeed !== 'off' 
-                  ? "text-primary bg-primary/10" 
-                  : "text-muted-foreground hover:text-foreground"
+                autoScrollSpeed === 'off' 
+                  ? "text-muted-foreground hover:text-foreground"
+                  : autoScrollSpeed === 'slow'
+                  ? "text-green-500 bg-green-500/10"
+                  : autoScrollSpeed === 'medium'
+                  ? "text-yellow-500 bg-yellow-500/10"
+                  : "text-red-500 bg-red-500/10"
               }`}
               title={`Auto-scroll: ${autoScrollSpeed}`}
             >
