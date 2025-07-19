@@ -25,7 +25,10 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95%] max-w-2xl h-[90vh] p-0 glass border-border/50" aria-describedby="lyrics-content">
+      <DialogContent className="w-[95%] max-w-2xl h-[90vh] p-0 glass border-border/50" aria-describedby="lyrics-description">
+        <div id="lyrics-description" className="sr-only">
+          Song lyrics for {song.title} by {song.artist}
+        </div>
         {/* Header */}
         <DialogHeader className="p-4 pb-0">
           <div className="flex items-start justify-between">
@@ -74,7 +77,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
 
         {/* Lyrics Content */}
         <div className="flex-1 overflow-hidden px-4 pb-4">
-          <Card className="h-full bg-card/30 border-border/30" id="lyrics-content">
+          <Card className="h-full bg-card/30 border-border/30">
             <div className="h-full p-6 overflow-y-auto lyrics-scroll">
               {isLoadingLyrics ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">

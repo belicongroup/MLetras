@@ -80,19 +80,24 @@ class GeniusApiService {
       const data = await this.makeRequest(`/song/lyrics/?id=${songId}`);
       console.log('Full lyrics API response:', JSON.stringify(data, null, 2));
       
-      // Handle the actual API response structure
-      if (data?.response?.lyrics?.lyrics?.body?.plain) {
-        console.log('Lyrics found, length:', data.response.lyrics.lyrics.body.plain.length);
-        return data.response.lyrics.lyrics.body.plain;
+      // Check all possible paths based on the response structure
+      const possiblePaths = [
+        data?.response?.lyrics?.lyrics?.body?.plain,
+        data?.lyrics?.lyrics?.body?.plain,
+        data?.lyrics?.body?.plain,
+        data?.lyrics?.plain,
+        data?.body?.plain,
+        data?.plain
+      ];
+      
+      for (const path of possiblePaths) {
+        if (path && typeof path === 'string') {
+          console.log('Lyrics found at path, length:', path.length);
+          return path;
+        }
       }
       
-      // Try alternative path structures
-      if (data?.lyrics?.lyrics?.body?.plain) {
-        console.log('Lyrics found in alternative path');
-        return data.lyrics.lyrics.body.plain;
-      }
-      
-      console.log('No lyrics found in response structure');
+      console.log('No lyrics found in any expected path');
       return 'Lyrics not available for this song.';
     } catch (error) {
       console.error('Lyrics fetch error:', error);
