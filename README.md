@@ -1,8 +1,19 @@
-# Welcome to your Lovable project
+# Lyric Muse Organizer
+
+A beautiful, mobile-first lyrics viewer and organizer with advanced features including pinch-to-resize gestures.
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/c2dd7525-21b7-4d01-8f9b-352efb538200
+
+## Features
+
+- **Pinch Gesture Support**: Pinch in/out on lyrics to resize font size dynamically
+- **Auto-scroll**: Automatically scroll through lyrics at different speeds
+- **Bold Text Toggle**: Switch between normal and bold text for better readability
+- **Mobile Optimized**: Touch-friendly interface with responsive design
+- **Dark/Light Theme**: Beautiful theme switching with musical color palette
+- **Search & Organize**: Search for songs and organize your favorites
 
 ## How can I edit this code?
 

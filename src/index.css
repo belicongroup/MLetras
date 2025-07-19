@@ -233,4 +233,22 @@
     background: hsl(var(--primary));
     border-radius: 2px;
   }
+
+  /* Touch-friendly lyrics area */
+  .lyrics-touch-area {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Smooth font size transitions */
+  .lyrics-text {
+    transition: font-size 0.1s ease-out;
+  }
+
+  /* Pinch gesture visual feedback */
+  .lyrics-text:active {
+    transform: scale(0.98);
+  }
 }

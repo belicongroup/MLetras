@@ -5,6 +5,7 @@ import { Heart, ArrowLeft, Type, Play } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { useLikedSongs } from "@/hooks/useLikedSongs";
+import { usePinch } from "@use-gesture/react";
 
 interface Song {
   id: string;
@@ -25,7 +26,9 @@ const LyricsPage = () => {
   const [isScrollPaused, setIsScrollPaused] = useState(false);
   const [lastScrollSpeed, setLastScrollSpeed] = useState<'slow' | 'medium' | 'fast'>('slow');
   const [isLandscape, setIsLandscape] = useState(false);
+  const [fontSize, setFontSize] = useState(18); // Default font size
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lyricsRef = useRef<HTMLDivElement>(null);
   
   const scrollSpeeds = {
     off: 0,
@@ -65,6 +68,22 @@ const LyricsPage = () => {
     const interval = setInterval(scroll, 1000 / speed);
     return () => clearInterval(interval);
   }, [autoScrollSpeed, isScrollPaused, songData?.lyrics]);
+
+  // Pinch gesture handler for font size control
+  usePinch(
+    ({ offset: [scaleOffset] }) => {
+      // Calculate new font size based on pinch scale
+      // Base font size is 18px, scale range from 0.5 to 3.0
+      const newFontSize = Math.max(12, Math.min(48, 18 * scaleOffset));
+      setFontSize(newFontSize);
+    },
+    {
+      target: lyricsRef,
+      eventOptions: { passive: false },
+      scaleBounds: { min: 0.5, max: 3.0 },
+      rubberband: true,
+    }
+  );
 
   const toggleAutoScroll = () => {
     const speeds: Array<'off' | 'slow' | 'medium' | 'fast'> = ['off', 'slow', 'medium', 'fast'];
@@ -183,8 +202,14 @@ const LyricsPage = () => {
 
       {/* Lyrics Content */}
       <div className={`max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 ${isLandscape ? 'pt-4' : ''}`}>
-        <Card className={`${isLandscape ? 'min-h-screen' : 'min-h-[calc(100vh-140px)]'} bg-card/30 border-border/30`}>
+        <Card className={`${isLandscape ? 'min-h-screen' : 'min-h-[calc(100vh-140px)]'} bg-card/30 border-border/30 relative`}>
           <div ref={scrollContainerRef} className={`${isLandscape ? 'h-screen' : 'h-[calc(100vh-140px)]'} p-8 overflow-y-auto lyrics-scroll`}>
+            {/* Pinch hint - only show briefly on first load */}
+            {fontSize === 18 && (
+              <div className="absolute top-2 right-2 text-xs text-muted-foreground/60 bg-background/80 px-2 py-1 rounded-md backdrop-blur-sm">
+                Pinch to resize
+              </div>
+            )}
             {isLoadingLyrics ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="p-4 bg-primary/10 rounded-2xl mb-4">
@@ -197,10 +222,12 @@ const LyricsPage = () => {
               </div>
             ) : songData.lyrics ? (
               <div 
+                ref={lyricsRef}
                 onClick={handleLyricsClick}
-                className={`whitespace-pre-line leading-relaxed transition-smooth text-center text-lg cursor-pointer ${
+                className={`whitespace-pre-line leading-relaxed transition-smooth text-center cursor-pointer lyrics-touch-area lyrics-text ${
                   isBoldText ? "font-semibold" : "font-normal"
                 }`}
+                style={{ fontSize: `${fontSize}px` }}
               >
                 {songData.lyrics}
               </div>

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Heart, X, Type, RotateCcw, Loader2, Play } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { usePinch } from "@use-gesture/react";
 
 interface Song {
   id: string;
@@ -23,7 +24,9 @@ interface LyricsModalProps {
 const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLyrics }: LyricsModalProps) => {
   const [isBoldText, setIsBoldText] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>('off');
+  const [fontSize, setFontSize] = useState(18); // Default font size
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lyricsRef = useRef<HTMLDivElement>(null);
   
   const scrollSpeeds = {
     off: 0,
@@ -55,6 +58,22 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
     const nextIndex = (currentIndex + 1) % speeds.length;
     setAutoScrollSpeed(speeds[nextIndex]);
   };
+
+  // Pinch gesture handler for font size control
+  usePinch(
+    ({ offset: [scaleOffset] }) => {
+      // Calculate new font size based on pinch scale
+      // Base font size is 18px, scale range from 0.5 to 3.0
+      const newFontSize = Math.max(12, Math.min(48, 18 * scaleOffset));
+      setFontSize(newFontSize);
+    },
+    {
+      target: lyricsRef,
+      eventOptions: { passive: false },
+      scaleBounds: { min: 0.5, max: 3.0 },
+      rubberband: true,
+    }
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -123,8 +142,14 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
 
         {/* Lyrics Content */}
         <div className="flex-1 overflow-hidden px-4 pb-4">
-          <Card className="h-full bg-card/30 border-border/30">
+          <Card className="h-full bg-card/30 border-border/30 relative">
             <div ref={scrollContainerRef} className="h-full p-6 overflow-y-auto lyrics-scroll">
+              {/* Pinch hint - only show briefly on first load */}
+              {fontSize === 18 && (
+                <div className="absolute top-2 right-2 text-xs text-muted-foreground/60 bg-background/80 px-2 py-1 rounded-md backdrop-blur-sm">
+                  Pinch to resize
+                </div>
+              )}
               {isLoadingLyrics ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="p-4 bg-primary/10 rounded-2xl mb-4">
@@ -137,9 +162,11 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                 </div>
               ) : song.lyrics ? (
                 <div 
-                  className={`whitespace-pre-line leading-relaxed transition-smooth text-center ${
+                  ref={lyricsRef}
+                  className={`whitespace-pre-line leading-relaxed transition-smooth text-center lyrics-touch-area lyrics-text ${
                     isBoldText ? "font-semibold" : "font-normal"
                   }`}
+                  style={{ fontSize: `${fontSize}px` }}
                 >
                   {song.lyrics}
                 </div>
