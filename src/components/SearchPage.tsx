@@ -85,9 +85,6 @@ const SearchPage = () => {
         <h2 className="text-mobile-hero mb-2">
           Find Your <span className="bg-gradient-primary bg-clip-text text-transparent">Lyrics</span>
         </h2>
-        <p className="text-muted-foreground">
-          Search for your favorite songs and discover their lyrics
-        </p>
       </div>
 
       {/* Search Bar */}
