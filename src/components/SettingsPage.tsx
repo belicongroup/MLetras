@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { lyricsCache } from "@/services/lyricsCache";
+import { translations } from "@/lib/translations";
 
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
@@ -21,6 +22,7 @@ const SettingsPage = () => {
   const [cacheSize, setCacheSize] = useState<number>(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const t = translations[settings.language];
 
   useEffect(() => {
     const updateCacheSize = async () => {
@@ -67,8 +69,11 @@ const SettingsPage = () => {
           <Settings className="w-6 h-6 text-white" />
         </div>
         <h2 className="text-mobile-hero mb-2">
-          <span className="bg-gradient-primary bg-clip-text text-transparent">Settings</span>
+          <span className="bg-gradient-primary bg-clip-text text-transparent">{t.settings}</span>
         </h2>
+        <p className="text-muted-foreground">
+          {t.customizeYourExperience}
+        </p>
       </div>
 
       {/* App Preferences */}
@@ -76,15 +81,15 @@ const SettingsPage = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Palette className="w-5 h-5 text-primary" />
-            Display & Behavior
+            {t.displayAndBehavior}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Auto-scroll Speed</p>
+              <p className="font-medium">{t.autoScrollSpeed}</p>
               <p className="text-sm text-muted-foreground">
-                Choose your default auto-scroll speed
+                {t.autoScrollSpeedDescription}
               </p>
             </div>
             <Select
@@ -97,10 +102,10 @@ const SettingsPage = () => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="off">Off</SelectItem>
-                <SelectItem value="slow" className="text-green-500">Slow</SelectItem>
-                <SelectItem value="medium" className="text-yellow-500">Medium</SelectItem>
-                <SelectItem value="fast" className="text-red-500">Fast</SelectItem>
+                <SelectItem value="off">{t.off}</SelectItem>
+                <SelectItem value="slow" className="text-green-500">{t.slow}</SelectItem>
+                <SelectItem value="medium" className="text-yellow-500">{t.medium}</SelectItem>
+                <SelectItem value="fast" className="text-red-500">{t.fast}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -109,9 +114,9 @@ const SettingsPage = () => {
           
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Bold Text</p>
+              <p className="font-medium">{t.boldText}</p>
               <p className="text-sm text-muted-foreground">
-                Display lyrics in bold for better readability
+                {t.boldTextDescription}
               </p>
             </div>
             <Switch
@@ -124,15 +129,40 @@ const SettingsPage = () => {
           
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Dark Mode</p>
+              <p className="font-medium">{t.darkMode}</p>
               <p className="text-sm text-muted-foreground">
-                Use dark theme (recommended)
+                {t.darkModeDescription}
               </p>
             </div>
             <Switch
               checked={theme === 'dark'}
               onCheckedChange={toggleTheme}
             />
+          </div>
+          
+          <Separator />
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">{t.language}</p>
+              <p className="text-sm text-muted-foreground">
+                {t.languageDescription}
+              </p>
+            </div>
+            <Select
+              value={settings.language}
+              onValueChange={(value) => {
+                setSettings(prev => ({ ...prev, language: value as 'en' | 'es' }));
+              }}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

@@ -102,7 +102,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
     setAutoScrollSpeed(newSpeed);
   };
 
-  const openStreamingService = (service: 'spotify' | 'apple' | 'youtube') => {
+  const openStreamingService = (service: 'spotify' | 'apple' | 'youtube' | 'chords') => {
     const searchQuery = encodeURIComponent(`${song.title} ${song.artist}`);
     let url = '';
     
@@ -115,6 +115,10 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
         break;
       case 'youtube':
         url = `https://www.youtube.com/results?search_query=${searchQuery}`;
+        break;
+      case 'chords':
+        const chordsQuery = encodeURIComponent(`${song.title} ${song.artist} acordes`);
+        url = `https://www.google.com/search?q=${chordsQuery}`;
         break;
     }
     
@@ -264,6 +268,16 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
                     <span>YouTube</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('chords')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>Search for chords</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                 </DropdownMenuContent>

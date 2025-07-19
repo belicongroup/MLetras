@@ -368,9 +368,6 @@ const SearchPage = () => {
         <div className="text-center py-8">
           <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">No recent searches</h3>
-          <p className="text-muted-foreground">
-            Start searching for songs to build your history
-          </p>
         </div>
       )}
 

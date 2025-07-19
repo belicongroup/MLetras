@@ -4,6 +4,7 @@ interface Settings {
   autoScrollSpeed: 'off' | 'slow' | 'medium' | 'fast';
   notifications: boolean;
   boldText: boolean;
+  language: 'en' | 'es';
 }
 
 interface SettingsContextType {
@@ -18,6 +19,7 @@ const defaultSettings: Settings = {
   autoScrollSpeed: 'off',
   notifications: false,
   boldText: false,
+  language: 'en',
 };
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

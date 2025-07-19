@@ -165,7 +165,7 @@ const LyricsPage = () => {
     }
   };
 
-  const openStreamingService = (service: 'spotify' | 'apple' | 'youtube') => {
+  const openStreamingService = (service: 'spotify' | 'apple' | 'youtube' | 'chords') => {
     if (!songData) return;
     
     const searchQuery = encodeURIComponent(`${songData.title} ${songData.artist}`);
@@ -180,6 +180,10 @@ const LyricsPage = () => {
         break;
       case 'youtube':
         url = `https://www.youtube.com/results?search_query=${searchQuery}`;
+        break;
+      case 'chords':
+        const chordsQuery = encodeURIComponent(`${songData.title} ${songData.artist} acordes`);
+        url = `https://www.google.com/search?q=${chordsQuery}`;
         break;
     }
     
@@ -321,6 +325,16 @@ const LyricsPage = () => {
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
                     </div>
                     <span>YouTube</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('chords')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>Search for chords</span>
                     <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
                   </DropdownMenuItem>
                 </DropdownMenuContent>
