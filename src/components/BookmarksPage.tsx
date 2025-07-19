@@ -1,28 +1,35 @@
 import { useState } from "react";
-import { Heart, FolderPlus, Music2, Trash2, ArrowLeft } from "lucide-react";
+import { Heart, FolderPlus, Music2, Trash2, ArrowLeft, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useNavigate } from "react-router-dom";
-import { geniusApi } from "@/services/geniusApi";
+import { geniusApi, Song } from "@/services/geniusApi";
 
 interface Folder {
   id: string;
   name: string;
   songCount: number;
   color: string;
+  songs: Song[];
 }
 
 const BookmarksPage = () => {
   const navigate = useNavigate();
   const { likedSongs, toggleLike } = useLikedSongs();
   const [showLikedSongs, setShowLikedSongs] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
+  const [showAddSongDialog, setShowAddSongDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Song[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [folders, setFolders] = useState<Folder[]>([
-    { id: "1", name: "Rock Classics", songCount: 3, color: "from-red-500 to-pink-500" },
-    { id: "2", name: "Feel Good", songCount: 5, color: "from-yellow-500 to-orange-500" },
-    { id: "3", name: "Workout", songCount: 2, color: "from-green-500 to-emerald-500" },
+    { id: "1", name: "Rock Classics", songCount: 3, color: "from-red-500 to-pink-500", songs: [] },
+    { id: "2", name: "Feel Good", songCount: 5, color: "from-yellow-500 to-orange-500", songs: [] },
+    { id: "3", name: "Workout", songCount: 2, color: "from-green-500 to-emerald-500", songs: [] },
   ]);
   
   const [newFolderName, setNewFolderName] = useState("");
@@ -45,7 +52,8 @@ const BookmarksPage = () => {
       id: Date.now().toString(),
       name: newFolderName.trim(),
       songCount: 0,
-      color: randomColor
+      color: randomColor,
+      songs: []
     };
     
     setFolders([...folders, newFolder]);
@@ -85,6 +93,234 @@ const BookmarksPage = () => {
       });
     }
   };
+
+  const handleSearchSongs = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await geniusApi.searchSongs(query);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddSongToFolder = (song: Song) => {
+    if (!selectedFolder) return;
+    
+    setFolders(prev => prev.map(folder => 
+      folder.id === selectedFolder.id 
+        ? { 
+            ...folder, 
+            songs: [...folder.songs, song],
+            songCount: folder.songs.length + 1
+          }
+        : folder
+    ));
+    
+    setShowAddSongDialog(false);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
+  const handleRemoveSongFromFolder = (songId: string) => {
+    if (!selectedFolder) return;
+    
+    setFolders(prev => prev.map(folder => 
+      folder.id === selectedFolder.id 
+        ? { 
+            ...folder, 
+            songs: folder.songs.filter(s => s.id !== songId),
+            songCount: folder.songs.length - 1
+          }
+        : folder
+    ));
+    
+    // Update selectedFolder state
+    setSelectedFolder(prev => prev ? {
+      ...prev,
+      songs: prev.songs.filter(s => s.id !== songId),
+      songCount: prev.songs.length - 1
+    } : null);
+  };
+
+  // Folder view
+  if (selectedFolder) {
+    return (
+      <div className="p-4 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedFolder(null)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div className="flex items-center gap-3 flex-1">
+            <div className={`p-2 bg-gradient-to-br ${selectedFolder.color} rounded-lg`}>
+              <Music2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-mobile-title">{selectedFolder.name}</h2>
+              <p className="text-sm text-muted-foreground">{selectedFolder.songs.length} songs</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setShowAddSongDialog(true)}
+            className="bg-gradient-primary hover:bg-gradient-accent hover-scale"
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Folder Songs */}
+        {selectedFolder.songs.length > 0 ? (
+          <div className="space-y-3">
+            {selectedFolder.songs.map((song) => (
+              <Card key={song.id} className="glass border-border/50 hover:border-primary/30 transition-smooth">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => handleSongSelect(song)}
+                    >
+                      <h4 className="font-semibold text-foreground mb-1">{song.title}</h4>
+                      <p className="text-sm text-muted-foreground">{song.artist}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveSongFromFolder(song.id)}
+                      className="ml-3 transition-smooth text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
+              <Music2 className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No songs yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Add songs to this folder to get started
+            </p>
+            <Button 
+              onClick={() => setShowAddSongDialog(true)}
+              className="bg-gradient-primary hover:bg-gradient-accent"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Songs
+            </Button>
+          </div>
+        )}
+
+        {/* Add Song Dialog */}
+        <Dialog open={showAddSongDialog} onOpenChange={setShowAddSongDialog}>
+          <DialogContent className="w-[90%] glass border-border/50 max-h-[80vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Add Songs to {selectedFolder.name}</DialogTitle>
+            </DialogHeader>
+            <Tabs defaultValue="liked" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="liked">From Liked Songs</TabsTrigger>
+                <TabsTrigger value="search">Search New</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="liked" className="space-y-3 max-h-96 overflow-y-auto">
+                {likedSongs.length > 0 ? (
+                  likedSongs.map((song) => (
+                    <Card key={song.id} className="glass border-border/30 hover:border-primary/30 transition-smooth">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{song.title}</h4>
+                            <p className="text-xs text-muted-foreground">{song.artist}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddSongToFolder(song)}
+                            disabled={selectedFolder.songs.some(s => s.id === song.id)}
+                            className="bg-gradient-primary hover:bg-gradient-accent h-8 px-3"
+                          >
+                            {selectedFolder.songs.some(s => s.id === song.id) ? "Added" : "Add"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-6">
+                    <Heart className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">No liked songs yet</p>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="search" className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search for songs..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      handleSearchSongs(e.target.value);
+                    }}
+                    className="pl-10 bg-card/50 border-border/50"
+                  />
+                </div>
+                
+                <div className="max-h-80 overflow-y-auto space-y-2">
+                  {searchResults.map((song) => (
+                    <Card key={song.id} className="glass border-border/30 hover:border-primary/30 transition-smooth">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm">{song.title}</h4>
+                            <p className="text-xs text-muted-foreground">{song.artist}</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddSongToFolder(song)}
+                            disabled={selectedFolder.songs.some(s => s.id === song.id)}
+                            className="bg-gradient-primary hover:bg-gradient-accent h-8 px-3"
+                          >
+                            {selectedFolder.songs.some(s => s.id === song.id) ? "Added" : "Add"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  
+                  {searchQuery && !isSearching && searchResults.length === 0 && (
+                    <div className="text-center py-6">
+                      <Search className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">No results found</p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   if (showLikedSongs) {
     return (
@@ -225,28 +461,37 @@ const BookmarksPage = () => {
         {/* Folders Grid */}
         <div className="space-y-3">
           {folders.map((folder) => (
-            <Card key={folder.id} className="glass border-border/50 hover:border-primary/30 transition-smooth group">
-              <CardHeader className="p-3 pb-2">
-                <div className="flex items-start justify-between">
-                  <div className={`p-2 bg-gradient-to-br ${folder.color} rounded-lg shadow-sm`}>
-                    <Music2 className="w-4 h-4 text-white" />
+            <Card 
+              key={folder.id} 
+              className="glass border-border/50 hover:border-primary/30 transition-smooth group cursor-pointer hover-scale"
+              onClick={() => setSelectedFolder(folder)}
+            >
+              <CardHeader className="p-4 pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 bg-gradient-to-br ${folder.color} rounded-lg shadow-sm`}>
+                      <Music2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">{folder.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {folder.songs.length} {folder.songs.length === 1 ? 'song' : 'songs'}
+                      </p>
+                    </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDeleteFolder(folder.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFolder(folder.id);
+                    }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 h-auto w-auto"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <h4 className="font-semibold text-sm mb-1 truncate">{folder.name}</h4>
-                <p className="text-xs text-muted-foreground">
-                  {folder.songCount} {folder.songCount === 1 ? 'song' : 'songs'}
-                </p>
-              </CardContent>
             </Card>
           ))}
         </div>
