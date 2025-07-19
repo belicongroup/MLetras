@@ -73,6 +73,22 @@ class GeniusApiService {
     }
   }
 
+  private convertHtmlToText(html: string): string {
+    // Replace <br> tags with newlines
+    let text = html.replace(/<br\s*\/?>/gi, '\n');
+    // Remove all other HTML tags
+    text = text.replace(/<[^>]*>/g, '');
+    // Decode HTML entities
+    text = text.replace(/&nbsp;/g, ' ');
+    text = text.replace(/&amp;/g, '&');
+    text = text.replace(/&lt;/g, '<');
+    text = text.replace(/&gt;/g, '>');
+    text = text.replace(/&quot;/g, '"');
+    text = text.replace(/&#39;/g, "'");
+    
+    return text.trim();
+  }
+
   async getSongLyrics(songId: string): Promise<string> {
     console.log('Fetching lyrics for song ID:', songId);
     
@@ -88,19 +104,20 @@ class GeniusApiService {
         
         // Try to find lyrics in various possible locations
         const possiblePaths = [
-          data.lyrics.lyrics?.body?.plain,
-          data.lyrics.lyrics?.plain,
-          data.lyrics.body?.plain,
-          data.lyrics.plain,
-          data.lyrics.text,
-          data.lyrics.content
+          { path: data.lyrics.lyrics?.body?.html, isHtml: true },
+          { path: data.lyrics.lyrics?.body?.plain, isHtml: false },
+          { path: data.lyrics.lyrics?.plain, isHtml: false },
+          { path: data.lyrics.body?.plain, isHtml: false },
+          { path: data.lyrics.plain, isHtml: false },
+          { path: data.lyrics.text, isHtml: false },
+          { path: data.lyrics.content, isHtml: false }
         ];
         
         for (let i = 0; i < possiblePaths.length; i++) {
-          const path = possiblePaths[i];
+          const { path, isHtml } = possiblePaths[i];
           if (path && typeof path === 'string' && path.trim()) {
             console.log(`Lyrics found at path ${i}, length:`, path.length);
-            return path;
+            return isHtml ? this.convertHtmlToText(path) : path;
           }
         }
       }
