@@ -36,7 +36,8 @@ const SearchPage = () => {
   const handleSongSelect = async (song: Song) => {
     console.log('Song selected:', song);
     
-    if (!song.lyrics) {
+    // Check if we need to fetch lyrics (no lyrics or previous error message)
+    if (!song.lyrics || song.lyrics === 'Lyrics not available for this song.' || song.lyrics === 'Error fetching lyrics. Please try again.') {
       console.log('Fetching lyrics for song ID:', song.id);
       setIsLoadingLyrics(true);
       try {
