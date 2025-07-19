@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, FolderPlus, Music2, Trash2, ArrowLeft, Plus, Search, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,14 +110,35 @@ const BookmarksPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [folders, setFolders] = useState<Folder[]>([
+  
+  // Default folders
+  const defaultFolders: Folder[] = [
     { id: "1", name: "Corridos", songCount: 0, color: "from-red-500 to-pink-500", songs: [] },
     { id: "2", name: "Tumbado", songCount: 0, color: "from-yellow-500 to-orange-500", songs: [] },
     { id: "3", name: "Para Bailar", songCount: 0, color: "from-green-500 to-emerald-500", songs: [] },
-  ]);
+  ];
+
+  // Load folders from localStorage on component mount
+  const [folders, setFolders] = useState<Folder[]>(() => {
+    const savedFolders = localStorage.getItem('lyric-muse-folders');
+    if (savedFolders) {
+      try {
+        return JSON.parse(savedFolders);
+      } catch (error) {
+        console.error('Error parsing saved folders:', error);
+        return defaultFolders;
+      }
+    }
+    return defaultFolders;
+  });
   
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+
+  // Save folders to localStorage whenever folders change
+  useEffect(() => {
+    localStorage.setItem('lyric-muse-folders', JSON.stringify(folders));
+  }, [folders]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -152,13 +173,13 @@ const BookmarksPage = () => {
       songs: []
     };
     
-    setFolders([...folders, newFolder]);
+    setFolders(prev => [...prev, newFolder]);
     setNewFolderName("");
     setIsCreating(false);
   };
 
   const handleDeleteFolder = (folderId: string) => {
-    setFolders(folders.filter(folder => folder.id !== folderId));
+    setFolders(prev => prev.filter(folder => folder.id !== folderId));
   };
 
   const handleSongSelect = async (song: any) => {
