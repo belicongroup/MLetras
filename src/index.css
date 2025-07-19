@@ -251,4 +251,26 @@
   .lyrics-text:active {
     transform: scale(0.98);
   }
+
+  /* Drag and drop styles */
+  .drag-handle {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+
+  /* Drag overlay styles */
+  .dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+  }
+
+  /* Sortable item hover effect */
+  .sortable-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.2);
+  }
 }
