@@ -72,15 +72,19 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
   };
 
   const handleTouchEnd = () => {
+    // Don't auto-delete, just keep the delete button visible if swiped far enough
     const diff = touchStartX - touchCurrentX;
-    if (diff > 100) {
-      if (window.confirm(`Delete folder "${folder.name}"?`)) {
-        onDelete(folder.id);
-      }
+    if (diff < 50) {
+      setShowDeleteButton(false);
     }
-    setShowDeleteButton(false);
     setTouchStartX(0);
     setTouchCurrentX(0);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(folder.id);
+    setShowDeleteButton(false);
   };
 
   const style = {
@@ -122,10 +126,15 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
         </CardHeader>
       </Card>
       
-      {/* Delete indicator */}
+      {/* Delete button */}
       {showDeleteButton && (
-        <div className="absolute right-0 top-0 h-full bg-destructive flex items-center justify-center px-4 text-white font-medium text-sm">
-          Delete
+        <div className="absolute right-0 top-0 h-full bg-destructive flex items-center justify-center px-4">
+          <button 
+            onClick={handleDeleteClick}
+            className="text-white font-medium text-sm hover:bg-destructive/80 px-2 py-1 rounded"
+          >
+            Delete
+          </button>
         </div>
       )}
     </div>
