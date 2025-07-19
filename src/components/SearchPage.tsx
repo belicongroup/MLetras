@@ -154,9 +154,6 @@ const SearchPage = () => {
             <Search className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-semibold mb-2">Start Your Search</h3>
-          <p className="text-muted-foreground">
-            Enter a song title or artist name to find lyrics
-          </p>
         </div>
       )}
 
