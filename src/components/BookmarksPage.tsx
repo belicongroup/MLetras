@@ -193,7 +193,7 @@ const BookmarksPage = () => {
     
     // Fetch lyrics and update the page
     try {
-      const lyrics = await geniusApi.getSongLyrics(song.id);
+      const lyrics = await geniusApi.getSongLyrics(song.id, song);
       navigate('/lyrics', {
         state: {
           song: { ...song, lyrics },

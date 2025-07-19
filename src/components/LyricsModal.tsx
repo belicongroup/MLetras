@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, X, Type, RotateCcw, Loader2, Play } from "lucide-react";
+import { Heart, X, Type, RotateCcw, Loader2, Play, Music, ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useSettings } from "@/contexts/SettingsContext";
 import { usePinch } from "@use-gesture/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Song {
   id: string;
@@ -22,41 +29,96 @@ interface LyricsModalProps {
 }
 
 const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLyrics }: LyricsModalProps) => {
-  const [isBoldText, setIsBoldText] = useState(false);
-  const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>('off');
+  const { settings } = useSettings();
+  const [isBoldText, setIsBoldText] = useState(settings.boldText);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>(settings.autoScrollSpeed);
   const [fontSize, setFontSize] = useState(18); // Default font size
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
   
   const scrollSpeeds = {
     off: 0,
-    slow: 30,
-    medium: 60,
-    fast: 120
+    slow: 7.5,
+    medium: 15,
+    fast: 30
   };
 
   useEffect(() => {
-    if (autoScrollSpeed === 'off' || !scrollContainerRef.current) return;
+    if (autoScrollSpeed === 'off' || !scrollContainerRef.current || !hasUserInteracted) return;
     
     const container = scrollContainerRef.current;
     const speed = scrollSpeeds[autoScrollSpeed];
     
     const scroll = () => {
-      container.scrollTop += 1;
-      if (container.scrollTop >= container.scrollHeight - container.clientHeight) {
-        container.scrollTop = 0; // Reset to top when reaching bottom
+      // Get current scroll position and container dimensions
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+      
+      // Calculate the maximum scroll position (with a small buffer)
+      const maxScroll = Math.max(0, scrollHeight - clientHeight - 5);
+      
+      // Check if we've reached the bottom (with some tolerance)
+      if (scrollTop >= maxScroll) {
+        // Stop auto-scroll when reaching the bottom
+        setAutoScrollSpeed('off');
+        return;
       }
+      
+      // Continue scrolling
+      container.scrollTop += 1;
     };
     
     const interval = setInterval(scroll, 1000 / speed);
     return () => clearInterval(interval);
-  }, [autoScrollSpeed, song.lyrics]);
+  }, [autoScrollSpeed, song.lyrics, hasUserInteracted]);
 
-  const toggleAutoScroll = () => {
+  // Update bold text state when settings change
+  useEffect(() => {
+    setIsBoldText(settings.boldText);
+  }, [settings.boldText]);
+
+  // Update auto-scroll speed when settings change
+  useEffect(() => {
+    setAutoScrollSpeed(settings.autoScrollSpeed);
+  }, [settings.autoScrollSpeed]);
+
+  const toggleAutoScroll = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Remove focus after click to prevent purple overlay
+    setTimeout(() => {
+      e.currentTarget.blur();
+    }, 10);
+    
     const speeds: Array<'off' | 'slow' | 'medium' | 'fast'> = ['off', 'slow', 'medium', 'fast'];
     const currentIndex = speeds.indexOf(autoScrollSpeed);
     const nextIndex = (currentIndex + 1) % speeds.length;
-    setAutoScrollSpeed(speeds[nextIndex]);
+    const newSpeed = speeds[nextIndex];
+    
+    if (newSpeed !== 'off') {
+      setHasUserInteracted(true); // Mark that user has interacted
+    }
+    
+    setAutoScrollSpeed(newSpeed);
+  };
+
+  const openStreamingService = (service: 'spotify' | 'apple' | 'youtube') => {
+    const searchQuery = encodeURIComponent(`${song.title} ${song.artist}`);
+    let url = '';
+    
+    switch (service) {
+      case 'spotify':
+        url = `https://open.spotify.com/search/${searchQuery}`;
+        break;
+      case 'apple':
+        url = `https://music.apple.com/search?term=${searchQuery}`;
+        break;
+      case 'youtube':
+        url = `https://www.youtube.com/results?search_query=${searchQuery}`;
+        break;
+    }
+    
+    window.open(url, '_blank');
   };
 
   // Pinch gesture handler for font size control
@@ -83,31 +145,75 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
         </div>
         {/* Header */}
         <DialogHeader className="p-4 pb-0">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 pr-4">
-              <DialogTitle className="text-lg font-bold text-foreground mb-1">
-                {song.title}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground">{song.artist}</p>
+          <div className="max-w-4xl mx-auto">
+            {/* Close button and song title row */}
+            <div className="flex items-center justify-between mb-4">
+              {/* Invisible spacer to balance the close button */}
+              <div className="w-10"></div>
+              
+              {/* Centered song title and artist */}
+              <div className="text-center flex-1">
+                <DialogTitle className="text-lg font-bold text-foreground mb-1">
+                  {song.title}
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground">{song.artist}</p>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  setTimeout(() => {
+                    e.currentTarget.blur();
+                  }, 10);
+                  onClose();
+                }}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
+                className="text-muted-foreground hover:text-foreground btn-no-focus"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
+            
+            {/* Centered buttons */}
+            <div className="flex items-center justify-center gap-3">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={toggleAutoScroll}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
                 className={`transition-smooth btn-no-focus ${
-                  autoScrollSpeed !== 'off' 
-                    ? "text-primary bg-primary/10" 
-                    : "text-muted-foreground hover:text-foreground"
+                  autoScrollSpeed === 'off' 
+                    ? "text-muted-foreground hover:text-foreground"
+                    : autoScrollSpeed === 'slow'
+                    ? hasUserInteracted 
+                      ? "text-green-500 bg-green-500/10"
+                      : "text-green-500 hover:text-green-600"
+                    : autoScrollSpeed === 'medium'
+                    ? hasUserInteracted
+                      ? "text-yellow-500 bg-yellow-500/10"
+                      : "text-yellow-500 hover:text-yellow-600"
+                    : hasUserInteracted
+                    ? "text-red-500 bg-red-500/10"
+                    : "text-red-500 hover:text-red-600"
                 }`}
                 title={`Auto-scroll: ${autoScrollSpeed}`}
               >
-                <Play className={`w-4 h-4 ${autoScrollSpeed !== 'off' ? "animate-pulse" : ""}`} />
+                <Play className={`w-4 h-4 ${autoScrollSpeed !== 'off' && hasUserInteracted ? "animate-pulse" : ""}`} />
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsBoldText(!isBoldText)}
+                onClick={(e) => {
+                  setTimeout(() => {
+                    e.currentTarget.blur();
+                  }, 10);
+                  setIsBoldText(!isBoldText);
+                }}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
                 className={`transition-smooth btn-no-focus ${
                   isBoldText 
                     ? "text-primary bg-primary/10" 
@@ -116,10 +222,63 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
               >
                 <Type className="w-4 h-4" />
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onBlur={(e) => e.target.blur()}
+                    onFocus={(e) => e.target.blur()}
+                    className="transition-smooth btn-no-focus text-muted-foreground hover:text-foreground"
+                    title="Listen on streaming services"
+                  >
+                    <Music className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-48">
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('spotify')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-green-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>Spotify</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('apple')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-pink-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>Apple Music</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('youtube')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-red-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>YouTube</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onToggleLike}
+                onClick={(e) => {
+                  setTimeout(() => {
+                    e.currentTarget.blur();
+                  }, 10);
+                  onToggleLike();
+                }}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
                 className={`transition-smooth btn-no-focus ${
                   isLiked 
                     ? "text-primary hover:text-primary/80" 
@@ -127,14 +286,6 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                 }`}
               >
                 <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="text-muted-foreground hover:text-foreground btn-no-focus"
-              >
-                <X className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -157,7 +308,12 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
               ) : song.lyrics ? (
                 <div 
                   ref={lyricsRef}
-                  className={`whitespace-pre-line leading-relaxed transition-smooth text-center lyrics-touch-area lyrics-text ${
+                  onClick={() => {
+                    if (autoScrollSpeed !== 'off') {
+                      setHasUserInteracted(true);
+                    }
+                  }}
+                  className={`whitespace-pre-line leading-relaxed transition-smooth text-center lyrics-touch-area lyrics-text cursor-pointer ${
                     isBoldText ? "font-semibold" : "font-normal"
                   }`}
                   style={{ fontSize: `${fontSize}px` }}

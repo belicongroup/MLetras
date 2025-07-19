@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, ArrowLeft, Type, Play } from "lucide-react";
+import { Heart, ArrowLeft, Type, Play, Music, ExternalLink } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ScreenOrientation } from '@capacitor/screen-orientation';
 import { useLikedSongs } from "@/hooks/useLikedSongs";
+import { useSettings } from "@/contexts/SettingsContext";
 import { usePinch } from "@use-gesture/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Song {
   id: string;
@@ -20,11 +27,13 @@ const LyricsPage = () => {
   const songData = location.state?.song as Song;
   const isLoadingLyrics = location.state?.isLoadingLyrics || false;
   const { isLiked, toggleLike } = useLikedSongs();
+  const { settings } = useSettings();
   
-  const [isBoldText, setIsBoldText] = useState(false);
-  const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>('off');
+  const [isBoldText, setIsBoldText] = useState(settings.boldText);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>(settings.autoScrollSpeed);
   const [isScrollPaused, setIsScrollPaused] = useState(false);
   const [lastScrollSpeed, setLastScrollSpeed] = useState<'slow' | 'medium' | 'fast'>('slow');
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
   const [fontSize, setFontSize] = useState(18); // Default font size
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -32,9 +41,9 @@ const LyricsPage = () => {
   
   const scrollSpeeds = {
     off: 0,
-    slow: 30,
-    medium: 60,
-    fast: 120
+    slow: 7.5,
+    medium: 15,
+    fast: 30
   };
 
   useEffect(() => {
@@ -53,21 +62,44 @@ const LyricsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (autoScrollSpeed === 'off' || isScrollPaused || !scrollContainerRef.current) return;
+    if (autoScrollSpeed === 'off' || isScrollPaused || !scrollContainerRef.current || !hasUserInteracted) return;
     
     const container = scrollContainerRef.current;
     const speed = scrollSpeeds[autoScrollSpeed];
     
     const scroll = () => {
-      container.scrollTop += 1;
-      if (container.scrollTop >= container.scrollHeight - container.clientHeight) {
-        container.scrollTop = 0; // Reset to top when reaching bottom
+      // Get current scroll position and container dimensions
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+      
+      // Calculate the maximum scroll position (with a small buffer)
+      const maxScroll = Math.max(0, scrollHeight - clientHeight - 5);
+      
+      // Check if we've reached the bottom (with some tolerance)
+      if (scrollTop >= maxScroll) {
+        // Stop auto-scroll when reaching the bottom
+        setAutoScrollSpeed('off');
+        return;
       }
+      
+      // Continue scrolling
+      container.scrollTop += 1;
     };
     
     const interval = setInterval(scroll, 1000 / speed);
     return () => clearInterval(interval);
-  }, [autoScrollSpeed, isScrollPaused, songData?.lyrics]);
+  }, [autoScrollSpeed, isScrollPaused, songData?.lyrics, hasUserInteracted]);
+
+  // Update bold text state when settings change
+  useEffect(() => {
+    setIsBoldText(settings.boldText);
+  }, [settings.boldText]);
+
+  // Update auto-scroll speed when settings change
+  useEffect(() => {
+    setAutoScrollSpeed(settings.autoScrollSpeed);
+  }, [settings.autoScrollSpeed]);
 
   // Pinch gesture handler for font size control
   usePinch(
@@ -85,7 +117,12 @@ const LyricsPage = () => {
     }
   );
 
-  const toggleAutoScroll = () => {
+  const toggleAutoScroll = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Remove focus after click to prevent purple overlay
+    setTimeout(() => {
+      e.currentTarget.blur();
+    }, 10);
+    
     const speeds: Array<'off' | 'slow' | 'medium' | 'fast'> = ['off', 'slow', 'medium', 'fast'];
     const currentIndex = speeds.indexOf(autoScrollSpeed);
     const nextIndex = (currentIndex + 1) % speeds.length;
@@ -94,6 +131,7 @@ const LyricsPage = () => {
     // Save the last speed when turning on auto-scroll
     if (newSpeed !== 'off') {
       setLastScrollSpeed(newSpeed as 'slow' | 'medium' | 'fast');
+      setHasUserInteracted(true); // Mark that user has interacted
     }
     
     setAutoScrollSpeed(newSpeed);
@@ -102,6 +140,8 @@ const LyricsPage = () => {
 
   const handleLyricsClick = () => {
     if (autoScrollSpeed === 'off') return; // Do nothing if auto-scroll is off
+    
+    setHasUserInteracted(true); // Mark that user has interacted
     
     if (isScrollPaused) {
       // Resume scrolling at the last speed
@@ -114,10 +154,36 @@ const LyricsPage = () => {
     }
   };
 
-  const handleToggleLike = () => {
+  const handleToggleLike = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Remove focus after click to prevent purple overlay
+    setTimeout(() => {
+      e.currentTarget.blur();
+    }, 10);
+    
     if (songData) {
       toggleLike(songData);
     }
+  };
+
+  const openStreamingService = (service: 'spotify' | 'apple' | 'youtube') => {
+    if (!songData) return;
+    
+    const searchQuery = encodeURIComponent(`${songData.title} ${songData.artist}`);
+    let url = '';
+    
+    switch (service) {
+      case 'spotify':
+        url = `https://open.spotify.com/search/${searchQuery}`;
+        break;
+      case 'apple':
+        url = `https://music.apple.com/search?term=${searchQuery}`;
+        break;
+      case 'youtube':
+        url = `https://www.youtube.com/results?search_query=${searchQuery}`;
+        break;
+    }
+    
+    window.open(url, '_blank');
   };
 
   if (!songData) {
@@ -136,67 +202,145 @@ const LyricsPage = () => {
       {/* Header - Hide in landscape mode */}
       {!isLandscape && (
         <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4">
-        <div className="flex items-start justify-between max-w-4xl mx-auto">
-          <div className="flex items-start gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/')}
-              className="text-muted-foreground hover:text-foreground btn-no-focus"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-foreground mb-1">
-                {songData.title}
-              </h1>
-              <p className="text-sm text-muted-foreground">{songData.artist}</p>
+          <div className="max-w-4xl mx-auto">
+            {/* Back button and song title row */}
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  setTimeout(() => {
+                    e.currentTarget.blur();
+                  }, 10);
+                  navigate('/');
+                }}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
+                className="text-muted-foreground hover:text-foreground btn-no-focus"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+              
+              {/* Centered song title and artist */}
+              <div className="text-center flex-1">
+                <h1 className="text-xl font-bold text-foreground mb-1">
+                  {songData.title}
+                </h1>
+                <p className="text-sm text-muted-foreground">{songData.artist}</p>
+              </div>
+              
+              {/* Invisible spacer to balance the back button */}
+              <div className="w-10"></div>
+            </div>
+            
+            {/* Centered buttons */}
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAutoScroll}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
+                className={`transition-smooth btn-no-focus ${
+                  autoScrollSpeed === 'off' 
+                    ? "text-muted-foreground hover:text-foreground"
+                    : autoScrollSpeed === 'slow'
+                    ? hasUserInteracted && !isScrollPaused 
+                      ? "text-green-500 bg-green-500/10"
+                      : "text-green-500 hover:text-green-600"
+                    : autoScrollSpeed === 'medium'
+                    ? hasUserInteracted && !isScrollPaused
+                      ? "text-yellow-500 bg-yellow-500/10"
+                      : "text-yellow-500 hover:text-yellow-600"
+                    : hasUserInteracted && !isScrollPaused
+                    ? "text-red-500 bg-red-500/10"
+                    : "text-red-500 hover:text-red-600"
+                }`}
+                title={`Auto-scroll: ${autoScrollSpeed}`}
+              >
+                <Play className={`w-4 h-4 ${autoScrollSpeed !== 'off' && hasUserInteracted && !isScrollPaused ? "animate-pulse" : ""}`} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  setTimeout(() => {
+                    e.currentTarget.blur();
+                  }, 10);
+                  setIsBoldText(!isBoldText);
+                }}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
+                className={`transition-smooth btn-no-focus ${
+                  isBoldText 
+                    ? "text-primary bg-primary/10" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Type className="w-4 h-4" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onBlur={(e) => e.target.blur()}
+                    onFocus={(e) => e.target.blur()}
+                    className="transition-smooth btn-no-focus text-muted-foreground hover:text-foreground"
+                    title="Listen on streaming services"
+                  >
+                    <Music className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-48">
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('spotify')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-green-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>Spotify</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('apple')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-pink-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>Apple Music</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => openStreamingService('youtube')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <div className="w-4 h-4 bg-red-500 rounded-sm flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-sm"></div>
+                    </div>
+                    <span>YouTube</span>
+                    <ExternalLink className="w-3 h-3 ml-auto text-muted-foreground" />
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToggleLike}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
+                className={`transition-smooth btn-no-focus ${
+                  isLiked(songData?.id || '') 
+                    ? "text-primary hover:text-primary/80" 
+                    : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                <Heart className={`w-4 h-4 ${isLiked(songData?.id || '') ? "fill-current" : ""}`} />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleAutoScroll}
-              className={`transition-smooth btn-no-focus ${
-                autoScrollSpeed === 'off' 
-                  ? "text-muted-foreground hover:text-foreground"
-                  : autoScrollSpeed === 'slow'
-                  ? "text-green-500 bg-green-500/10"
-                  : autoScrollSpeed === 'medium'
-                  ? "text-yellow-500 bg-yellow-500/10"
-                  : "text-red-500 bg-red-500/10"
-              }`}
-              title={`Auto-scroll: ${autoScrollSpeed}`}
-            >
-              <Play className={`w-4 h-4 ${autoScrollSpeed !== 'off' ? "animate-pulse" : ""}`} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsBoldText(!isBoldText)}
-              className={`transition-smooth btn-no-focus ${
-                isBoldText 
-                  ? "text-primary bg-primary/10" 
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Type className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleToggleLike}
-              className={`transition-smooth btn-no-focus ${
-                isLiked(songData?.id || '') 
-                  ? "text-primary hover:text-primary/80" 
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              <Heart className={`w-4 h-4 ${isLiked(songData?.id || '') ? "fill-current" : ""}`} />
-            </Button>
-          </div>
-        </div>
         </div>
       )}
 

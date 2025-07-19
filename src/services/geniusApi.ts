@@ -1,3 +1,5 @@
+import { lyricsCache, CachedLyrics } from '@/services/lyricsCache';
+
 const RAPIDAPI_KEY = '1e1cad9707msh91a2590c323310fp1e04b8jsn4797f27d7d2e';
 const RAPIDAPI_HOST = 'genius-song-lyrics1.p.rapidapi.com';
 
@@ -89,13 +91,27 @@ class GeniusApiService {
     return text.trim();
   }
 
-  async getSongLyrics(songId: string): Promise<string> {
+  async getSongLyrics(songId: string, song?: Song): Promise<string> {
     console.log('Fetching lyrics for song ID:', songId);
     
+    // First, try to get from cache
+    try {
+      const cached = await lyricsCache.getCachedLyrics(songId);
+      if (cached && cached.lyrics) {
+        console.log('Lyrics found in cache');
+        return cached.lyrics;
+      }
+    } catch (error) {
+      console.error('Error checking cache:', error);
+    }
+    
+    // If not in cache, fetch from API
     try {
       const data = await this.makeRequest(`/song/lyrics/?id=${songId}`);
       console.log('Raw API response:', data);
       console.log('Lyrics object:', data.lyrics);
+      
+      let lyricsText = 'Lyrics not available for this song.';
       
       // Check if lyrics object exists and log its structure
       if (data.lyrics) {
@@ -117,13 +133,33 @@ class GeniusApiService {
           const { path, isHtml } = possiblePaths[i];
           if (path && typeof path === 'string' && path.trim()) {
             console.log(`Lyrics found at path ${i}, length:`, path.length);
-            return isHtml ? this.convertHtmlToText(path) : path;
+            lyricsText = isHtml ? this.convertHtmlToText(path) : path;
+            break;
           }
         }
       }
       
-      console.log('No lyrics found in any expected path');
-      return 'Lyrics not available for this song.';
+      // Cache the lyrics if we have a song object
+      if (song && lyricsText !== 'Lyrics not available for this song.') {
+        try {
+          const cachedLyrics: CachedLyrics = {
+            id: songId,
+            title: song.title,
+            artist: song.artist,
+            lyrics: lyricsText,
+            imageUrl: song.imageUrl,
+            url: song.url,
+            timestamp: Date.now(),
+            isLiked: false // Will be updated by the like system
+          };
+          await lyricsCache.cacheLyrics(cachedLyrics);
+          console.log('Lyrics cached successfully');
+        } catch (error) {
+          console.error('Error caching lyrics:', error);
+        }
+      }
+      
+      return lyricsText;
     } catch (error) {
       console.error('Lyrics fetch error:', error);
       return 'Error fetching lyrics. Please try again.';
