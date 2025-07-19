@@ -27,7 +27,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Beautiful Header */}
       <header className="sticky top-0 z-50 glass border-b border-border/50">
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between safe-top safe-left safe-right px-4 pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-primary rounded-xl shadow-glow">
               <Music className="w-6 h-6 text-white" />
@@ -49,7 +49,7 @@ const Index = () => {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50">
-        <div className="flex items-center justify-around p-4">
+        <div className="flex items-center justify-around safe-bottom safe-left safe-right px-4 pt-4">
           <Button
             variant="ghost"
             size="sm"

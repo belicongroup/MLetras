@@ -84,7 +84,7 @@ const SearchPage = () => {
   };
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="safe-area space-y-6">
       {/* Hero Section */}
       <div className="text-center py-8">
         <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
