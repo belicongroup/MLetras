@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, X, Type, RotateCcw } from "lucide-react";
+import { Heart, X, Type, RotateCcw, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface Song {
@@ -17,9 +17,10 @@ interface LyricsModalProps {
   onClose: () => void;
   isLiked: boolean;
   onToggleLike: () => void;
+  isLoadingLyrics?: boolean;
 }
 
-const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike }: LyricsModalProps) => {
+const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLyrics }: LyricsModalProps) => {
   const [isBoldText, setIsBoldText] = useState(false);
 
   return (
@@ -75,7 +76,17 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike }: LyricsMod
         <div className="flex-1 overflow-hidden px-4 pb-4">
           <Card className="h-full bg-card/30 border-border/30">
             <div className="h-full p-6 overflow-y-auto lyrics-scroll">
-              {song.lyrics ? (
+              {isLoadingLyrics ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="p-4 bg-primary/10 rounded-2xl mb-4">
+                    <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Loading lyrics...</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Fetching lyrics from Genius
+                  </p>
+                </div>
+              ) : song.lyrics ? (
                 <div 
                   className={`whitespace-pre-line leading-relaxed transition-smooth ${
                     isBoldText ? "font-semibold" : "font-normal"

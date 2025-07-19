@@ -1,0 +1,95 @@
+const RAPIDAPI_KEY = '1e1cad9707msh91a2590c323310fp1e04b8jsn4797f27d7d2e';
+const RAPIDAPI_HOST = 'genius-song-lyrics1.p.rapidapi.com';
+
+export interface GeniusSearchResult {
+  id: number;
+  title: string;
+  full_title: string;
+  artist_names: string;
+  url: string;
+  song_art_image_url: string;
+  primary_artist: {
+    name: string;
+  };
+}
+
+export interface GeniusSearchResponse {
+  meta: {
+    status: number;
+  };
+  response: {
+    hits: Array<{
+      result: GeniusSearchResult;
+    }>;
+  };
+}
+
+export interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  lyrics?: string;
+  imageUrl?: string;
+  url?: string;
+}
+
+class GeniusApiService {
+  private async makeRequest(endpoint: string): Promise<any> {
+    const response = await fetch(`https://${RAPIDAPI_HOST}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'x-rapidapi-host': RAPIDAPI_HOST,
+        'x-rapidapi-key': RAPIDAPI_KEY,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async searchSongs(query: string, perPage: number = 10): Promise<Song[]> {
+    if (!query.trim()) return [];
+
+    try {
+      const encodedQuery = encodeURIComponent(query);
+      const data: GeniusSearchResponse = await this.makeRequest(
+        `/search/?q=${encodedQuery}&per_page=${perPage}&page=1`
+      );
+
+      if (data.meta.status !== 200) {
+        throw new Error('Search request failed');
+      }
+
+      return data.response.hits.map(hit => ({
+        id: hit.result.id.toString(),
+        title: hit.result.title,
+        artist: hit.result.primary_artist.name,
+        imageUrl: hit.result.song_art_image_url,
+        url: hit.result.url,
+      }));
+    } catch (error) {
+      console.error('Search error:', error);
+      return [];
+    }
+  }
+
+  async getSongLyrics(songId: string): Promise<string> {
+    try {
+      const data = await this.makeRequest(`/song/lyrics/?id=${songId}`);
+      
+      if (data.lyrics && data.lyrics.lyrics) {
+        return data.lyrics.lyrics.body.plain;
+      }
+      
+      return 'Lyrics not available for this song.';
+    } catch (error) {
+      console.error('Lyrics fetch error:', error);
+      return 'Error fetching lyrics. Please try again.';
+    }
+  }
+}
+
+export const geniusApi = new GeniusApiService();

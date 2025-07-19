@@ -4,100 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import LyricsModal from "@/components/LyricsModal";
-
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  lyrics?: string;
-}
-
-// Mock data for demo - in real app would connect to lyrics API
-const mockSongs: Song[] = [
-  {
-    id: "1",
-    title: "Imagine",
-    artist: "John Lennon",
-    lyrics: `Imagine there's no heaven
-It's easy if you try
-No hell below us
-Above us only sky
-Imagine all the people living for today
-
-Imagine there's no countries
-It isn't hard to do
-Nothing to kill or die for
-And no religion too
-Imagine all the people living life in peace
-
-You may say I'm a dreamer
-But I'm not the only one
-I hope someday you'll join us
-And the world will be as one
-
-Imagine no possessions
-I wonder if you can
-No need for greed or hunger
-A brotherhood of man
-Imagine all the people sharing all the world
-
-You may say I'm a dreamer
-But I'm not the only one
-I hope someday you'll join us
-And the world will be as one`
-  },
-  {
-    id: "2", 
-    title: "Bohemian Rhapsody",
-    artist: "Queen",
-    lyrics: `Is this the real life?
-Is this just fantasy?
-Caught in a landslide
-No escape from reality
-Open your eyes
-Look up to the skies and see
-I'm just a poor boy, I need no sympathy
-Because I'm easy come, easy go
-Little high, little low
-Any way the wind blows doesn't really matter to me, to me
-
-Mama, just killed a man
-Put a gun against his head
-Pulled my trigger, now he's dead
-Mama, life had just begun
-But now I've gone and thrown it all away
-
-Mama, ooh
-Didn't mean to make you cry
-If I'm not back again this time tomorrow
-Carry on, carry on as if nothing really matters`
-  },
-  {
-    id: "3",
-    title: "Hotel California", 
-    artist: "Eagles",
-    lyrics: `On a dark desert highway, cool wind in my hair
-Warm smell of colitas, rising up through the air
-Up ahead in the distance, I saw a shimmering light
-My head grew heavy and my sight grew dim
-I had to stop for the night
-
-There she stood in the doorway
-I heard the mission bell
-And I was thinking to myself
-"This could be Heaven or this could be Hell"
-Then she lit up a candle and she showed me the way
-There were voices down the corridor
-I thought I heard them say
-
-Welcome to the Hotel California
-Such a lovely place (Such a lovely place)
-Such a lovely face
-Plenty of room at the Hotel California
-Any time of year (Any time of year)
-You can find it here`
-  }
-];
+import { geniusApi, Song } from "@/services/geniusApi";
 
 const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -105,8 +12,8 @@ const SearchPage = () => {
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
 
-  // Mock search function
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -115,16 +22,31 @@ const SearchPage = () => {
 
     setIsSearching(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const results = mockSongs.filter(song => 
-      song.title.toLowerCase().includes(query.toLowerCase()) ||
-      song.artist.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    setSearchResults(results);
-    setIsSearching(false);
+    try {
+      const results = await geniusApi.searchSongs(query);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSongSelect = async (song: Song) => {
+    if (!song.lyrics) {
+      setIsLoadingLyrics(true);
+      try {
+        const lyrics = await geniusApi.getSongLyrics(song.id);
+        song.lyrics = lyrics;
+      } catch (error) {
+        console.error('Failed to fetch lyrics:', error);
+        song.lyrics = 'Error fetching lyrics. Please try again.';
+      } finally {
+        setIsLoadingLyrics(false);
+      }
+    }
+    setSelectedSong(song);
   };
 
   // Debounced search
@@ -187,7 +109,7 @@ const SearchPage = () => {
                 <div className="flex items-center justify-between">
                   <div 
                     className="flex-1 cursor-pointer"
-                    onClick={() => setSelectedSong(song)}
+                    onClick={() => handleSongSelect(song)}
                   >
                     <h4 className="font-semibold text-foreground mb-1">{song.title}</h4>
                     <p className="text-sm text-muted-foreground">{song.artist}</p>
@@ -242,6 +164,7 @@ const SearchPage = () => {
           onClose={() => setSelectedSong(null)}
           isLiked={likedSongs.has(selectedSong.id)}
           onToggleLike={() => toggleLike(selectedSong.id)}
+          isLoadingLyrics={isLoadingLyrics}
         />
       )}
     </div>
