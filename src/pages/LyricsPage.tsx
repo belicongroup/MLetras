@@ -204,12 +204,6 @@ const LyricsPage = () => {
       <div className={`max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 ${isLandscape ? 'pt-4' : ''}`}>
         <Card className={`${isLandscape ? 'min-h-screen' : 'min-h-[calc(100vh-140px)]'} bg-card/30 border-border/30 relative`}>
           <div ref={scrollContainerRef} className={`${isLandscape ? 'h-screen' : 'h-[calc(100vh-140px)]'} p-8 overflow-y-auto lyrics-scroll`}>
-            {/* Pinch hint - only show briefly on first load */}
-            {fontSize === 18 && (
-              <div className="absolute top-2 right-2 text-xs text-muted-foreground/60 bg-background/80 px-2 py-1 rounded-md backdrop-blur-sm">
-                Pinch to resize
-              </div>
-            )}
             {isLoadingLyrics ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="p-4 bg-primary/10 rounded-2xl mb-4">

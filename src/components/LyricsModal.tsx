@@ -144,12 +144,6 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
         <div className="flex-1 overflow-hidden px-4 pb-4">
           <Card className="h-full bg-card/30 border-border/30 relative">
             <div ref={scrollContainerRef} className="h-full p-6 overflow-y-auto lyrics-scroll">
-              {/* Pinch hint - only show briefly on first load */}
-              {fontSize === 18 && (
-                <div className="absolute top-2 right-2 text-xs text-muted-foreground/60 bg-background/80 px-2 py-1 rounded-md backdrop-blur-sm">
-                  Pinch to resize
-                </div>
-              )}
               {isLoadingLyrics ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="p-4 bg-primary/10 rounded-2xl mb-4">
