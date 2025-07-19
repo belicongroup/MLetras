@@ -25,23 +25,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Beautiful Header */}
-      <header className="sticky top-0 z-50 glass border-b border-border/50">
-        <div className="flex items-center justify-between safe-top safe-left safe-right px-4 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-primary rounded-xl shadow-glow">
-              <Music className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-mobile-title font-bold bg-gradient-primary bg-clip-text text-transparent">
-                MLETRA
-              </h1>
-              <p className="text-xs text-muted-foreground">Lyrics for your soul</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="flex-1 pb-20">
         {renderContent()}
