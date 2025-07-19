@@ -115,6 +115,9 @@ const BookmarksPage = () => {
   const handleAddSongToFolder = (song: Song) => {
     if (!selectedFolder) return;
     
+    // Check if song is already in folder
+    if (selectedFolder.songs.some(s => s.id === song.id)) return;
+    
     setFolders(prev => prev.map(folder => 
       folder.id === selectedFolder.id 
         ? { 
@@ -125,9 +128,14 @@ const BookmarksPage = () => {
         : folder
     ));
     
-    setShowAddSongDialog(false);
-    setSearchQuery("");
-    setSearchResults([]);
+    // Update selectedFolder state to reflect changes immediately
+    setSelectedFolder(prev => prev ? {
+      ...prev,
+      songs: [...prev.songs, song],
+      songCount: prev.songs.length + 1
+    } : null);
+    
+    // Keep dialog open for adding more songs
   };
 
   const handleRemoveSongFromFolder = (songId: string) => {
