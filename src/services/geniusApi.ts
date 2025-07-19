@@ -78,22 +78,30 @@ class GeniusApiService {
     
     try {
       const data = await this.makeRequest(`/song/lyrics/?id=${songId}`);
-      console.log('Full lyrics API response:', JSON.stringify(data, null, 2));
+      console.log('Raw API response:', data);
+      console.log('Lyrics object:', data.lyrics);
       
-      // Check all possible paths based on the response structure
-      const possiblePaths = [
-        data?.response?.lyrics?.lyrics?.body?.plain,
-        data?.lyrics?.lyrics?.body?.plain,
-        data?.lyrics?.body?.plain,
-        data?.lyrics?.plain,
-        data?.body?.plain,
-        data?.plain
-      ];
-      
-      for (const path of possiblePaths) {
-        if (path && typeof path === 'string') {
-          console.log('Lyrics found at path, length:', path.length);
-          return path;
+      // Check if lyrics object exists and log its structure
+      if (data.lyrics) {
+        console.log('Lyrics object keys:', Object.keys(data.lyrics));
+        console.log('Full lyrics object:', JSON.stringify(data.lyrics, null, 2));
+        
+        // Try to find lyrics in various possible locations
+        const possiblePaths = [
+          data.lyrics.lyrics?.body?.plain,
+          data.lyrics.lyrics?.plain,
+          data.lyrics.body?.plain,
+          data.lyrics.plain,
+          data.lyrics.text,
+          data.lyrics.content
+        ];
+        
+        for (let i = 0; i < possiblePaths.length; i++) {
+          const path = possiblePaths[i];
+          if (path && typeof path === 'string' && path.trim()) {
+            console.log(`Lyrics found at path ${i}, length:`, path.length);
+            return path;
+          }
         }
       }
       
