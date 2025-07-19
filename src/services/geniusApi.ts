@@ -77,8 +77,9 @@ class GeniusApiService {
     try {
       const data = await this.makeRequest(`/song/lyrics/?id=${songId}`);
       
-      if (data.lyrics && data.lyrics.lyrics) {
-        return data.lyrics.lyrics.body.plain;
+      // Handle the actual API response structure
+      if (data?.response?.lyrics?.lyrics?.body?.plain) {
+        return data.response.lyrics.lyrics.body.plain;
       }
       
       return 'Lyrics not available for this song.';
