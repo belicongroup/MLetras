@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Heart, ArrowLeft, Type, Play } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ScreenOrientation } from '@capacitor/screen-orientation';
+import { useLikedSongs } from "@/hooks/useLikedSongs";
 
 interface Song {
   id: string;
@@ -16,8 +17,8 @@ const LyricsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const songData = location.state?.song as Song;
-  const isLiked = location.state?.isLiked || false;
   const isLoadingLyrics = location.state?.isLoadingLyrics || false;
+  const { isLiked, toggleLike } = useLikedSongs();
   
   const [isBoldText, setIsBoldText] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>('off');
@@ -95,9 +96,9 @@ const LyricsPage = () => {
   };
 
   const handleToggleLike = () => {
-    // This would typically trigger a callback passed from the parent component
-    // For now, we'll just navigate back
-    console.log('Toggle like for song:', songData?.id);
+    if (songData) {
+      toggleLike(songData);
+    }
   };
 
   if (!songData) {
@@ -168,12 +169,12 @@ const LyricsPage = () => {
               size="sm"
               onClick={handleToggleLike}
               className={`transition-smooth ${
-                isLiked 
+                isLiked(songData?.id || '') 
                   ? "text-primary hover:text-primary/80" 
                   : "text-muted-foreground hover:text-primary"
               }`}
             >
-              <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
+              <Heart className={`w-4 h-4 ${isLiked(songData?.id || '') ? "fill-current" : ""}`} />
             </Button>
           </div>
         </div>

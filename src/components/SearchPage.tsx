@@ -5,13 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { geniusApi, Song } from "@/services/geniusApi";
+import { useLikedSongs } from "@/hooks/useLikedSongs";
 
 const SearchPage = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
-  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
+  const { isLiked, toggleLike } = useLikedSongs();
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -37,7 +38,7 @@ const SearchPage = () => {
     navigate('/lyrics', {
       state: {
         song: { ...song, lyrics: 'Loading...' },
-        isLiked: likedSongs.has(song.id),
+        isLiked: isLiked(song.id),
         isLoadingLyrics: true
       }
     });
@@ -48,7 +49,7 @@ const SearchPage = () => {
       navigate('/lyrics', {
         state: {
           song: { ...song, lyrics },
-          isLiked: likedSongs.has(song.id),
+          isLiked: isLiked(song.id),
           isLoadingLyrics: false
         }
       });
@@ -57,7 +58,7 @@ const SearchPage = () => {
       navigate('/lyrics', {
         state: {
           song: { ...song, lyrics: 'Lyrics not available for this song.' },
-          isLiked: likedSongs.has(song.id),
+          isLiked: isLiked(song.id),
           isLoadingLyrics: false
         }
       });
@@ -73,15 +74,6 @@ const SearchPage = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  const toggleLike = (songId: string) => {
-    const newLikedSongs = new Set(likedSongs);
-    if (newLikedSongs.has(songId)) {
-      newLikedSongs.delete(songId);
-    } else {
-      newLikedSongs.add(songId);
-    }
-    setLikedSongs(newLikedSongs);
-  };
 
   return (
     <div className="safe-area space-y-6">
@@ -132,14 +124,14 @@ const SearchPage = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => toggleLike(song.id)}
+                    onClick={() => toggleLike(song)}
                     className={`ml-3 transition-smooth ${
-                      likedSongs.has(song.id) 
+                      isLiked(song.id) 
                         ? "text-primary hover:text-primary/80" 
                         : "text-muted-foreground hover:text-primary"
                     }`}
                   >
-                    <Heart className={`w-5 h-5 ${likedSongs.has(song.id) ? "fill-current" : ""}`} />
+                    <Heart className={`w-5 h-5 ${isLiked(song.id) ? "fill-current" : ""}`} />
                   </Button>
                 </div>
               </CardContent>
