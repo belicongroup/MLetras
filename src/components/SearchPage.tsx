@@ -148,14 +148,6 @@ const SearchPage = () => {
         </div>
       )}
 
-      {!searchQuery && (
-        <div className="text-center py-8">
-          <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
-            <Search className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold mb-2">Start Your Search</h3>
-        </div>
-      )}
 
     </div>
   );
