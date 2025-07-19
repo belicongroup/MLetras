@@ -136,7 +136,7 @@ const LyricsPage = () => {
       {/* Lyrics Content */}
       <div className="max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4">
         <Card className="min-h-[calc(100vh-140px)] bg-card/30 border-border/30">
-          <div ref={scrollContainerRef} className="h-full p-8 overflow-y-auto lyrics-scroll">
+          <div ref={scrollContainerRef} className="h-[calc(100vh-140px)] p-8 overflow-y-auto lyrics-scroll">
             {isLoadingLyrics ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="p-4 bg-primary/10 rounded-2xl mb-4">
