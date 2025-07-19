@@ -71,9 +71,6 @@ const SettingsPage = () => {
         <h2 className="text-mobile-hero mb-2">
           <span className="bg-gradient-primary bg-clip-text text-transparent">{t.settings}</span>
         </h2>
-        <p className="text-muted-foreground">
-          {t.customizeYourExperience}
-        </p>
       </div>
 
       {/* App Preferences */}
