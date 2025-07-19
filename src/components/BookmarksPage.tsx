@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Heart, FolderPlus, Music2, Trash2, ArrowLeft, Plus, Search, GripVertical } from "lucide-react";
+import { Heart, FolderPlus, Music2, ArrowLeft, Plus, Search, GripVertical, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,38 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
     isDragging,
   } = useSortable({ id: folder.id });
 
+  const [showDeleteButton, setShowDeleteButton] = useState(false);
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [touchCurrentX, setTouchCurrentX] = useState(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const currentX = e.touches[0].clientX;
+    setTouchCurrentX(currentX);
+    const diff = touchStartX - currentX;
+    
+    if (diff > 50) {
+      setShowDeleteButton(true);
+    } else if (diff < 20) {
+      setShowDeleteButton(false);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    const diff = touchStartX - touchCurrentX;
+    if (diff > 100) {
+      if (window.confirm(`Delete folder "${folder.name}"?`)) {
+        onDelete(folder.id);
+      }
+    }
+    setShowDeleteButton(false);
+    setTouchStartX(0);
+    setTouchCurrentX(0);
+  };
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -58,14 +90,17 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
   };
 
   return (
-    <Card 
-      ref={setNodeRef}
-      style={style}
-      className="glass border-border/50 hover:border-primary/30 transition-smooth group cursor-pointer hover-scale sortable-item"
-      onClick={onClick}
-    >
-      <CardHeader className="p-4 pb-2">
-        <div className="flex items-center justify-between">
+    <div className="relative overflow-hidden">
+      <Card 
+        ref={setNodeRef}
+        style={style}
+        className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer hover-scale sortable-item"
+        onClick={onClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <CardHeader className="p-4 pb-2">
           <div className="flex items-center gap-3">
             <div 
               {...attributes}
@@ -84,20 +119,16 @@ const SortableFolderItem = ({ folder, onDelete, onClick }: {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(folder.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 h-auto w-auto"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+        </CardHeader>
+      </Card>
+      
+      {/* Delete indicator */}
+      {showDeleteButton && (
+        <div className="absolute right-0 top-0 h-full bg-destructive flex items-center justify-center px-4 text-white font-medium text-sm">
+          Delete
         </div>
-      </CardHeader>
-    </Card>
+      )}
+    </div>
   );
 };
 
