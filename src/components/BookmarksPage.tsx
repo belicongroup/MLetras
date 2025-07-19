@@ -595,9 +595,6 @@ const BookmarksPage = () => {
               )
             )}
           </h2>
-          <p className="text-muted-foreground">
-            {t.bookmarks}
-          </p>
         </div>
 
         {/* Quick Access - Liked Songs */}
