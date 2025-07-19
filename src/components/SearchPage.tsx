@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Loader2, Music2, Heart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import LyricsModal from "@/components/LyricsModal";
 import { geniusApi, Song } from "@/services/geniusApi";
 
 const SearchPage = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
-  const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) {
@@ -34,26 +33,35 @@ const SearchPage = () => {
   };
 
   const handleSongSelect = async (song: Song) => {
-    console.log('Song selected:', song);
-    
-    // Check if we need to fetch lyrics (no lyrics or previous error message)
-    if (!song.lyrics || song.lyrics === 'Lyrics not available for this song.' || song.lyrics === 'Error fetching lyrics. Please try again.') {
-      console.log('Fetching lyrics for song ID:', song.id);
-      setIsLoadingLyrics(true);
-      try {
-        const lyrics = await geniusApi.getSongLyrics(song.id);
-        console.log('Lyrics fetched:', lyrics?.substring(0, 100) + '...');
-        song.lyrics = lyrics;
-      } catch (error) {
-        console.error('Failed to fetch lyrics:', error);
-        song.lyrics = 'Error fetching lyrics. Please try again.';
-      } finally {
-        setIsLoadingLyrics(false);
+    // Navigate to lyrics page with song data
+    navigate('/lyrics', {
+      state: {
+        song: { ...song, lyrics: 'Loading...' },
+        isLiked: likedSongs.has(song.id),
+        isLoadingLyrics: true
       }
-    }
+    });
     
-    console.log('Setting selected song:', song);
-    setSelectedSong(song);
+    // Fetch lyrics and update the page
+    try {
+      const lyrics = await geniusApi.getSongLyrics(song.id);
+      navigate('/lyrics', {
+        state: {
+          song: { ...song, lyrics },
+          isLiked: likedSongs.has(song.id),
+          isLoadingLyrics: false
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch lyrics:', error);
+      navigate('/lyrics', {
+        state: {
+          song: { ...song, lyrics: 'Lyrics not available for this song.' },
+          isLiked: likedSongs.has(song.id),
+          isLoadingLyrics: false
+        }
+      });
+    }
   };
 
   // Debounced search
@@ -163,17 +171,6 @@ const SearchPage = () => {
         </div>
       )}
 
-      {/* Lyrics Modal */}
-      {selectedSong && (
-        <LyricsModal
-          song={selectedSong}
-          isOpen={!!selectedSong}
-          onClose={() => setSelectedSong(null)}
-          isLiked={likedSongs.has(selectedSong.id)}
-          onToggleLike={() => toggleLike(selectedSong.id)}
-          isLoadingLyrics={isLoadingLyrics}
-        />
-      )}
     </div>
   );
 };
