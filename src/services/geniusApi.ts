@@ -13,15 +13,11 @@ export interface GeniusSearchResult {
   };
 }
 
+// Updated interface to match actual API response
 export interface GeniusSearchResponse {
-  meta: {
-    status: number;
-  };
-  response: {
-    hits: Array<{
-      result: GeniusSearchResult;
-    }>;
-  };
+  hits: Array<{
+    result: GeniusSearchResult;
+  }>;
 }
 
 export interface Song {
@@ -59,11 +55,12 @@ class GeniusApiService {
         `/search/?q=${encodedQuery}&per_page=${perPage}&page=1`
       );
 
-      if (data.meta.status !== 200) {
-        throw new Error('Search request failed');
+      // Handle the actual API response structure
+      if (!data.hits) {
+        return [];
       }
 
-      return data.response.hits.map(hit => ({
+      return data.hits.map(hit => ({
         id: hit.result.id.toString(),
         title: hit.result.title,
         artist: hit.result.primary_artist.name,
