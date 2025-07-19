@@ -142,26 +142,19 @@ const BookmarksPage = () => {
       </div>
 
       {/* Quick Access - Liked Songs */}
-      <Card className="glass border-border/50 hover:border-primary/30 transition-smooth">
+      <Card 
+        className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer"
+        onClick={() => setShowLikedSongs(true)}
+      >
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-accent rounded-lg">
-                <Heart className="w-5 h-5 text-white fill-current" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Liked Songs</h3>
-                <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-accent rounded-lg">
+              <Heart className="w-5 h-5 text-white fill-current" />
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-primary"
-              onClick={() => setShowLikedSongs(true)}
-            >
-              View All
-            </Button>
+            <div>
+              <h3 className="font-semibold">Liked Songs</h3>
+              <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
+            </div>
           </div>
         </CardContent>
       </Card>
