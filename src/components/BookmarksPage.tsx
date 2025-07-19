@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Heart, FolderPlus, Music2, Trash2 } from "lucide-react";
+import { Heart, FolderPlus, Music2, Trash2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useLikedSongs } from "@/hooks/useLikedSongs";
+import { useNavigate } from "react-router-dom";
 
 interface Folder {
   id: string;
@@ -13,6 +15,9 @@ interface Folder {
 }
 
 const BookmarksPage = () => {
+  const navigate = useNavigate();
+  const { likedSongs, toggleLike } = useLikedSongs();
+  const [showLikedSongs, setShowLikedSongs] = useState(false);
   const [folders, setFolders] = useState<Folder[]>([
     { id: "1", name: "Rock Classics", songCount: 3, color: "from-red-500 to-pink-500" },
     { id: "2", name: "Feel Good", songCount: 5, color: "from-yellow-500 to-orange-500" },
@@ -51,6 +56,76 @@ const BookmarksPage = () => {
     setFolders(folders.filter(folder => folder.id !== folderId));
   };
 
+  const handleSongSelect = async (song: any) => {
+    navigate('/lyrics', {
+      state: {
+        song,
+        isLoadingLyrics: false
+      }
+    });
+  };
+
+  if (showLikedSongs) {
+    return (
+      <div className="p-4 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowLikedSongs(false)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h2 className="text-mobile-title">Liked Songs</h2>
+            <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
+          </div>
+        </div>
+
+        {/* Liked Songs List */}
+        {likedSongs.length > 0 ? (
+          <div className="space-y-3">
+            {likedSongs.map((song) => (
+              <Card key={song.id} className="glass border-border/50 hover:border-primary/30 transition-smooth">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => handleSongSelect(song)}
+                    >
+                      <h4 className="font-semibold text-foreground mb-1">{song.title}</h4>
+                      <p className="text-sm text-muted-foreground">{song.artist}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleLike(song)}
+                      className="ml-3 transition-smooth text-primary hover:text-primary/80"
+                    >
+                      <Heart className="w-5 h-5 fill-current" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
+              <Heart className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No liked songs yet</h3>
+            <p className="text-muted-foreground">
+              Start searching and liking songs to see them here
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 space-y-6">
       {/* Header */}
@@ -76,10 +151,15 @@ const BookmarksPage = () => {
               </div>
               <div>
                 <h3 className="font-semibold">Liked Songs</h3>
-                <p className="text-sm text-muted-foreground">8 songs</p>
+                <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="text-primary">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-primary"
+              onClick={() => setShowLikedSongs(true)}
+            >
               View All
             </Button>
           </div>
