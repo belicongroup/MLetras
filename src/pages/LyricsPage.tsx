@@ -138,7 +138,7 @@ const LyricsPage = () => {
               variant="ghost"
               size="sm"
               onClick={toggleAutoScroll}
-              className={`transition-smooth ${
+              className={`transition-smooth focus:outline-none focus:ring-0 focus:bg-transparent ${
                 autoScrollSpeed === 'off' 
                   ? "text-muted-foreground hover:text-foreground"
                   : autoScrollSpeed === 'slow'
