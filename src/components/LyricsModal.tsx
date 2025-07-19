@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Heart, X, Type, RotateCcw, Loader2 } from "lucide-react";
+import { Heart, X, Type, RotateCcw, Loader2, Play } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface Song {
@@ -22,6 +22,39 @@ interface LyricsModalProps {
 
 const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLyrics }: LyricsModalProps) => {
   const [isBoldText, setIsBoldText] = useState(false);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>('off');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  const scrollSpeeds = {
+    off: 0,
+    slow: 30,
+    medium: 60,
+    fast: 120
+  };
+
+  useEffect(() => {
+    if (autoScrollSpeed === 'off' || !scrollContainerRef.current) return;
+    
+    const container = scrollContainerRef.current;
+    const speed = scrollSpeeds[autoScrollSpeed];
+    
+    const scroll = () => {
+      container.scrollTop += 1;
+      if (container.scrollTop >= container.scrollHeight - container.clientHeight) {
+        container.scrollTop = 0; // Reset to top when reaching bottom
+      }
+    };
+    
+    const interval = setInterval(scroll, 1000 / speed);
+    return () => clearInterval(interval);
+  }, [autoScrollSpeed, song.lyrics]);
+
+  const toggleAutoScroll = () => {
+    const speeds: Array<'off' | 'slow' | 'medium' | 'fast'> = ['off', 'slow', 'medium', 'fast'];
+    const currentIndex = speeds.indexOf(autoScrollSpeed);
+    const nextIndex = (currentIndex + 1) % speeds.length;
+    setAutoScrollSpeed(speeds[nextIndex]);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -39,6 +72,19 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
               <p className="text-sm text-muted-foreground">{song.artist}</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAutoScroll}
+                className={`transition-smooth ${
+                  autoScrollSpeed !== 'off' 
+                    ? "text-primary bg-primary/10" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title={`Auto-scroll: ${autoScrollSpeed}`}
+              >
+                <Play className={`w-4 h-4 ${autoScrollSpeed !== 'off' ? "animate-pulse" : ""}`} />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -78,7 +124,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
         {/* Lyrics Content */}
         <div className="flex-1 overflow-hidden px-4 pb-4">
           <Card className="h-full bg-card/30 border-border/30">
-            <div className="h-full p-6 overflow-y-auto lyrics-scroll">
+            <div ref={scrollContainerRef} className="h-full p-6 overflow-y-auto lyrics-scroll">
               {isLoadingLyrics ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="p-4 bg-primary/10 rounded-2xl mb-4">
@@ -91,7 +137,7 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                 </div>
               ) : song.lyrics ? (
                 <div 
-                  className={`whitespace-pre-line leading-relaxed transition-smooth ${
+                  className={`whitespace-pre-line leading-relaxed transition-smooth text-center ${
                     isBoldText ? "font-semibold" : "font-normal"
                   }`}
                 >
