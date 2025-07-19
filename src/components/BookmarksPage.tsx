@@ -214,6 +214,7 @@ const BookmarksPage = () => {
     // Check if song is already in folder
     if (selectedFolder.songs.some(s => s.id === song.id)) return;
     
+    // Add song to folder
     setFolders(prev => prev.map(folder => 
       folder.id === selectedFolder.id 
         ? { 
@@ -230,6 +231,11 @@ const BookmarksPage = () => {
       songs: [...prev.songs, song],
       songCount: prev.songs.length + 1
     } : null);
+    
+    // Automatically add song to liked songs if not already liked
+    if (!likedSongs.some(s => s.id === song.id)) {
+      toggleLike(song);
+    }
     
     // Keep dialog open for adding more songs
   };
