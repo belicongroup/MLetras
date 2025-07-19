@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Heart, ArrowLeft, Type, Play } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { ScreenOrientation } from '@capacitor/screen-orientation';
 
 interface Song {
   id: string;
@@ -22,6 +23,7 @@ const LyricsPage = () => {
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<'off' | 'slow' | 'medium' | 'fast'>('off');
   const [isScrollPaused, setIsScrollPaused] = useState(false);
   const [lastScrollSpeed, setLastScrollSpeed] = useState<'slow' | 'medium' | 'fast'>('slow');
+  const [isLandscape, setIsLandscape] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   const scrollSpeeds = {
@@ -30,6 +32,21 @@ const LyricsPage = () => {
     medium: 60,
     fast: 120
   };
+
+  useEffect(() => {
+    const checkOrientation = () => {
+      setIsLandscape(window.innerHeight < window.innerWidth);
+    };
+    
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   useEffect(() => {
     if (autoScrollSpeed === 'off' || isScrollPaused || !scrollContainerRef.current) return;
@@ -96,8 +113,9 @@ const LyricsPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4">
+      {/* Header - Hide in landscape mode */}
+      {!isLandscape && (
+        <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4">
         <div className="flex items-start justify-between max-w-4xl mx-auto">
           <div className="flex items-start gap-4">
             <Button
@@ -159,12 +177,13 @@ const LyricsPage = () => {
             </Button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Lyrics Content */}
-      <div className="max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4">
-        <Card className="min-h-[calc(100vh-140px)] bg-card/30 border-border/30">
-          <div ref={scrollContainerRef} className="h-[calc(100vh-140px)] p-8 overflow-y-auto lyrics-scroll">
+      <div className={`max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 ${isLandscape ? 'pt-4' : ''}`}>
+        <Card className={`${isLandscape ? 'min-h-screen' : 'min-h-[calc(100vh-140px)]'} bg-card/30 border-border/30`}>
+          <div ref={scrollContainerRef} className={`${isLandscape ? 'h-screen' : 'h-[calc(100vh-140px)]'} p-8 overflow-y-auto lyrics-scroll`}>
             {isLoadingLyrics ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="p-4 bg-primary/10 rounded-2xl mb-4">
