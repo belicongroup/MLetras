@@ -354,9 +354,6 @@ const LyricsPage = () => {
                   <div className="w-8 h-8 text-primary animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
                 <h3 className="font-semibold mb-2">Loading lyrics...</h3>
-                <p className="text-sm text-muted-foreground">
-                  Fetching lyrics from Genius
-                </p>
               </div>
             ) : songData.lyrics ? (
               <div 

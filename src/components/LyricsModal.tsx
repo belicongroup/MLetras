@@ -301,9 +301,6 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
                     <Loader2 className="w-8 h-8 text-primary animate-spin" />
                   </div>
                   <h3 className="font-semibold mb-2">Loading lyrics...</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Fetching lyrics from Genius
-                  </p>
                 </div>
               ) : song.lyrics ? (
                 <div 
