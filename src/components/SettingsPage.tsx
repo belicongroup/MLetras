@@ -1,15 +1,11 @@
 import {
   Settings,
   Moon,
-  Bell,
   Trash2,
   Info,
   Shield,
   Palette,
   Play,
-  Database,
-  Wifi,
-  WifiOff,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -24,54 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
-import { lyricsCache } from "@/services/lyricsCache";
+// Note: No caching of Musixmatch API data per terms of service
 import { translations } from "@/lib/translations";
 
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
   const { settings, setSettings } = useSettings();
-  const [cacheSize, setCacheSize] = useState<number>(0);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [isClearingCache, setIsClearingCache] = useState(false);
+  // Note: Cache management removed per Musixmatch terms of service
   const t = translations[settings.language];
 
-  useEffect(() => {
-    const updateCacheSize = async () => {
-      try {
-        const size = await lyricsCache.getCacheSize();
-        setCacheSize(size);
-      } catch (error) {
-        console.error("Error getting cache size:", error);
-      }
-    };
 
-    updateCacheSize();
-
-    const handleOnlineStatus = () => {
-      setIsOnline(navigator.onLine);
-    };
-
-    window.addEventListener("online", handleOnlineStatus);
-    window.addEventListener("offline", handleOnlineStatus);
-
-    return () => {
-      window.removeEventListener("online", handleOnlineStatus);
-      window.removeEventListener("offline", handleOnlineStatus);
-    };
-  }, []);
-
-  const handleClearCache = async () => {
-    setIsClearingCache(true);
-    try {
-      await lyricsCache.clearCache();
-      setCacheSize(0);
-    } catch (error) {
-      console.error("Error clearing cache:", error);
-    } finally {
-      setIsClearingCache(false);
-    }
-  };
+  // Note: Cache clearing removed per Musixmatch terms of service
 
   return (
     <div className="p-4 space-y-6">
@@ -189,90 +148,6 @@ const SettingsPage = () => {
         </CardContent>
       </Card>
 
-      {/* Notifications */}
-      <Card className="glass border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Bell className="w-5 h-5 text-primary" />
-            Notifications
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Push Notifications</p>
-              <p className="text-sm text-muted-foreground">
-                Get notified about new features and updates
-              </p>
-            </div>
-            <Switch
-              checked={settings.notifications}
-              onCheckedChange={() =>
-                setSettings((prev) => ({
-                  ...prev,
-                  notifications: !prev.notifications,
-                }))
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Cache Management */}
-      <Card className="glass border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Database className="w-5 h-5 text-primary" />
-            Cache & Offline Access
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Connection Status</p>
-              <p className="text-sm text-muted-foreground">
-                {isOnline
-                  ? "Online - Full access"
-                  : "Offline - Cached content only"}
-              </p>
-            </div>
-            {isOnline ? (
-              <Wifi className="w-5 h-5 text-green-500" />
-            ) : (
-              <WifiOff className="w-5 h-5 text-yellow-500" />
-            )}
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Cached Lyrics</p>
-              <p className="text-sm text-muted-foreground">
-                {cacheSize} songs available offline
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleClearCache}
-              disabled={isClearingCache || cacheSize === 0}
-            >
-              {isClearingCache ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
-                  Clearing...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Clear Cache
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Data Management */}
       <Card className="glass border-border/50">

@@ -31,17 +31,6 @@ export interface Translations {
   boldTextDescription: string;
   darkMode: string;
   darkModeDescription: string;
-  notifications: string;
-  pushNotifications: string;
-  pushNotificationsDescription: string;
-  cacheAndOfflineAccess: string;
-  connectionStatus: string;
-  onlineFullAccess: string;
-  offlineCachedContentOnly: string;
-  cachedLyrics: string;
-  songsAvailableOffline: string;
-  clearCache: string;
-  clearing: string;
   dataManagement: string;
   clearAllData: string;
   clearAllDataDescription: string;
@@ -118,17 +107,6 @@ export const translations: Record<"en" | "es", Translations> = {
     boldTextDescription: "Display lyrics in bold for better readability",
     darkMode: "Dark Mode",
     darkModeDescription: "Use dark theme (recommended)",
-    notifications: "Notifications",
-    pushNotifications: "Push Notifications",
-    pushNotificationsDescription: "Get notified about new features and updates",
-    cacheAndOfflineAccess: "Cache & Offline Access",
-    connectionStatus: "Connection Status",
-    onlineFullAccess: "Online - Full access",
-    offlineCachedContentOnly: "Offline - Cached content only",
-    cachedLyrics: "Cached Lyrics",
-    songsAvailableOffline: "songs available offline",
-    clearCache: "Clear Cache",
-    clearing: "Clearing...",
     dataManagement: "Data Management",
     clearAllData: "Clear All Data",
     clearAllDataDescription:
@@ -208,18 +186,6 @@ export const translations: Record<"en" | "es", Translations> = {
     boldTextDescription: "Mostrar letras en negrita para mejor legibilidad",
     darkMode: "Modo Oscuro",
     darkModeDescription: "Usar tema oscuro (recomendado)",
-    notifications: "Notificaciones",
-    pushNotifications: "Notificaciones Push",
-    pushNotificationsDescription:
-      "Recibe notificaciones sobre nuevas funciones y actualizaciones",
-    cacheAndOfflineAccess: "Caché y Acceso Sin Conexión",
-    connectionStatus: "Estado de Conexión",
-    onlineFullAccess: "En línea - Acceso completo",
-    offlineCachedContentOnly: "Sin conexión - Solo contenido en caché",
-    cachedLyrics: "Letras en Caché",
-    songsAvailableOffline: "canciones disponibles sin conexión",
-    clearCache: "Limpiar Caché",
-    clearing: "Limpiando...",
     dataManagement: "Gestión de Datos",
     clearAllData: "Borrar Todos los Datos",
     clearAllDataDescription:

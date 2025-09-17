@@ -1,4 +1,4 @@
-import { lyricsCache, CachedLyrics } from "./lyricsCache";
+// Note: No caching of Musixmatch API data per terms of service
 
 export interface SearchHistoryItem {
   id: string;
@@ -54,25 +54,12 @@ class SearchHistoryService {
     (SearchHistoryItem & { hasLyrics: boolean })[]
   > {
     const history = this.getHistory();
-    const historyWithLyrics = [];
-
-    for (const item of history) {
-      try {
-        const cached = await lyricsCache.getCachedLyrics(item.id);
-        historyWithLyrics.push({
-          ...item,
-          hasLyrics: !!cached?.lyrics,
-        });
-      } catch (error) {
-        console.error("Error checking cached lyrics:", error);
-        historyWithLyrics.push({
-          ...item,
-          hasLyrics: false,
-        });
-      }
-    }
-
-    return historyWithLyrics;
+    // Note: Cannot check for cached lyrics per Musixmatch terms of service
+    // All items show as not having lyrics since we can't cache Musixmatch data
+    return history.map(item => ({
+      ...item,
+      hasLyrics: false, // Always false since we can't cache Musixmatch data
+    }));
   }
 
   clearHistory(): void {
@@ -86,21 +73,9 @@ class SearchHistoryService {
   }
 
   private async cacheSongForOffline(song: SearchHistoryItem): Promise<void> {
-    try {
-      // Check if already cached
-      const existing = await lyricsCache.getCachedLyrics(song.id);
-      if (existing) {
-        // Update timestamp
-        existing.timestamp = Date.now();
-        await lyricsCache.cacheLyrics(existing);
-        return;
-      }
-
-      // If not cached, we'll cache it when lyrics are fetched
-      // This is handled by the musixmatchApi service
-    } catch (error) {
-      console.error("Error caching song for offline:", error);
-    }
+    // Note: Cannot cache Musixmatch API data per terms of service
+    // This method is kept for interface compatibility but does nothing
+    return;
   }
 
   async getRecentSearches(limit: number = 10): Promise<SearchHistoryItem[]> {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { lyricsCache, CachedLyrics } from "@/services/lyricsCache";
+// Note: No caching of Musixmatch API data per terms of service
 
 interface Song {
   id: string;
@@ -16,39 +16,19 @@ export const useLikedSongs = () => {
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load liked songs from cache on mount
+  // Load liked songs from localStorage only (no Musixmatch data caching)
   useEffect(() => {
     const loadLikedSongs = async () => {
       try {
-        // First try to load from cache
-        const cachedLikedSongs = await lyricsCache.getAllLikedSongs();
-        if (cachedLikedSongs.length > 0) {
-          setLikedSongs(cachedLikedSongs);
-        } else {
-          // Fallback to localStorage for backward compatibility
-          const saved = localStorage.getItem(LIKED_SONGS_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            setLikedSongs(parsed);
-
-            // Migrate to cache
-            for (const song of parsed) {
-              await lyricsCache.updateLikedStatus(song.id, true);
-            }
-          }
+        // Only load from localStorage - no caching of Musixmatch data allowed
+        const saved = localStorage.getItem(LIKED_SONGS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setLikedSongs(parsed);
         }
       } catch (error) {
         console.error("Error loading liked songs:", error);
-        // Fallback to localStorage
-        const saved = localStorage.getItem(LIKED_SONGS_KEY);
-        if (saved) {
-          try {
-            setLikedSongs(JSON.parse(saved));
-          } catch (e) {
-            console.error("Error parsing liked songs:", e);
-            setLikedSongs([]);
-          }
-        }
+        setLikedSongs([]);
       } finally {
         setIsLoading(false);
       }
@@ -61,18 +41,22 @@ export const useLikedSongs = () => {
     const isLiked = likedSongs.some((s) => s.id === song.id);
 
     if (isLiked) {
-      // Unlike song
-      setLikedSongs((prev) => prev.filter((s) => s.id !== song.id));
-      await lyricsCache.updateLikedStatus(song.id, false);
-      localStorage.setItem(
-        LIKED_SONGS_KEY,
-        JSON.stringify(likedSongs.filter((s) => s.id !== song.id)),
-      );
+      // Unlike song - only store basic metadata, no lyrics
+      const updatedSongs = likedSongs.filter((s) => s.id !== song.id);
+      setLikedSongs(updatedSongs);
+      localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
     } else {
-      // Like song
-      const newLikedSongs = [...likedSongs, song];
+      // Like song - only store basic metadata, no lyrics per Musixmatch terms
+      const songMetadata = {
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        imageUrl: song.imageUrl,
+        url: song.url,
+        // Note: No lyrics stored per Musixmatch terms of service
+      };
+      const newLikedSongs = [...likedSongs, songMetadata];
       setLikedSongs(newLikedSongs);
-      await lyricsCache.updateLikedStatus(song.id, true);
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(newLikedSongs));
     }
   };
@@ -83,11 +67,14 @@ export const useLikedSongs = () => {
 
   const getLikedSongWithLyrics = async (
     songId: string,
-  ): Promise<CachedLyrics | null> => {
+  ): Promise<Song | null> => {
+    // Note: Cannot return cached lyrics per Musixmatch terms of service
+    // Return basic song metadata only
     try {
-      return await lyricsCache.getCachedLyrics(songId);
+      const likedSong = likedSongs.find(song => song.id === songId);
+      return likedSong || null;
     } catch (error) {
-      console.error("Error getting cached lyrics:", error);
+      console.error("Error getting liked song:", error);
       return null;
     }
   };

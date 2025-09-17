@@ -1,11 +1,10 @@
-import { lyricsCache, CachedLyrics } from "@/services/lyricsCache";
+// Note: No caching of Musixmatch API data per terms of service
 
-const MUSIXMATCH_API_KEY = "4d54e92614bedfaaffcab9fdbf56cdf3";
+// Note: API key is now handled server-side by Cloudflare Worker proxy
+// No client-side API key needed for security
 
-// Use proxy in development, direct URL in production
-const MUSIXMATCH_BASE_URL = import.meta.env.DEV
-  ? "/api/musixmatch"
-  : "https://api.musixmatch.com/ws/1.1";
+// Use Cloudflare Worker proxy for all environments
+const MUSIXMATCH_BASE_URL = "https://api.mletras.com/musixmatch";
 
 export interface MusixmatchTrack {
   track_id: number;
@@ -114,17 +113,10 @@ class MusixmatchApiService {
     endpoint: string,
     params: Record<string, string> = {},
   ): Promise<any> {
-    // Handle both relative and absolute URLs
-    const baseUrl = MUSIXMATCH_BASE_URL.startsWith("http")
-      ? MUSIXMATCH_BASE_URL
-      : `${window.location.origin}${MUSIXMATCH_BASE_URL}`;
+    // Use Cloudflare Worker proxy - API key handled server-side
+    const url = new URL(`${MUSIXMATCH_BASE_URL}${endpoint}`);
 
-    const url = new URL(`${baseUrl}${endpoint}`);
-
-    // Add API key to all requests
-    url.searchParams.append("apikey", MUSIXMATCH_API_KEY);
-
-    // Add other parameters
+    // Add parameters (API key is added by Cloudflare Worker)
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.append(key, value);
     });
@@ -197,18 +189,7 @@ class MusixmatchApiService {
   async getSongLyrics(trackId: string, song?: Song): Promise<string> {
     console.log("Fetching lyrics for track ID:", trackId);
 
-    // First, try to get from cache
-    try {
-      const cached = await lyricsCache.getCachedLyrics(trackId);
-      if (cached && cached.lyrics) {
-        console.log("Lyrics found in cache");
-        return cached.lyrics;
-      }
-    } catch (error) {
-      console.error("Error checking cache:", error);
-    }
-
-    // If not in cache, fetch from API
+    // Always fetch from API - no caching allowed per Musixmatch terms
     try {
       const data: MusixmatchLyricsResponse = await this.makeRequest(
         "/track.lyrics.get",
@@ -232,26 +213,7 @@ class MusixmatchApiService {
         }
       }
 
-      // Cache the lyrics if we have a song object and lyrics are available
-      if (song && lyricsText !== "Lyrics not available for this song.") {
-        try {
-          const cachedLyrics: CachedLyrics = {
-            id: trackId,
-            title: song.title,
-            artist: song.artist,
-            lyrics: lyricsText,
-            imageUrl: song.imageUrl,
-            url: song.url,
-            timestamp: Date.now(),
-            isLiked: false, // Will be updated by the like system
-          };
-          await lyricsCache.cacheLyrics(cachedLyrics);
-          console.log("Lyrics cached successfully");
-        } catch (error) {
-          console.error("Error caching lyrics:", error);
-        }
-      }
-
+      // Note: No caching of Musixmatch API data per terms of service
       return lyricsText;
     } catch (error) {
       console.error("Musixmatch lyrics fetch error:", error);

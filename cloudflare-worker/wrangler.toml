@@ -1,0 +1,13 @@
+name = "mletras-api-proxy"
+main = "index.js"
+compatibility_date = "2024-01-15"
+
+[env.production]
+name = "mletras-api-proxy"
+
+# Environment variables (set these in Cloudflare dashboard)
+# MUSIXMATCH_API_KEY = "your-api-key-here"
+
+# Custom domain configuration
+# Add this in Cloudflare dashboard under Triggers > Custom Domains
+# api.mletras.com

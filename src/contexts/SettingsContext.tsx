@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface Settings {
   autoScrollSpeed: "off" | "slow" | "medium" | "fast";
-  notifications: boolean;
   boldText: boolean;
   language: "en" | "es";
 }
@@ -19,7 +18,6 @@ const SettingsContext = createContext<SettingsContextType | undefined>(
 
 const defaultSettings: Settings = {
   autoScrollSpeed: "off",
-  notifications: false,
   boldText: false,
   language: "en",
 };
