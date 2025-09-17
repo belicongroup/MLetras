@@ -118,10 +118,11 @@ const LyricsModal = ({ song, isOpen, onClose, isLiked, onToggleLike, isLoadingLy
       case 'youtube':
         url = `https://www.youtube.com/results?search_query=${searchQuery}`;
         break;
-      case 'chords':
+      case 'chords': {
         const chordsQuery = encodeURIComponent(`${song.title} ${song.artist} acordes`);
         url = `https://www.google.com/search?q=${chordsQuery}`;
         break;
+      }
     }
     
     window.open(url, '_blank');
