@@ -1,10 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface Settings {
-  autoScrollSpeed: 'off' | 'slow' | 'medium' | 'fast';
+  autoScrollSpeed: "off" | "slow" | "medium" | "fast";
   notifications: boolean;
   boldText: boolean;
-  language: 'en' | 'es';
+  language: "en" | "es";
 }
 
 interface SettingsContextType {
@@ -13,24 +13,28 @@ interface SettingsContextType {
   setSettings: React.Dispatch<React.SetStateAction<Settings>>;
 }
 
-const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+const SettingsContext = createContext<SettingsContextType | undefined>(
+  undefined,
+);
 
 const defaultSettings: Settings = {
-  autoScrollSpeed: 'off',
+  autoScrollSpeed: "off",
   notifications: false,
   boldText: false,
-  language: 'en',
+  language: "en",
 };
 
-export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [settings, setSettings] = useState<Settings>(() => {
     // Load settings from localStorage on initialization
-    const savedSettings = localStorage.getItem('mletra-settings');
+    const savedSettings = localStorage.getItem("mletra-settings");
     if (savedSettings) {
       try {
         return { ...defaultSettings, ...JSON.parse(savedSettings) };
       } catch (error) {
-        console.error('Error parsing saved settings:', error);
+        console.error("Error parsing saved settings:", error);
         return defaultSettings;
       }
     }
@@ -39,13 +43,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('mletra-settings', JSON.stringify(settings));
+    localStorage.setItem("mletra-settings", JSON.stringify(settings));
   }, [settings]);
 
   const updateSetting = (key: keyof Settings) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
-      [key]: !prev[key]
+      [key]: !prev[key],
     }));
   };
 
@@ -59,7 +63,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 export const useSettings = () => {
   const context = useContext(SettingsContext);
   if (context === undefined) {
-    throw new Error('useSettings must be used within a SettingsProvider');
+    throw new Error("useSettings must be used within a SettingsProvider");
   }
   return context;
-}; 
+};

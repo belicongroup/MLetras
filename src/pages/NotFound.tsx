@@ -9,7 +9,7 @@ const NotFound = () => {
   useEffect(() => {
     console.error(
       "404 Error: User attempted to access non-existent route:",
-      location.pathname
+      location.pathname,
     );
   }, [location.pathname]);
 
@@ -23,8 +23,8 @@ const NotFound = () => {
         <p className="text-muted-foreground mb-6">
           The page you're looking for doesn't exist or has been moved.
         </p>
-        <Button 
-          onClick={() => window.location.href = "/"} 
+        <Button
+          onClick={() => (window.location.href = "/")}
           className="bg-gradient-primary hover:bg-gradient-accent shadow-glow transition-all duration-300"
         >
           <Home className="w-4 h-4 mr-2" />

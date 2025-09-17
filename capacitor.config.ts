@@ -1,14 +1,14 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: 'com.lyricmuse.organizer',
-  appName: 'Lyric Muse Organizer',
-  webDir: 'dist',
+  appId: "com.lyricmuse.organizer",
+  appName: "Lyric Muse Organizer",
+  webDir: "dist",
   plugins: {
     ScreenOrientation: {
-      orientation: 'all'
-    }
-  }
+      orientation: "all",
+    },
+  },
 };
 
 export default config;

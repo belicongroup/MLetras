@@ -1,9 +1,25 @@
 import { useState, useEffect } from "react";
-import { Heart, FolderPlus, Music2, ArrowLeft, Plus, Search, GripVertical, Trash2 } from "lucide-react";
+import {
+  Heart,
+  FolderPlus,
+  Music2,
+  ArrowLeft,
+  Plus,
+  Search,
+  GripVertical,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useNavigate } from "react-router-dom";
@@ -18,17 +34,15 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Folder {
   id: string;
@@ -39,9 +53,16 @@ interface Folder {
 }
 
 // Sortable Folder Item Component
-const SortableFolderItem = ({ folder, onDelete, onClick, deleteText, songText, songsText }: { 
-  folder: Folder; 
-  onDelete: (id: string) => void; 
+const SortableFolderItem = ({
+  folder,
+  onDelete,
+  onClick,
+  deleteText,
+  songText,
+  songsText,
+}: {
+  folder: Folder;
+  onDelete: (id: string) => void;
   onClick: () => void;
   deleteText: string;
   songText: string;
@@ -68,7 +89,7 @@ const SortableFolderItem = ({ folder, onDelete, onClick, deleteText, songText, s
     const currentX = e.touches[0].clientX;
     setTouchCurrentX(currentX);
     const diff = touchStartX - currentX;
-    
+
     if (diff > 50) {
       setShowDeleteButton(true);
     } else if (diff < 20) {
@@ -100,7 +121,7 @@ const SortableFolderItem = ({ folder, onDelete, onClick, deleteText, songText, s
 
   return (
     <div className="relative overflow-hidden">
-      <Card 
+      <Card
         ref={setNodeRef}
         style={style}
         className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer hover-scale sortable-item"
@@ -111,35 +132,34 @@ const SortableFolderItem = ({ folder, onDelete, onClick, deleteText, songText, s
       >
         <CardHeader className="p-4 pb-2">
           <div className="flex items-center gap-3">
-            <div 
-              {...attributes}
-              {...listeners}
-              className="p-1 drag-handle"
-            >
+            <div {...attributes} {...listeners} className="p-1 drag-handle">
               <GripVertical className="w-4 h-4 text-muted-foreground" />
             </div>
-            <div className={`p-2 bg-gradient-to-br ${folder.color} rounded-lg shadow-sm`}>
+            <div
+              className={`p-2 bg-gradient-to-br ${folder.color} rounded-lg shadow-sm`}
+            >
               <Music2 className="w-5 h-5 text-white" />
             </div>
             <div>
               <h4 className="font-semibold">{folder.name}</h4>
               <p className="text-sm text-muted-foreground">
-                {folder.songs.length} {folder.songs.length === 1 ? songText : songsText}
+                {folder.songs.length}{" "}
+                {folder.songs.length === 1 ? songText : songsText}
               </p>
             </div>
           </div>
         </CardHeader>
       </Card>
-      
+
       {/* Delete button */}
       {showDeleteButton && (
         <div className="absolute right-0 top-0 h-full bg-destructive flex items-center justify-center px-4">
-                      <button 
-              onClick={handleDeleteClick}
-              className="text-white font-medium text-sm hover:bg-destructive/80 px-2 py-1 rounded"
-            >
-              {deleteText}
-            </button>
+          <button
+            onClick={handleDeleteClick}
+            className="text-white font-medium text-sm hover:bg-destructive/80 px-2 py-1 rounded"
+          >
+            {deleteText}
+          </button>
         </div>
       )}
     </div>
@@ -157,34 +177,52 @@ const BookmarksPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  
+
   // Default folders
   const defaultFolders: Folder[] = [
-    { id: "1", name: "Corridos", songCount: 0, color: "from-red-500 to-pink-500", songs: [] },
-    { id: "2", name: "Tumbado", songCount: 0, color: "from-yellow-500 to-orange-500", songs: [] },
-    { id: "3", name: "Para Bailar", songCount: 0, color: "from-green-500 to-emerald-500", songs: [] },
+    {
+      id: "1",
+      name: "Corridos",
+      songCount: 0,
+      color: "from-red-500 to-pink-500",
+      songs: [],
+    },
+    {
+      id: "2",
+      name: "Tumbado",
+      songCount: 0,
+      color: "from-yellow-500 to-orange-500",
+      songs: [],
+    },
+    {
+      id: "3",
+      name: "Para Bailar",
+      songCount: 0,
+      color: "from-green-500 to-emerald-500",
+      songs: [],
+    },
   ];
 
   // Load folders from localStorage on component mount
   const [folders, setFolders] = useState<Folder[]>(() => {
-    const savedFolders = localStorage.getItem('lyric-muse-folders');
+    const savedFolders = localStorage.getItem("lyric-muse-folders");
     if (savedFolders) {
       try {
         return JSON.parse(savedFolders);
       } catch (error) {
-        console.error('Error parsing saved folders:', error);
+        console.error("Error parsing saved folders:", error);
         return defaultFolders;
       }
     }
     return defaultFolders;
   });
-  
+
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   // Save folders to localStorage whenever folders change
   useEffect(() => {
-    localStorage.setItem('lyric-muse-folders', JSON.stringify(folders));
+    localStorage.setItem("lyric-muse-folders", JSON.stringify(folders));
   }, [folders]);
 
   // DnD sensors
@@ -196,64 +234,64 @@ const BookmarksPage = () => {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const colors = [
     "from-purple-500 to-blue-500",
-    "from-pink-500 to-rose-500", 
+    "from-pink-500 to-rose-500",
     "from-cyan-500 to-teal-500",
     "from-orange-500 to-red-500",
     "from-green-500 to-lime-500",
-    "from-indigo-500 to-purple-500"
+    "from-indigo-500 to-purple-500",
   ];
 
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) return;
-    
+
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
     const newFolder: Folder = {
       id: Date.now().toString(),
       name: newFolderName.trim(),
       songCount: 0,
       color: randomColor,
-      songs: []
+      songs: [],
     };
-    
-    setFolders(prev => [...prev, newFolder]);
+
+    setFolders((prev) => [...prev, newFolder]);
     setNewFolderName("");
     setIsCreating(false);
   };
 
   const handleDeleteFolder = (folderId: string) => {
-    setFolders(prev => prev.filter(folder => folder.id !== folderId));
+    setFolders((prev) => prev.filter((folder) => folder.id !== folderId));
   };
 
   const handleSongSelect = async (song: any) => {
     // Navigate to lyrics page with loading state
-    navigate('/lyrics', {
+    navigate("/lyrics", {
       state: {
-        song: { ...song, lyrics: 'Loading...' },
-        isLoadingLyrics: true
-      }
+        song: { ...song, lyrics: "Loading..." },
+        isLoadingLyrics: true,
+      },
     });
-    
+
     // Fetch lyrics and update the page
     try {
       const lyrics = await musixmatchApi.getSongLyrics(song.id, song);
-      navigate('/lyrics', {
+      navigate("/lyrics", {
         state: {
           song: { ...song, lyrics },
-          isLoadingLyrics: false
-        }
+          isLoadingLyrics: false,
+        },
       });
     } catch (error) {
-      console.error('Failed to fetch lyrics:', error);
-      navigate('/lyrics', {
+      console.error("Failed to fetch lyrics:", error);
+      navigate("/lyrics", {
         state: {
-          song: { ...song, lyrics: 'Lyrics not available for this song.' },
-          isLoadingLyrics: false
-        }
+          song: { ...song, lyrics: "Lyrics not available for this song." },
+          isLoadingLyrics: false,
+        },
       });
     }
   };
@@ -269,7 +307,7 @@ const BookmarksPage = () => {
       const results = await musixmatchApi.searchSongs(query);
       setSearchResults(results);
     } catch (error) {
-      console.error('Search failed:', error);
+      console.error("Search failed:", error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -278,55 +316,67 @@ const BookmarksPage = () => {
 
   const handleAddSongToFolder = (song: Song) => {
     if (!selectedFolder) return;
-    
+
     // Check if song is already in folder
-    if (selectedFolder.songs.some(s => s.id === song.id)) return;
-    
+    if (selectedFolder.songs.some((s) => s.id === song.id)) return;
+
     // Add song to folder
-    setFolders(prev => prev.map(folder => 
-      folder.id === selectedFolder.id 
-        ? { 
-            ...folder, 
-            songs: [...folder.songs, song],
-            songCount: folder.songs.length + 1
-          }
-        : folder
-    ));
-    
+    setFolders((prev) =>
+      prev.map((folder) =>
+        folder.id === selectedFolder.id
+          ? {
+              ...folder,
+              songs: [...folder.songs, song],
+              songCount: folder.songs.length + 1,
+            }
+          : folder,
+      ),
+    );
+
     // Update selectedFolder state to reflect changes immediately
-    setSelectedFolder(prev => prev ? {
-      ...prev,
-      songs: [...prev.songs, song],
-      songCount: prev.songs.length + 1
-    } : null);
-    
+    setSelectedFolder((prev) =>
+      prev
+        ? {
+            ...prev,
+            songs: [...prev.songs, song],
+            songCount: prev.songs.length + 1,
+          }
+        : null,
+    );
+
     // Automatically add song to liked songs if not already liked
-    if (!likedSongs.some(s => s.id === song.id)) {
+    if (!likedSongs.some((s) => s.id === song.id)) {
       toggleLike(song);
     }
-    
+
     // Keep dialog open for adding more songs
   };
 
   const handleRemoveSongFromFolder = (songId: string) => {
     if (!selectedFolder) return;
-    
-    setFolders(prev => prev.map(folder => 
-      folder.id === selectedFolder.id 
-        ? { 
-            ...folder, 
-            songs: folder.songs.filter(s => s.id !== songId),
-            songCount: folder.songs.length - 1
-          }
-        : folder
-    ));
-    
+
+    setFolders((prev) =>
+      prev.map((folder) =>
+        folder.id === selectedFolder.id
+          ? {
+              ...folder,
+              songs: folder.songs.filter((s) => s.id !== songId),
+              songCount: folder.songs.length - 1,
+            }
+          : folder,
+      ),
+    );
+
     // Update selectedFolder state
-    setSelectedFolder(prev => prev ? {
-      ...prev,
-      songs: prev.songs.filter(s => s.id !== songId),
-      songCount: prev.songs.length - 1
-    } : null);
+    setSelectedFolder((prev) =>
+      prev
+        ? {
+            ...prev,
+            songs: prev.songs.filter((s) => s.id !== songId),
+            songCount: prev.songs.length - 1,
+          }
+        : null,
+    );
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -357,12 +407,16 @@ const BookmarksPage = () => {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div className="flex items-center gap-3 flex-1">
-            <div className={`p-2 bg-gradient-to-br ${selectedFolder.color} rounded-lg`}>
+            <div
+              className={`p-2 bg-gradient-to-br ${selectedFolder.color} rounded-lg`}
+            >
               <Music2 className="w-5 h-5 text-white" />
             </div>
             <div>
               <h2 className="text-mobile-title">{selectedFolder.name}</h2>
-              <p className="text-sm text-muted-foreground">{selectedFolder.songs.length} songs</p>
+              <p className="text-sm text-muted-foreground">
+                {selectedFolder.songs.length} songs
+              </p>
             </div>
           </div>
           <Button
@@ -378,15 +432,22 @@ const BookmarksPage = () => {
         {selectedFolder.songs.length > 0 ? (
           <div className="space-y-3">
             {selectedFolder.songs.map((song) => (
-              <Card key={song.id} className="glass border-border/50 hover:border-primary/30 transition-smooth">
+              <Card
+                key={song.id}
+                className="glass border-border/50 hover:border-primary/30 transition-smooth"
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div 
+                    <div
                       className="flex-1 cursor-pointer"
                       onClick={() => handleSongSelect(song)}
                     >
-                      <h4 className="font-semibold text-foreground mb-1">{song.title}</h4>
-                      <p className="text-sm text-muted-foreground">{song.artist}</p>
+                      <h4 className="font-semibold text-foreground mb-1">
+                        {song.title}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {song.artist}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"
@@ -410,7 +471,7 @@ const BookmarksPage = () => {
             <p className="text-muted-foreground mb-4">
               {t.noSongsFoundSubtitle}
             </p>
-            <Button 
+            <Button
               onClick={() => setShowAddSongDialog(true)}
               className="bg-gradient-primary hover:bg-gradient-accent"
             >
@@ -424,34 +485,53 @@ const BookmarksPage = () => {
         <Dialog open={showAddSongDialog} onOpenChange={setShowAddSongDialog}>
           <DialogContent className="w-[90%] glass border-border/50 max-h-[80vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>{t.addSong} {t.to} {selectedFolder.name}</DialogTitle>
+              <DialogTitle>
+                {t.addSong} {t.to} {selectedFolder.name}
+              </DialogTitle>
               <DialogDescription>
-                {t.addSongToFolderDescription || "Add songs to this folder from your liked songs or search for new ones."}
+                {t.addSongToFolderDescription ||
+                  "Add songs to this folder from your liked songs or search for new ones."}
               </DialogDescription>
             </DialogHeader>
             <Tabs defaultValue="liked" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="liked">{t.from} {t.likedSongs}</TabsTrigger>
+                <TabsTrigger value="liked">
+                  {t.from} {t.likedSongs}
+                </TabsTrigger>
                 <TabsTrigger value="search">{t.searchSongs}</TabsTrigger>
               </TabsList>
-              
-              <TabsContent value="liked" className="space-y-3 max-h-96 overflow-y-auto">
+
+              <TabsContent
+                value="liked"
+                className="space-y-3 max-h-96 overflow-y-auto"
+              >
                 {likedSongs.length > 0 ? (
                   likedSongs.map((song) => (
-                    <Card key={song.id} className="glass border-border/30 hover:border-primary/30 transition-smooth">
+                    <Card
+                      key={song.id}
+                      className="glass border-border/30 hover:border-primary/30 transition-smooth"
+                    >
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h4 className="font-medium text-sm">{song.title}</h4>
-                            <p className="text-xs text-muted-foreground">{song.artist}</p>
+                            <h4 className="font-medium text-sm">
+                              {song.title}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {song.artist}
+                            </p>
                           </div>
                           <Button
                             size="sm"
                             onClick={() => handleAddSongToFolder(song)}
-                            disabled={selectedFolder.songs.some(s => s.id === song.id)}
+                            disabled={selectedFolder.songs.some(
+                              (s) => s.id === song.id,
+                            )}
                             className="bg-gradient-primary hover:bg-gradient-accent h-8 px-3"
                           >
-                            {selectedFolder.songs.some(s => s.id === song.id) ? "Added" : "Add"}
+                            {selectedFolder.songs.some((s) => s.id === song.id)
+                              ? "Added"
+                              : "Add"}
                           </Button>
                         </div>
                       </CardContent>
@@ -460,11 +540,13 @@ const BookmarksPage = () => {
                 ) : (
                   <div className="text-center py-6">
                     <Heart className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">{t.noSongsFound}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t.noSongsFound}
+                    </p>
                   </div>
                 )}
               </TabsContent>
-              
+
               <TabsContent value="search" className="space-y-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -478,35 +560,50 @@ const BookmarksPage = () => {
                     className="pl-10 bg-card/50 border-border/50"
                   />
                 </div>
-                
+
                 <div className="max-h-80 overflow-y-auto space-y-2">
                   {searchResults.map((song) => (
-                    <Card key={song.id} className="glass border-border/30 hover:border-primary/30 transition-smooth">
+                    <Card
+                      key={song.id}
+                      className="glass border-border/30 hover:border-primary/30 transition-smooth"
+                    >
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h4 className="font-medium text-sm">{song.title}</h4>
-                            <p className="text-xs text-muted-foreground">{song.artist}</p>
+                            <h4 className="font-medium text-sm">
+                              {song.title}
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                              {song.artist}
+                            </p>
                           </div>
                           <Button
                             size="sm"
                             onClick={() => handleAddSongToFolder(song)}
-                            disabled={selectedFolder.songs.some(s => s.id === song.id)}
+                            disabled={selectedFolder.songs.some(
+                              (s) => s.id === song.id,
+                            )}
                             className="bg-gradient-primary hover:bg-gradient-accent h-8 px-3"
                           >
-                            {selectedFolder.songs.some(s => s.id === song.id) ? "Added" : "Add"}
+                            {selectedFolder.songs.some((s) => s.id === song.id)
+                              ? "Added"
+                              : "Add"}
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
-                  
-                  {searchQuery && !isSearching && searchResults.length === 0 && (
-                    <div className="text-center py-6">
-                      <Search className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">{t.noSongsFound}</p>
-                    </div>
-                  )}
+
+                  {searchQuery &&
+                    !isSearching &&
+                    searchResults.length === 0 && (
+                      <div className="text-center py-6">
+                        <Search className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          {t.noSongsFound}
+                        </p>
+                      </div>
+                    )}
                 </div>
               </TabsContent>
             </Tabs>
@@ -530,8 +627,10 @@ const BookmarksPage = () => {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-                      <h2 className="text-mobile-title">{t.likedSongs}</h2>
-          <p className="text-sm text-muted-foreground">{likedSongs.length} {t.songs}</p>
+            <h2 className="text-mobile-title">{t.likedSongs}</h2>
+            <p className="text-sm text-muted-foreground">
+              {likedSongs.length} {t.songs}
+            </p>
           </div>
         </div>
 
@@ -539,15 +638,22 @@ const BookmarksPage = () => {
         {likedSongs.length > 0 ? (
           <div className="space-y-3">
             {likedSongs.map((song) => (
-              <Card key={song.id} className="glass border-border/50 hover:border-primary/30 transition-smooth">
+              <Card
+                key={song.id}
+                className="glass border-border/50 hover:border-primary/30 transition-smooth"
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div 
+                    <div
                       className="flex-1 cursor-pointer"
                       onClick={() => handleSongSelect(song)}
                     >
-                      <h4 className="font-semibold text-foreground mb-1">{song.title}</h4>
-                      <p className="text-sm text-muted-foreground">{song.artist}</p>
+                      <h4 className="font-semibold text-foreground mb-1">
+                        {song.title}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {song.artist}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"
@@ -568,9 +674,7 @@ const BookmarksPage = () => {
               <Heart className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold mb-2">{t.noSongsFound}</h3>
-            <p className="text-muted-foreground">
-              {t.noSongsFoundSubtitle}
-            </p>
+            <p className="text-muted-foreground">{t.noSongsFoundSubtitle}</p>
           </div>
         )}
       </div>
@@ -590,18 +694,27 @@ const BookmarksPage = () => {
             <Heart className="w-6 h-6 text-white" />
           </div>
           <h2 className="text-mobile-hero mb-2">
-            {t.bookmarks.split(' ').map((word, index) => 
-              word === 'Collection' ? (
-                <span key={index} className="bg-gradient-primary bg-clip-text text-transparent"> {word}</span>
+            {t.bookmarks.split(" ").map((word, index) =>
+              word === "Collection" ? (
+                <span
+                  key={index}
+                  className="bg-gradient-primary bg-clip-text text-transparent"
+                >
+                  {" "}
+                  {word}
+                </span>
               ) : (
-                <span key={index}>{index > 0 ? ' ' : ''}{word}</span>
-              )
+                <span key={index}>
+                  {index > 0 ? " " : ""}
+                  {word}
+                </span>
+              ),
             )}
           </h2>
         </div>
 
         {/* Quick Access - Liked Songs */}
-        <Card 
+        <Card
           className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer"
           onClick={() => setShowLikedSongs(true)}
         >
@@ -612,7 +725,9 @@ const BookmarksPage = () => {
               </div>
               <div>
                 <h3 className="font-semibold">{t.likedSongs}</h3>
-                <p className="text-sm text-muted-foreground">{likedSongs.length} {t.songs}</p>
+                <p className="text-sm text-muted-foreground">
+                  {likedSongs.length} {t.songs}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -624,7 +739,10 @@ const BookmarksPage = () => {
             <h3 className="text-mobile-title">{t.folders}</h3>
             <Dialog open={isCreating} onOpenChange={setIsCreating}>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-gradient-primary hover:bg-gradient-accent transition-smooth">
+                <Button
+                  size="sm"
+                  className="bg-gradient-primary hover:bg-gradient-accent transition-smooth"
+                >
                   <FolderPlus className="w-4 h-4 mr-2" />
                   {t.createFolder}
                 </Button>
@@ -633,7 +751,8 @@ const BookmarksPage = () => {
                 <DialogHeader>
                   <DialogTitle>{t.createFolder}</DialogTitle>
                   <DialogDescription>
-                    {t.createFolderDescription || "Create a new folder to organize your favorite songs."}
+                    {t.createFolderDescription ||
+                      "Create a new folder to organize your favorite songs."}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
@@ -644,13 +763,13 @@ const BookmarksPage = () => {
                     className="bg-card/50 border-border/50"
                   />
                   <div className="flex gap-2 justify-end">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       onClick={() => setIsCreating(false)}
                     >
                       {t.cancel}
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleCreateFolder}
                       disabled={!newFolderName.trim()}
                       className="bg-gradient-primary hover:bg-gradient-accent"
@@ -665,12 +784,12 @@ const BookmarksPage = () => {
 
           {/* Folders Grid */}
           <SortableContext
-            items={folders.map(folder => folder.id)}
+            items={folders.map((folder) => folder.id)}
             strategy={verticalListSortingStrategy}
           >
             {folders.map((folder) => (
               <SortableFolderItem
-                key={folder.id} 
+                key={folder.id}
                 folder={folder}
                 onDelete={handleDeleteFolder}
                 onClick={() => setSelectedFolder(folder)}
@@ -686,11 +805,11 @@ const BookmarksPage = () => {
               <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
                 <FolderPlus className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">{t.noSongsFound}</h3>  
+              <h3 className="text-lg font-semibold mb-2">{t.noSongsFound}</h3>
               <p className="text-muted-foreground mb-4">
                 {t.noSongsFoundSubtitle}
               </p>
-              <Button 
+              <Button
                 onClick={() => setIsCreating(true)}
                 className="bg-gradient-primary hover:bg-gradient-accent"
               >

@@ -10,9 +10,9 @@ interface CachedLyrics {
 }
 
 class LyricsCacheService {
-  private dbName = 'LyricsMuseDB';
+  private dbName = "LyricsMuseDB";
   private dbVersion = 3; // Increment version to force database recreation
-  private storeName = 'lyrics';
+  private storeName = "lyrics";
   private db: IDBDatabase | null = null;
 
   async initDB(): Promise<void> {
@@ -28,9 +28,9 @@ class LyricsCacheService {
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains(this.storeName)) {
-          const store = db.createObjectStore(this.storeName, { keyPath: 'id' });
-          store.createIndex('timestamp', 'timestamp', { unique: false });
-          store.createIndex('isLiked', 'isLiked', { unique: false });
+          const store = db.createObjectStore(this.storeName, { keyPath: "id" });
+          store.createIndex("timestamp", "timestamp", { unique: false });
+          store.createIndex("isLiked", "isLiked", { unique: false });
         }
       };
     });
@@ -38,9 +38,9 @@ class LyricsCacheService {
 
   async cacheLyrics(song: CachedLyrics): Promise<void> {
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const transaction = this.db!.transaction([this.storeName], "readwrite");
       const store = transaction.objectStore(this.storeName);
       const request = store.put(song);
 
@@ -51,9 +51,9 @@ class LyricsCacheService {
 
   async getCachedLyrics(songId: string): Promise<CachedLyrics | null> {
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      const transaction = this.db!.transaction([this.storeName], "readonly");
       const store = transaction.objectStore(this.storeName);
       const request = store.get(songId);
 
@@ -64,32 +64,34 @@ class LyricsCacheService {
 
   async getAllLikedSongs(): Promise<CachedLyrics[]> {
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve) => {
       try {
-        const transaction = this.db!.transaction([this.storeName], 'readonly');
+        const transaction = this.db!.transaction([this.storeName], "readonly");
         const store = transaction.objectStore(this.storeName);
-        
+
         // Always use the fallback approach to avoid index issues
         const request = store.getAll();
-        
+
         request.onerror = () => {
-          console.error('Error getting all songs:', request.error);
+          console.error("Error getting all songs:", request.error);
           resolve([]);
         };
-        
+
         request.onsuccess = () => {
           try {
             const allSongs = request.result || [];
-            const likedSongs = allSongs.filter(song => song && song.isLiked === true);
+            const likedSongs = allSongs.filter(
+              (song) => song && song.isLiked === true,
+            );
             resolve(likedSongs);
           } catch (error) {
-            console.error('Error filtering liked songs:', error);
+            console.error("Error filtering liked songs:", error);
             resolve([]);
           }
         };
       } catch (error) {
-        console.error('Error in getAllLikedSongs:', error);
+        console.error("Error in getAllLikedSongs:", error);
         resolve([]);
       }
     });
@@ -97,21 +99,21 @@ class LyricsCacheService {
 
   async updateLikedStatus(songId: string, isLiked: boolean): Promise<void> {
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const transaction = this.db!.transaction([this.storeName], "readwrite");
       const store = transaction.objectStore(this.storeName);
-      
+
       // First get the existing record
       const getRequest = store.get(songId);
-      
+
       getRequest.onerror = () => reject(getRequest.error);
       getRequest.onsuccess = () => {
         const existing = getRequest.result;
         if (existing) {
           existing.isLiked = isLiked;
           existing.timestamp = Date.now();
-          
+
           const putRequest = store.put(existing);
           putRequest.onerror = () => reject(putRequest.error);
           putRequest.onsuccess = () => resolve();
@@ -124,9 +126,9 @@ class LyricsCacheService {
 
   async removeFromCache(songId: string): Promise<void> {
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const transaction = this.db!.transaction([this.storeName], "readwrite");
       const store = transaction.objectStore(this.storeName);
       const request = store.delete(songId);
 
@@ -137,9 +139,9 @@ class LyricsCacheService {
 
   async clearCache(): Promise<void> {
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const transaction = this.db!.transaction([this.storeName], "readwrite");
       const store = transaction.objectStore(this.storeName);
       const request = store.clear();
 
@@ -150,9 +152,9 @@ class LyricsCacheService {
 
   async getCacheSize(): Promise<number> {
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      const transaction = this.db!.transaction([this.storeName], "readonly");
       const store = transaction.objectStore(this.storeName);
       const request = store.count();
 
@@ -161,18 +163,20 @@ class LyricsCacheService {
     });
   }
 
-  async cleanupOldEntries(maxAge: number = 30 * 24 * 60 * 60 * 1000): Promise<void> {
+  async cleanupOldEntries(
+    maxAge: number = 30 * 24 * 60 * 60 * 1000,
+  ): Promise<void> {
     // Default: 30 days
     if (!this.db) await this.initDB();
-    
+
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const transaction = this.db!.transaction([this.storeName], "readwrite");
       const store = transaction.objectStore(this.storeName);
-      const index = store.index('timestamp');
+      const index = store.index("timestamp");
       const cutoff = Date.now() - maxAge;
-      
+
       const request = index.openCursor(IDBKeyRange.upperBound(cutoff));
-      
+
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const cursor = request.result;
@@ -188,4 +192,4 @@ class LyricsCacheService {
 }
 
 export const lyricsCache = new LyricsCacheService();
-export type { CachedLyrics }; 
+export type { CachedLyrics };

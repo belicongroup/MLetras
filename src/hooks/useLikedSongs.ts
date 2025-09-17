@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { lyricsCache, CachedLyrics } from '@/services/lyricsCache';
+import { useState, useEffect } from "react";
+import { lyricsCache, CachedLyrics } from "@/services/lyricsCache";
 
 interface Song {
   id: string;
@@ -10,7 +10,7 @@ interface Song {
   url?: string;
 }
 
-const LIKED_SONGS_KEY = 'likedSongs';
+const LIKED_SONGS_KEY = "likedSongs";
 
 export const useLikedSongs = () => {
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
@@ -30,7 +30,7 @@ export const useLikedSongs = () => {
           if (saved) {
             const parsed = JSON.parse(saved);
             setLikedSongs(parsed);
-            
+
             // Migrate to cache
             for (const song of parsed) {
               await lyricsCache.updateLikedStatus(song.id, true);
@@ -38,14 +38,14 @@ export const useLikedSongs = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading liked songs:', error);
+        console.error("Error loading liked songs:", error);
         // Fallback to localStorage
         const saved = localStorage.getItem(LIKED_SONGS_KEY);
         if (saved) {
           try {
             setLikedSongs(JSON.parse(saved));
           } catch (e) {
-            console.error('Error parsing liked songs:', e);
+            console.error("Error parsing liked songs:", e);
             setLikedSongs([]);
           }
         }
@@ -58,13 +58,16 @@ export const useLikedSongs = () => {
   }, []);
 
   const toggleLike = async (song: Song) => {
-    const isLiked = likedSongs.some(s => s.id === song.id);
-    
+    const isLiked = likedSongs.some((s) => s.id === song.id);
+
     if (isLiked) {
       // Unlike song
-      setLikedSongs(prev => prev.filter(s => s.id !== song.id));
+      setLikedSongs((prev) => prev.filter((s) => s.id !== song.id));
       await lyricsCache.updateLikedStatus(song.id, false);
-      localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(likedSongs.filter(s => s.id !== song.id)));
+      localStorage.setItem(
+        LIKED_SONGS_KEY,
+        JSON.stringify(likedSongs.filter((s) => s.id !== song.id)),
+      );
     } else {
       // Like song
       const newLikedSongs = [...likedSongs, song];
@@ -75,14 +78,16 @@ export const useLikedSongs = () => {
   };
 
   const isLiked = (songId: string) => {
-    return likedSongs.some(s => s.id === songId);
+    return likedSongs.some((s) => s.id === songId);
   };
 
-  const getLikedSongWithLyrics = async (songId: string): Promise<CachedLyrics | null> => {
+  const getLikedSongWithLyrics = async (
+    songId: string,
+  ): Promise<CachedLyrics | null> => {
     try {
       return await lyricsCache.getCachedLyrics(songId);
     } catch (error) {
-      console.error('Error getting cached lyrics:', error);
+      console.error("Error getting cached lyrics:", error);
       return null;
     }
   };
@@ -92,6 +97,6 @@ export const useLikedSongs = () => {
     toggleLike,
     isLiked,
     getLikedSongWithLyrics,
-    isLoading
+    isLoading,
   };
 };

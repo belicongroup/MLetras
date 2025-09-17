@@ -11,18 +11,18 @@ import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { searchHistory, SearchHistoryItem } from "@/services/searchHistory";
 
 // Swipeable History Item Component
-const SwipeableHistoryItem = ({ 
-  historyItem, 
-  onSelect, 
-  onLike, 
-  onDelete, 
+const SwipeableHistoryItem = ({
+  historyItem,
+  onSelect,
+  onLike,
+  onDelete,
   isLiked,
-  deleteText
-}: { 
-  historyItem: SearchHistoryItem & { hasLyrics: boolean }; 
-  onSelect: () => void; 
-  onLike: () => void; 
-  onDelete: () => void; 
+  deleteText,
+}: {
+  historyItem: SearchHistoryItem & { hasLyrics: boolean };
+  onSelect: () => void;
+  onLike: () => void;
+  onDelete: () => void;
   isLiked: boolean;
   deleteText: string;
 }) => {
@@ -38,7 +38,7 @@ const SwipeableHistoryItem = ({
     const currentX = e.touches[0].clientX;
     setTouchCurrentX(currentX);
     const diff = touchStartX - currentX;
-    
+
     if (diff > 50) {
       setShowDeleteButton(true);
     } else if (diff < 20) {
@@ -63,7 +63,7 @@ const SwipeableHistoryItem = ({
 
   return (
     <div className="relative overflow-hidden">
-      <Card 
+      <Card
         className="glass border-border/50 hover:border-primary/30 transition-smooth"
         onClick={onSelect}
         onTouchStart={handleTouchStart}
@@ -73,8 +73,12 @@ const SwipeableHistoryItem = ({
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex-1 cursor-pointer">
-              <h4 className="font-semibold text-foreground mb-1">{historyItem.title}</h4>
-              <p className="text-sm text-muted-foreground">{historyItem.artist}</p>
+              <h4 className="font-semibold text-foreground mb-1">
+                {historyItem.title}
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                {historyItem.artist}
+              </p>
             </div>
             <Button
               variant="ghost"
@@ -84,8 +88,8 @@ const SwipeableHistoryItem = ({
                 onLike();
               }}
               className={`transition-smooth ${
-                isLiked 
-                  ? "text-primary hover:text-primary/80" 
+                isLiked
+                  ? "text-primary hover:text-primary/80"
                   : "text-muted-foreground hover:text-primary"
               }`}
             >
@@ -94,11 +98,11 @@ const SwipeableHistoryItem = ({
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Delete button */}
       {showDeleteButton && (
         <div className="absolute right-0 top-0 h-full bg-destructive flex items-center justify-center px-4">
-          <button 
+          <button
             onClick={handleDeleteClick}
             className="text-white font-medium text-sm hover:bg-destructive/80 px-2 py-1 rounded"
           >
@@ -117,7 +121,9 @@ const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
-  const [searchHistoryItems, setSearchHistoryItems] = useState<(SearchHistoryItem & { hasLyrics: boolean })[]>([]);
+  const [searchHistoryItems, setSearchHistoryItems] = useState<
+    (SearchHistoryItem & { hasLyrics: boolean })[]
+  >([]);
   const [showHistory, setShowHistory] = useState(false);
   const { isLiked, toggleLike } = useLikedSongs();
 
@@ -130,12 +136,12 @@ const SearchPage = () => {
 
     setIsSearching(true);
     setShowHistory(false);
-    
+
     try {
       const results = await musixmatchApi.searchSongs(query);
       setSearchResults(results);
     } catch (error) {
-      console.error('Search failed:', error);
+      console.error("Search failed:", error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -151,41 +157,43 @@ const SearchPage = () => {
       imageUrl: song.imageUrl,
       url: song.url,
       timestamp: Date.now(),
-      searchQuery: searchQuery
+      searchQuery: searchQuery,
     });
 
     // Navigate to lyrics page with song data
-    navigate('/lyrics', {
+    navigate("/lyrics", {
       state: {
-        song: { ...song, lyrics: 'Loading...' },
+        song: { ...song, lyrics: "Loading..." },
         isLiked: isLiked(song.id),
-        isLoadingLyrics: true
-      }
+        isLoadingLyrics: true,
+      },
     });
-    
+
     // Fetch lyrics and update the page
     try {
       const lyrics = await musixmatchApi.getSongLyrics(song.id, song);
-      navigate('/lyrics', {
+      navigate("/lyrics", {
         state: {
           song: { ...song, lyrics },
           isLiked: isLiked(song.id),
-          isLoadingLyrics: false
-        }
+          isLoadingLyrics: false,
+        },
       });
     } catch (error) {
-      console.error('Failed to fetch lyrics:', error);
-      navigate('/lyrics', {
+      console.error("Failed to fetch lyrics:", error);
+      navigate("/lyrics", {
         state: {
-          song: { ...song, lyrics: 'Lyrics not available for this song.' },
+          song: { ...song, lyrics: "Lyrics not available for this song." },
           isLiked: isLiked(song.id),
-          isLoadingLyrics: false
-        }
+          isLoadingLyrics: false,
+        },
       });
     }
   };
 
-  const handleHistoryItemSelect = async (historyItem: SearchHistoryItem & { hasLyrics: boolean }) => {
+  const handleHistoryItemSelect = async (
+    historyItem: SearchHistoryItem & { hasLyrics: boolean },
+  ) => {
     // Add to search history (update timestamp)
     await searchHistory.addToHistory({
       id: historyItem.id,
@@ -194,52 +202,54 @@ const SearchPage = () => {
       imageUrl: historyItem.imageUrl,
       url: historyItem.url,
       timestamp: Date.now(),
-      searchQuery: historyItem.searchQuery
+      searchQuery: historyItem.searchQuery,
     });
 
     // Navigate to lyrics page
-    navigate('/lyrics', {
+    navigate("/lyrics", {
       state: {
-        song: { 
+        song: {
           id: historyItem.id,
           title: historyItem.title,
           artist: historyItem.artist,
           imageUrl: historyItem.imageUrl,
           url: historyItem.url,
-          lyrics: historyItem.hasLyrics ? 'Loading cached lyrics...' : 'Loading...'
+          lyrics: historyItem.hasLyrics
+            ? "Loading cached lyrics..."
+            : "Loading...",
         },
         isLiked: isLiked(historyItem.id),
-        isLoadingLyrics: !historyItem.hasLyrics
-      }
+        isLoadingLyrics: !historyItem.hasLyrics,
+      },
     });
 
     // If lyrics are cached, fetch them immediately
     if (historyItem.hasLyrics) {
       try {
         const lyrics = await musixmatchApi.getSongLyrics(historyItem.id);
-        navigate('/lyrics', {
+        navigate("/lyrics", {
           state: {
-            song: { 
+            song: {
               id: historyItem.id,
               title: historyItem.title,
               artist: historyItem.artist,
               imageUrl: historyItem.imageUrl,
               url: historyItem.url,
-              lyrics
+              lyrics,
             },
             isLiked: isLiked(historyItem.id),
-            isLoadingLyrics: false
-          }
+            isLoadingLyrics: false,
+          },
         });
       } catch (error) {
-        console.error('Failed to fetch cached lyrics:', error);
+        console.error("Failed to fetch cached lyrics:", error);
       }
     }
   };
 
   const removeFromHistory = (songId: string) => {
     searchHistory.removeFromHistory(songId);
-    setSearchHistoryItems(prev => prev.filter(item => item.id !== songId));
+    setSearchHistoryItems((prev) => prev.filter((item) => item.id !== songId));
   };
 
   const clearHistory = () => {
@@ -254,7 +264,7 @@ const SearchPage = () => {
         const history = await searchHistory.getHistoryWithCachedLyrics();
         setSearchHistoryItems(history);
       } catch (error) {
-        console.error('Error loading search history:', error);
+        console.error("Error loading search history:", error);
       }
     };
 
@@ -270,7 +280,6 @@ const SearchPage = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-
   return (
     <div className="safe-area space-y-6">
       {/* Hero Section */}
@@ -279,12 +288,21 @@ const SearchPage = () => {
           <Music2 className="w-8 h-8 text-white" />
         </div>
         <h2 className="text-mobile-hero mb-2">
-          {t.findYourLyrics.split(' ').map((word, index) => 
-            word === 'Lyrics' ? (
-              <span key={index} className="bg-gradient-primary bg-clip-text text-transparent"> {word}</span>
+          {t.findYourLyrics.split(" ").map((word, index) =>
+            word === "Lyrics" ? (
+              <span
+                key={index}
+                className="bg-gradient-primary bg-clip-text text-transparent"
+              >
+                {" "}
+                {word}
+              </span>
             ) : (
-              <span key={index}>{index > 0 ? ' ' : ''}{word}</span>
-            )
+              <span key={index}>
+                {index > 0 ? " " : ""}
+                {word}
+              </span>
+            ),
           )}
         </h2>
       </div>
@@ -317,13 +335,15 @@ const SearchPage = () => {
               key={historyItem.id}
               historyItem={historyItem}
               onSelect={() => handleHistoryItemSelect(historyItem)}
-              onLike={() => toggleLike({
-                id: historyItem.id,
-                title: historyItem.title,
-                artist: historyItem.artist,
-                imageUrl: historyItem.imageUrl,
-                url: historyItem.url
-              })}
+              onLike={() =>
+                toggleLike({
+                  id: historyItem.id,
+                  title: historyItem.title,
+                  artist: historyItem.artist,
+                  imageUrl: historyItem.imageUrl,
+                  url: historyItem.url,
+                })
+              }
               onDelete={() => removeFromHistory(historyItem.id)}
               isLiked={isLiked(historyItem.id)}
               deleteText={t.delete}
@@ -337,27 +357,36 @@ const SearchPage = () => {
         <div className="space-y-3">
           <h3 className="text-mobile-title">{t.searchResults}</h3>
           {searchResults.map((song) => (
-            <Card key={song.id} className="glass border-border/50 hover:border-primary/30 transition-smooth">
+            <Card
+              key={song.id}
+              className="glass border-border/50 hover:border-primary/30 transition-smooth"
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <div 
+                  <div
                     className="flex-1 cursor-pointer"
                     onClick={() => handleSongSelect(song)}
                   >
-                    <h4 className="font-semibold text-foreground mb-1">{song.title}</h4>
-                    <p className="text-sm text-muted-foreground">{song.artist}</p>
+                    <h4 className="font-semibold text-foreground mb-1">
+                      {song.title}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {song.artist}
+                    </p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleLike(song)}
                     className={`ml-3 transition-smooth ${
-                      isLiked(song.id) 
-                        ? "text-primary hover:text-primary/80" 
+                      isLiked(song.id)
+                        ? "text-primary hover:text-primary/80"
                         : "text-muted-foreground hover:text-primary"
                     }`}
                   >
-                    <Heart className={`w-5 h-5 ${isLiked(song.id) ? "fill-current" : ""}`} />
+                    <Heart
+                      className={`w-5 h-5 ${isLiked(song.id) ? "fill-current" : ""}`}
+                    />
                   </Button>
                 </div>
               </CardContent>
@@ -371,9 +400,7 @@ const SearchPage = () => {
         <div className="text-center py-8">
           <Music2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">{t.noLyricsFound}</h3>
-          <p className="text-muted-foreground">
-            {t.noLyricsFoundSubtitle}
-          </p>
+          <p className="text-muted-foreground">{t.noLyricsFoundSubtitle}</p>
         </div>
       )}
 
@@ -383,8 +410,6 @@ const SearchPage = () => {
           <h3 className="text-lg font-semibold mb-2">{t.noRecentSearches}</h3>
         </div>
       )}
-
-
     </div>
   );
 };

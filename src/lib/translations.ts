@@ -84,7 +84,7 @@ export interface Translations {
   from: string;
 }
 
-export const translations: Record<'en' | 'es', Translations> = {
+export const translations: Record<"en" | "es", Translations> = {
   en: {
     // Search Page
     searchPlaceholder: "Search by song title or artist...",
@@ -131,7 +131,8 @@ export const translations: Record<'en' | 'es', Translations> = {
     clearing: "Clearing...",
     dataManagement: "Data Management",
     clearAllData: "Clear All Data",
-    clearAllDataDescription: "Remove all saved lyrics, folders, and preferences",
+    clearAllDataDescription:
+      "Remove all saved lyrics, folders, and preferences",
     aboutMletra: "About MLETRA",
     version: "Version",
     privacyPolicy: "Privacy Policy",
@@ -147,8 +148,10 @@ export const translations: Record<'en' | 'es', Translations> = {
     folders: "Folders",
     createFolder: "Create Folder",
     folderName: "Folder Name",
-    createFolderDescription: "Create a new folder to organize your favorite songs.",
-    addSongToFolderDescription: "Add songs to this folder from your liked songs or search for new ones.",
+    createFolderDescription:
+      "Create a new folder to organize your favorite songs.",
+    addSongToFolderDescription:
+      "Add songs to this folder from your liked songs or search for new ones.",
     addSong: "Add Song",
     searchSongs: "Search Songs",
     noSongsFound: "No songs found",
@@ -191,7 +194,8 @@ export const translations: Record<'en' | 'es', Translations> = {
     youtube: "YouTube",
     searchForChords: "Buscar acordes",
     lyricsNotAvailable: "Letras no disponibles",
-    lyricsNotAvailableSubtitle: "No pudimos encontrar las letras para esta canción.",
+    lyricsNotAvailableSubtitle:
+      "No pudimos encontrar las letras para esta canción.",
     loadingLyrics: "Cargando letras...",
 
     // Settings Page
@@ -199,13 +203,15 @@ export const translations: Record<'en' | 'es', Translations> = {
     customizeYourExperience: "Personaliza tu experiencia MLETRA",
     displayAndBehavior: "Pantalla y Comportamiento",
     autoScrollSpeed: "Velocidad de Auto-scroll",
-    autoScrollSpeedDescription: "Elige tu velocidad de auto-scroll predeterminada",
+    autoScrollSpeedDescription:
+      "Elige tu velocidad de auto-scroll predeterminada",
     boldTextDescription: "Mostrar letras en negrita para mejor legibilidad",
     darkMode: "Modo Oscuro",
     darkModeDescription: "Usar tema oscuro (recomendado)",
     notifications: "Notificaciones",
     pushNotifications: "Notificaciones Push",
-    pushNotificationsDescription: "Recibe notificaciones sobre nuevas funciones y actualizaciones",
+    pushNotificationsDescription:
+      "Recibe notificaciones sobre nuevas funciones y actualizaciones",
     cacheAndOfflineAccess: "Caché y Acceso Sin Conexión",
     connectionStatus: "Estado de Conexión",
     onlineFullAccess: "En línea - Acceso completo",
@@ -216,7 +222,8 @@ export const translations: Record<'en' | 'es', Translations> = {
     clearing: "Limpiando...",
     dataManagement: "Gestión de Datos",
     clearAllData: "Borrar Todos los Datos",
-    clearAllDataDescription: "Eliminar todas las letras, carpetas y preferencias guardadas",
+    clearAllDataDescription:
+      "Eliminar todas las letras, carpetas y preferencias guardadas",
     aboutMletra: "Acerca de MLETRA",
     version: "Versión",
     privacyPolicy: "Política de Privacidad",
@@ -232,8 +239,10 @@ export const translations: Record<'en' | 'es', Translations> = {
     folders: "Carpetas",
     createFolder: "Crear Carpeta",
     folderName: "Nombre de Carpeta",
-    createFolderDescription: "Crear una nueva carpeta para organizar tus canciones favoritas.",
-    addSongToFolderDescription: "Agregar canciones a esta carpeta desde tus canciones favoritas o buscar nuevas.",
+    createFolderDescription:
+      "Crear una nueva carpeta para organizar tus canciones favoritas.",
+    addSongToFolderDescription:
+      "Agregar canciones a esta carpeta desde tus canciones favoritas o buscar nuevas.",
     addSong: "Agregar Canción",
     searchSongs: "Buscar Canciones",
     noSongsFound: "No se encontraron canciones",
@@ -260,4 +269,4 @@ export const translations: Record<'en' | 'es', Translations> = {
 export const useTranslations = () => {
   // This will be used in components that already have access to settings
   return translations;
-}; 
+};

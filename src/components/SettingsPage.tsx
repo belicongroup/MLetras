@@ -1,4 +1,16 @@
-import { Settings, Moon, Bell, Trash2, Info, Shield, Palette, Play, Database, Wifi, WifiOff } from "lucide-react";
+import {
+  Settings,
+  Moon,
+  Bell,
+  Trash2,
+  Info,
+  Shield,
+  Palette,
+  Play,
+  Database,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Button } from "@/components/ui/button";
@@ -30,7 +42,7 @@ const SettingsPage = () => {
         const size = await lyricsCache.getCacheSize();
         setCacheSize(size);
       } catch (error) {
-        console.error('Error getting cache size:', error);
+        console.error("Error getting cache size:", error);
       }
     };
 
@@ -40,12 +52,12 @@ const SettingsPage = () => {
       setIsOnline(navigator.onLine);
     };
 
-    window.addEventListener('online', handleOnlineStatus);
-    window.addEventListener('offline', handleOnlineStatus);
+    window.addEventListener("online", handleOnlineStatus);
+    window.addEventListener("offline", handleOnlineStatus);
 
     return () => {
-      window.removeEventListener('online', handleOnlineStatus);
-      window.removeEventListener('offline', handleOnlineStatus);
+      window.removeEventListener("online", handleOnlineStatus);
+      window.removeEventListener("offline", handleOnlineStatus);
     };
   }, []);
 
@@ -55,7 +67,7 @@ const SettingsPage = () => {
       await lyricsCache.clearCache();
       setCacheSize(0);
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      console.error("Error clearing cache:", error);
     } finally {
       setIsClearingCache(false);
     }
@@ -69,7 +81,9 @@ const SettingsPage = () => {
           <Settings className="w-6 h-6 text-white" />
         </div>
         <h2 className="text-mobile-hero mb-2">
-          <span className="bg-gradient-primary bg-clip-text text-transparent">{t.settings}</span>
+          <span className="bg-gradient-primary bg-clip-text text-transparent">
+            {t.settings}
+          </span>
         </h2>
       </div>
 
@@ -92,7 +106,10 @@ const SettingsPage = () => {
             <Select
               value={settings.autoScrollSpeed}
               onValueChange={(value) => {
-                setSettings(prev => ({ ...prev, autoScrollSpeed: value as 'off' | 'slow' | 'medium' | 'fast' }));
+                setSettings((prev) => ({
+                  ...prev,
+                  autoScrollSpeed: value as "off" | "slow" | "medium" | "fast",
+                }));
               }}
             >
               <SelectTrigger className="w-32">
@@ -100,15 +117,21 @@ const SettingsPage = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="off">{t.off}</SelectItem>
-                <SelectItem value="slow" className="text-green-500">{t.slow}</SelectItem>
-                <SelectItem value="medium" className="text-yellow-500">{t.medium}</SelectItem>
-                <SelectItem value="fast" className="text-red-500">{t.fast}</SelectItem>
+                <SelectItem value="slow" className="text-green-500">
+                  {t.slow}
+                </SelectItem>
+                <SelectItem value="medium" className="text-yellow-500">
+                  {t.medium}
+                </SelectItem>
+                <SelectItem value="fast" className="text-red-500">
+                  {t.fast}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          
+
           <Separator />
-          
+
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{t.boldText}</p>
@@ -118,12 +141,14 @@ const SettingsPage = () => {
             </div>
             <Switch
               checked={settings.boldText}
-              onCheckedChange={() => setSettings(prev => ({ ...prev, boldText: !prev.boldText }))}
+              onCheckedChange={() =>
+                setSettings((prev) => ({ ...prev, boldText: !prev.boldText }))
+              }
             />
           </div>
-          
+
           <Separator />
-          
+
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{t.darkMode}</p>
@@ -131,14 +156,11 @@ const SettingsPage = () => {
                 {t.darkModeDescription}
               </p>
             </div>
-            <Switch
-              checked={theme === 'dark'}
-              onCheckedChange={toggleTheme}
-            />
+            <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
           </div>
-          
+
           <Separator />
-          
+
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{t.language}</p>
@@ -149,7 +171,10 @@ const SettingsPage = () => {
             <Select
               value={settings.language}
               onValueChange={(value) => {
-                setSettings(prev => ({ ...prev, language: value as 'en' | 'es' }));
+                setSettings((prev) => ({
+                  ...prev,
+                  language: value as "en" | "es",
+                }));
               }}
             >
               <SelectTrigger className="w-32">
@@ -182,7 +207,12 @@ const SettingsPage = () => {
             </div>
             <Switch
               checked={settings.notifications}
-              onCheckedChange={() => setSettings(prev => ({ ...prev, notifications: !prev.notifications }))}
+              onCheckedChange={() =>
+                setSettings((prev) => ({
+                  ...prev,
+                  notifications: !prev.notifications,
+                }))
+              }
             />
           </div>
         </CardContent>
@@ -201,7 +231,9 @@ const SettingsPage = () => {
             <div>
               <p className="font-medium">Connection Status</p>
               <p className="text-sm text-muted-foreground">
-                {isOnline ? 'Online - Full access' : 'Offline - Cached content only'}
+                {isOnline
+                  ? "Online - Full access"
+                  : "Offline - Cached content only"}
               </p>
             </div>
             {isOnline ? (
@@ -210,9 +242,9 @@ const SettingsPage = () => {
               <WifiOff className="w-5 h-5 text-yellow-500" />
             )}
           </div>
-          
+
           <Separator />
-          
+
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">Cached Lyrics</p>
@@ -220,8 +252,8 @@ const SettingsPage = () => {
                 {cacheSize} songs available offline
               </p>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={handleClearCache}
               disabled={isClearingCache || cacheSize === 0}
@@ -257,11 +289,7 @@ const SettingsPage = () => {
               <p className="text-sm text-muted-foreground mb-3">
                 Remove all saved lyrics, folders, and preferences
               </p>
-              <Button 
-                variant="destructive" 
-                size="sm"
-                className="w-full"
-              >
+              <Button variant="destructive" size="sm" className="w-full">
                 <Trash2 className="w-4 h-4 mr-2" />
                 Clear All Data
               </Button>
@@ -283,14 +311,14 @@ const SettingsPage = () => {
             <p className="font-medium">Version</p>
             <p className="text-sm text-muted-foreground">1.0.0</p>
           </div>
-          
+
           <Separator />
-          
+
           <Button variant="ghost" className="w-full justify-start p-0 h-auto">
             <Shield className="w-4 h-4 mr-2 text-primary" />
             Privacy Policy
           </Button>
-          
+
           <Button variant="ghost" className="w-full justify-start p-0 h-auto">
             <Info className="w-4 h-4 mr-2 text-primary" />
             Terms of Service
@@ -303,9 +331,7 @@ const SettingsPage = () => {
         <p className="text-sm text-muted-foreground">
           Made with ❤️ for music lovers
         </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          MLETRA © 2024
-        </p>
+        <p className="text-xs text-muted-foreground mt-1">MLETRA © 2024</p>
       </div>
     </div>
   );
