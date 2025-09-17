@@ -4,7 +4,8 @@
 // No client-side API key needed for security
 
 // Use Cloudflare Worker proxy for all environments
-const MUSIXMATCH_BASE_URL = "https://api.mletras.com/musixmatch";
+// Temporary: Using workers.dev URL until custom domain is set up
+const MUSIXMATCH_BASE_URL = "https://mletras-api-proxy.belicongroup.workers.dev/musixmatch";
 
 export interface MusixmatchTrack {
   track_id: number;
