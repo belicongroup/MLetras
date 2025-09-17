@@ -2,10 +2,6 @@
 
 A beautiful, mobile-first lyrics viewer and organizer with advanced features including pinch-to-resize gestures.
 
-## Project info
-
-**URL**: https://lovable.dev/projects/c2dd7525-21b7-4d01-8f9b-352efb538200
-
 ## Features
 
 - **Pinch Gesture Support**: Pinch in/out on lyrics to resize font size dynamically
@@ -15,70 +11,73 @@ A beautiful, mobile-first lyrics viewer and organizer with advanced features inc
 - **Dark/Light Theme**: Beautiful theme switching with musical color palette
 - **Search & Organize**: Search for songs and organize your favorites
 
-## How can I edit this code?
+## Getting Started
 
-There are several ways of editing your application.
+### Prerequisites
 
-**Use Lovable**
+- Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c2dd7525-21b7-4d01-8f9b-352efb538200) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navigate to the project directory
+cd lyric-muse-organizer
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install the necessary dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Building for Production
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```sh
+# Build and start production server (includes Musixmatch proxy)
+npm run build:prod
 
-**Use GitHub Codespaces**
+# Or build and start separately
+npm run build
+npm start
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Build for mobile (Android)
+npx cap add android
+npx cap sync android
+npx cap run android
+```
 
-## What technologies are used for this project?
+## Technologies Used
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Vite** - Fast build tool and dev server
+- **TypeScript** - Type-safe JavaScript
+- **React** - UI library
+- **shadcn/ui** - Beautiful UI components
+- **Tailwind CSS** - Utility-first CSS framework
+- **Capacitor** - Cross-platform mobile development
+- **Musixmatch API** - Lyrics data provider
 
-## How can I deploy this project?
+## Mobile Development
 
-Simply open [Lovable](https://lovable.dev/projects/c2dd7525-21b7-4d01-8f9b-352efb538200) and click on Share -> Publish.
+This project uses Capacitor to build native mobile apps from the web codebase. The app can be deployed to both iOS and Android platforms.
 
-## Can I connect a custom domain to my Lovable project?
+## API Integration
 
-Yes, you can!
+The app integrates with the Musixmatch API for lyrics data. Due to CORS restrictions:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- **Development**: Uses Vite's proxy server to bypass CORS
+- **Production**: Includes an Express.js proxy server (`server.js`) to handle API requests
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+The proxy server automatically forwards requests from `/api/musixmatch/*` to the Musixmatch API with proper CORS headers.
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request

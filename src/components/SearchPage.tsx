@@ -6,7 +6,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { geniusApi, Song } from "@/services/geniusApi";
+import { musixmatchApi, Song } from "@/services/musixmatchApi";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { searchHistory, SearchHistoryItem } from "@/services/searchHistory";
 
@@ -132,7 +132,7 @@ const SearchPage = () => {
     setShowHistory(false);
     
     try {
-      const results = await geniusApi.searchSongs(query);
+      const results = await musixmatchApi.searchSongs(query);
       setSearchResults(results);
     } catch (error) {
       console.error('Search failed:', error);
@@ -165,7 +165,7 @@ const SearchPage = () => {
     
     // Fetch lyrics and update the page
     try {
-      const lyrics = await geniusApi.getSongLyrics(song.id, song);
+      const lyrics = await musixmatchApi.getSongLyrics(song.id, song);
       navigate('/lyrics', {
         state: {
           song: { ...song, lyrics },
@@ -216,7 +216,7 @@ const SearchPage = () => {
     // If lyrics are cached, fetch them immediately
     if (historyItem.hasLyrics) {
       try {
-        const lyrics = await geniusApi.getSongLyrics(historyItem.id);
+        const lyrics = await musixmatchApi.getSongLyrics(historyItem.id);
         navigate('/lyrics', {
           state: {
             song: { 

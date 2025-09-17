@@ -60,6 +60,8 @@ export interface Translations {
   folders: string;
   createFolder: string;
   folderName: string;
+  createFolderDescription: string;
+  addSongToFolderDescription: string;
   addSong: string;
   searchSongs: string;
   noSongsFound: string;
@@ -145,6 +147,8 @@ export const translations: Record<'en' | 'es', Translations> = {
     folders: "Folders",
     createFolder: "Create Folder",
     folderName: "Folder Name",
+    createFolderDescription: "Create a new folder to organize your favorite songs.",
+    addSongToFolderDescription: "Add songs to this folder from your liked songs or search for new ones.",
     addSong: "Add Song",
     searchSongs: "Search Songs",
     noSongsFound: "No songs found",
@@ -228,6 +232,8 @@ export const translations: Record<'en' | 'es', Translations> = {
     folders: "Carpetas",
     createFolder: "Crear Carpeta",
     folderName: "Nombre de Carpeta",
+    createFolderDescription: "Crear una nueva carpeta para organizar tus canciones favoritas.",
+    addSongToFolderDescription: "Agregar canciones a esta carpeta desde tus canciones favoritas o buscar nuevas.",
     addSong: "Agregar Canción",
     searchSongs: "Buscar Canciones",
     noSongsFound: "No se encontraron canciones",

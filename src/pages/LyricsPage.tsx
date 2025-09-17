@@ -122,7 +122,7 @@ const LyricsPage = () => {
   const toggleAutoScroll = (e: React.MouseEvent<HTMLButtonElement>) => {
     // Remove focus after click to prevent purple overlay
     setTimeout(() => {
-      e.currentTarget.blur();
+      e.currentTarget?.blur();
     }, 10);
     
     const speeds: Array<'off' | 'slow' | 'medium' | 'fast'> = ['off', 'slow', 'medium', 'fast'];
@@ -159,7 +159,7 @@ const LyricsPage = () => {
   const handleToggleLike = (e: React.MouseEvent<HTMLButtonElement>) => {
     // Remove focus after click to prevent purple overlay
     setTimeout(() => {
-      e.currentTarget.blur();
+      e.currentTarget?.blur();
     }, 10);
     
     if (songData) {
@@ -216,12 +216,12 @@ const LyricsPage = () => {
                 size="sm"
                 onClick={(e) => {
                   setTimeout(() => {
-                    e.currentTarget.blur();
+                    e.currentTarget?.blur();
                   }, 10);
                   navigate('/');
                 }}
-                onBlur={(e) => e.target.blur()}
-                onFocus={(e) => e.target.blur()}
+                onBlur={(e) => e.target?.blur()}
+                onFocus={(e) => e.target?.blur()}
                 className="text-muted-foreground hover:text-foreground btn-no-focus"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -245,8 +245,8 @@ const LyricsPage = () => {
                 variant="ghost"
                 size="sm"
                 onClick={toggleAutoScroll}
-                onBlur={(e) => e.target.blur()}
-                onFocus={(e) => e.target.blur()}
+                onBlur={(e) => e.target?.blur()}
+                onFocus={(e) => e.target?.blur()}
                 className={`transition-smooth btn-no-focus ${
                   autoScrollSpeed === 'off' 
                     ? "text-muted-foreground hover:text-foreground"
@@ -271,12 +271,12 @@ const LyricsPage = () => {
                 size="sm"
                 onClick={(e) => {
                   setTimeout(() => {
-                    e.currentTarget.blur();
+                    e.currentTarget?.blur();
                   }, 10);
                   setIsBoldText(!isBoldText);
                 }}
-                onBlur={(e) => e.target.blur()}
-                onFocus={(e) => e.target.blur()}
+                onBlur={(e) => e.target?.blur()}
+                onFocus={(e) => e.target?.blur()}
                 className={`transition-smooth btn-no-focus ${
                   isBoldText 
                     ? "text-primary bg-primary/10" 
@@ -290,8 +290,8 @@ const LyricsPage = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onBlur={(e) => e.target.blur()}
-                    onFocus={(e) => e.target.blur()}
+                    onBlur={(e) => e.target?.blur()}
+                    onFocus={(e) => e.target?.blur()}
                     className="transition-smooth btn-no-focus text-muted-foreground hover:text-foreground"
                     title={t.listenOnStreamingServices}
                   >
@@ -345,8 +345,8 @@ const LyricsPage = () => {
                 variant="ghost"
                 size="sm"
                 onClick={handleToggleLike}
-                onBlur={(e) => e.target.blur()}
-                onFocus={(e) => e.target.blur()}
+                onBlur={(e) => e.target?.blur()}
+                onFocus={(e) => e.target?.blur()}
                 className={`transition-smooth btn-no-focus ${
                   isLiked(songData?.id || '') 
                     ? "text-primary hover:text-primary/80" 

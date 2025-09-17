@@ -96,7 +96,7 @@ class SearchHistoryService {
       }
 
       // If not cached, we'll cache it when lyrics are fetched
-      // This is handled by the geniusApi service
+      // This is handled by the musixmatchApi service
     } catch (error) {
       console.error('Error caching song for offline:', error);
     }

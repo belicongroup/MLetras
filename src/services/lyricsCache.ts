@@ -11,7 +11,7 @@ interface CachedLyrics {
 
 class LyricsCacheService {
   private dbName = 'LyricsMuseDB';
-  private dbVersion = 1;
+  private dbVersion = 3; // Increment version to force database recreation
   private storeName = 'lyrics';
   private db: IDBDatabase | null = null;
 
@@ -65,14 +65,33 @@ class LyricsCacheService {
   async getAllLikedSongs(): Promise<CachedLyrics[]> {
     if (!this.db) await this.initDB();
     
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readonly');
-      const store = transaction.objectStore(this.storeName);
-      const index = store.index('isLiked');
-      const request = index.getAll(IDBKeyRange.only(true)); // true = isLiked
-
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result || []);
+    return new Promise((resolve) => {
+      try {
+        const transaction = this.db!.transaction([this.storeName], 'readonly');
+        const store = transaction.objectStore(this.storeName);
+        
+        // Always use the fallback approach to avoid index issues
+        const request = store.getAll();
+        
+        request.onerror = () => {
+          console.error('Error getting all songs:', request.error);
+          resolve([]);
+        };
+        
+        request.onsuccess = () => {
+          try {
+            const allSongs = request.result || [];
+            const likedSongs = allSongs.filter(song => song && song.isLiked === true);
+            resolve(likedSongs);
+          } catch (error) {
+            console.error('Error filtering liked songs:', error);
+            resolve([]);
+          }
+        };
+      } catch (error) {
+        console.error('Error in getAllLikedSongs:', error);
+        resolve([]);
+      }
     });
   }
 

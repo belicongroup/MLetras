@@ -3,11 +3,11 @@ import { Heart, FolderPlus, Music2, ArrowLeft, Plus, Search, GripVertical, Trash
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useNavigate } from "react-router-dom";
-import { geniusApi, Song } from "@/services/geniusApi";
+import { musixmatchApi, Song } from "@/services/musixmatchApi";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
 import {
@@ -240,7 +240,7 @@ const BookmarksPage = () => {
     
     // Fetch lyrics and update the page
     try {
-      const lyrics = await geniusApi.getSongLyrics(song.id, song);
+      const lyrics = await musixmatchApi.getSongLyrics(song.id, song);
       navigate('/lyrics', {
         state: {
           song: { ...song, lyrics },
@@ -266,7 +266,7 @@ const BookmarksPage = () => {
 
     setIsSearching(true);
     try {
-      const results = await geniusApi.searchSongs(query);
+      const results = await musixmatchApi.searchSongs(query);
       setSearchResults(results);
     } catch (error) {
       console.error('Search failed:', error);
@@ -425,6 +425,9 @@ const BookmarksPage = () => {
           <DialogContent className="w-[90%] glass border-border/50 max-h-[80vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>{t.addSong} {t.to} {selectedFolder.name}</DialogTitle>
+              <DialogDescription>
+                {t.addSongToFolderDescription || "Add songs to this folder from your liked songs or search for new ones."}
+              </DialogDescription>
             </DialogHeader>
             <Tabs defaultValue="liked" className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
@@ -629,6 +632,9 @@ const BookmarksPage = () => {
               <DialogContent className="w-[90%] glass border-border/50">
                 <DialogHeader>
                   <DialogTitle>{t.createFolder}</DialogTitle>
+                  <DialogDescription>
+                    {t.createFolderDescription || "Create a new folder to organize your favorite songs."}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 pt-4">
                   <Input
