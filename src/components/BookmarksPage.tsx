@@ -205,7 +205,7 @@ const BookmarksPage = () => {
 
   // Load folders from localStorage on component mount
   const [folders, setFolders] = useState<Folder[]>(() => {
-    const savedFolders = localStorage.getItem("lyric-muse-folders");
+    const savedFolders = localStorage.getItem("mletras-folders");
     if (savedFolders) {
       try {
         return JSON.parse(savedFolders);
@@ -222,7 +222,7 @@ const BookmarksPage = () => {
 
   // Save folders to localStorage whenever folders change
   useEffect(() => {
-    localStorage.setItem("lyric-muse-folders", JSON.stringify(folders));
+    localStorage.setItem("mletras-folders", JSON.stringify(folders));
   }, [folders]);
 
   // DnD sensors

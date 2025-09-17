@@ -1,4 +1,4 @@
-# Lyric Muse Organizer
+# MLetras
 
 A beautiful, mobile-first lyrics viewer and organizer with advanced features including pinch-to-resize gestures.
 
@@ -24,7 +24,7 @@ A beautiful, mobile-first lyrics viewer and organizer with advanced features inc
 git clone <YOUR_GIT_URL>
 
 # Step 2: Navigate to the project directory
-cd lyric-muse-organizer
+cd mletras
 
 # Step 3: Install the necessary dependencies
 npm install

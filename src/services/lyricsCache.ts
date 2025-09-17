@@ -10,7 +10,7 @@ interface CachedLyrics {
 }
 
 class LyricsCacheService {
-  private dbName = "LyricsMuseDB";
+  private dbName = "MLetrasDB";
   private dbVersion = 3; // Increment version to force database recreation
   private storeName = "lyrics";
   private db: IDBDatabase | null = null;

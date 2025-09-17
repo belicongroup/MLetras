@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.lyricmuse.organizer",
-  appName: "Lyric Muse Organizer",
+  appName: "MLetras",
   webDir: "dist",
   plugins: {
     ScreenOrientation: {

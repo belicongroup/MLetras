@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">lyric-muse-organizer</string>
-    <string name="title_activity_main">lyric-muse-organizer</string>
+    <string name="app_name">MLetras</string>
+    <string name="title_activity_main">MLetras</string>
     <string name="package_name">app.lovable.c2dd752521b74d018f9b352efb538200</string>
     <string name="custom_url_scheme">app.lovable.c2dd752521b74d018f9b352efb538200</string>
 </resources>
