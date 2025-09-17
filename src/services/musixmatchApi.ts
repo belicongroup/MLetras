@@ -4,7 +4,7 @@
 // No client-side API key needed for security
 
 // Use Cloudflare Worker proxy for all environments
-// Temporary: Using workers.dev URL until custom domain is set up
+// Production: Using workers.dev URL with CORS configured for mletras.vercel.app
 const MUSIXMATCH_BASE_URL = "https://mletras-api-proxy.belicongroup.workers.dev/musixmatch";
 
 export interface MusixmatchTrack {
