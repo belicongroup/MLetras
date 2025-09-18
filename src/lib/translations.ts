@@ -100,7 +100,7 @@ export const translations: Record<"en" | "es", Translations> = {
 
     // Settings Page
     settings: "Settings",
-    customizeYourExperience: "Customize your MLETRA experience",
+    customizeYourExperience: "Customize your MLETRAS experience",
     displayAndBehavior: "Display & Behavior",
     autoScrollSpeed: "Auto-scroll Speed",
     autoScrollSpeedDescription: "Choose your default auto-scroll speed",
@@ -111,12 +111,12 @@ export const translations: Record<"en" | "es", Translations> = {
     clearAllData: "Clear All Data",
     clearAllDataDescription:
       "Remove all saved lyrics, folders, and preferences",
-    aboutMletra: "About MLETRA",
+    aboutMletra: "About MLETRAS",
     version: "Version",
     privacyPolicy: "Privacy Policy",
     termsOfService: "Terms of Service",
     madeWithLove: "Made with ❤️ for music lovers",
-    copyright: "MLETRA © 2024",
+    copyright: "MLETRAS © 2024",
     language: "Language",
     languageDescription: "Choose your preferred language",
 
@@ -178,7 +178,7 @@ export const translations: Record<"en" | "es", Translations> = {
 
     // Settings Page
     settings: "Configuración",
-    customizeYourExperience: "Personaliza tu experiencia MLETRA",
+    customizeYourExperience: "Personaliza tu experiencia MLETRAS",
     displayAndBehavior: "Pantalla y Comportamiento",
     autoScrollSpeed: "Velocidad de Auto-scroll",
     autoScrollSpeedDescription:
@@ -190,12 +190,12 @@ export const translations: Record<"en" | "es", Translations> = {
     clearAllData: "Borrar Todos los Datos",
     clearAllDataDescription:
       "Eliminar todas las letras, carpetas y preferencias guardadas",
-    aboutMletra: "Acerca de MLETRA",
+    aboutMletra: "Acerca de MLETRAS",
     version: "Versión",
     privacyPolicy: "Política de Privacidad",
     termsOfService: "Términos de Servicio",
     madeWithLove: "Hecho con ❤️ para amantes de la música",
-    copyright: "MLETRA © 2024",
+    copyright: "MLETRAS © 2024",
     language: "Idioma",
     languageDescription: "Elige tu idioma preferido",
 

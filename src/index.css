@@ -2,11 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MLETRA Design System - Musical Theme with Beautiful Gradients */
+/* MLETRAS Design System - Musical Theme with Beautiful Gradients */
 
 @layer base {
   :root {
-    /* MLETRA Light Theme - Musical Colors */
+    /* MLETRAS Light Theme - Musical Colors */
     --background: 0 0% 100%;
     --foreground: 220 26% 8%;
 
@@ -94,7 +94,7 @@
   }
 
   .dark {
-    /* MLETRA Dark Theme - Musical Colors */
+    /* MLETRAS Dark Theme - Musical Colors */
     --background: 220 26% 8%;
     --foreground: 210 40% 98%;
 

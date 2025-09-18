@@ -27,7 +27,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [settings, setSettings] = useState<Settings>(() => {
     // Load settings from localStorage on initialization
-    const savedSettings = localStorage.getItem("mletra-settings");
+    const savedSettings = localStorage.getItem("mletras-settings");
     if (savedSettings) {
       try {
         return { ...defaultSettings, ...JSON.parse(savedSettings) };
@@ -41,7 +41,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("mletra-settings", JSON.stringify(settings));
+    localStorage.setItem("mletras-settings", JSON.stringify(settings));
   }, [settings]);
 
   const updateSetting = (key: keyof Settings) => {

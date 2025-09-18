@@ -176,7 +176,7 @@ const SettingsPage = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Info className="w-5 h-5 text-primary" />
-            About MLETRA
+            About MLETRAS
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -212,7 +212,7 @@ const SettingsPage = () => {
         <p className="text-sm text-muted-foreground">
           Made with ❤️ for music lovers
         </p>
-        <p className="text-xs text-muted-foreground mt-1">MLETRA © 2024</p>
+        <p className="text-xs text-muted-foreground mt-1">MLETRAS © 2024</p>
       </div>
     </div>
   );

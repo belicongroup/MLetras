@@ -28,7 +28,7 @@ const NotFound = () => {
           className="bg-gradient-primary hover:bg-gradient-accent shadow-glow transition-all duration-300"
         >
           <Home className="w-4 h-4 mr-2" />
-          Return to MLETRA
+          Return to MLETRAS
         </Button>
       </div>
     </div>
