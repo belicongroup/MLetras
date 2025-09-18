@@ -302,8 +302,8 @@ const BookmarksPage = () => {
       return;
     }
 
-    // Only search if query is at least 2 characters to reduce API calls
-    if (query.trim().length < 2) {
+    // Only search if query is at least 3 characters to reduce API calls
+    if (query.trim().length < 3) {
       setSearchResults([]);
       return;
     }
@@ -319,6 +319,15 @@ const BookmarksPage = () => {
       setIsSearching(false);
     }
   }, []);
+
+  // Debounced search - increased delay to reduce API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      handleSearchSongs(searchQuery);
+    }, 500); // 500ms delay to reduce API calls
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, handleSearchSongs]);
 
   const handleAddSongToFolder = (song: Song) => {
     if (!selectedFolder) return;
@@ -561,7 +570,6 @@ const BookmarksPage = () => {
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
-                      handleSearchSongs(e.target.value);
                     }}
                     className="pl-10 bg-card/50 border-border/50"
                   />

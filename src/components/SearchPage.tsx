@@ -134,8 +134,8 @@ const SearchPage = () => {
       return;
     }
 
-    // Only search if query is at least 2 characters to reduce API calls
-    if (query.trim().length < 2) {
+    // Only search if query is at least 3 characters to reduce API calls
+    if (query.trim().length < 3) {
       setSearchResults([]);
       setShowHistory(true);
       return;
@@ -294,11 +294,11 @@ const SearchPage = () => {
     loadHistory();
   }, []);
 
-  // Debounced search
+  // Debounced search - increased delay to reduce API calls
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       handleSearch(searchQuery);
-    }, 300);
+    }, 500); // Increased from 300ms to 500ms
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);

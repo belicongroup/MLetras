@@ -111,7 +111,7 @@ export interface Song {
 
 class MusixmatchApiService {
   private lastRequestTime = 0;
-  private readonly minRequestInterval = 100; // Minimum 100ms between requests
+  private readonly minRequestInterval = 300; // Increased to 300ms between requests
 
   private async makeRequest(
     endpoint: string,
@@ -159,7 +159,7 @@ class MusixmatchApiService {
 
   async searchSongs(
     query: string,
-    pageSize: number = 10,
+    pageSize: number = 5, // Reduced from 10 to 5
     page: number = 1,
   ): Promise<Song[]> {
     if (!query.trim()) return [];
@@ -234,28 +234,11 @@ class MusixmatchApiService {
     }
   }
 
-  // Additional method to get track details
-  async getTrackDetails(trackId: string): Promise<MusixmatchTrack | null> {
-    try {
-      const data = await this.makeRequest("/track.get", {
-        track_id: trackId,
-      });
-
-      if (data.message.body.track) {
-        return data.message.body.track;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Musixmatch track details error:", error);
-      return null;
-    }
-  }
 
   // Method to search by artist
   async searchByArtist(
     artistName: string,
-    pageSize: number = 10,
+    pageSize: number = 5, // Reduced from 10 to 5
   ): Promise<Song[]> {
     if (!artistName.trim()) return [];
 
