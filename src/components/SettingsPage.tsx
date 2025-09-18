@@ -39,7 +39,7 @@ const SettingsPage = () => {
         <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
           <Settings className="w-6 h-6 text-white" />
         </div>
-        <h2 className="text-mobile-hero mb-2 text-black">
+        <h2 className="text-mobile-hero mb-2">
           {t.settings}
         </h2>
       </div>
