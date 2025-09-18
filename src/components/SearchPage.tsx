@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Loader2, Music2, Heart, Clock } from "lucide-react";
 import { translations } from "@/lib/translations";
@@ -127,8 +127,15 @@ const SearchPage = () => {
   const [showHistory, setShowHistory] = useState(false);
   const { isLiked, toggleLike } = useLikedSongs();
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
+      setSearchResults([]);
+      setShowHistory(true);
+      return;
+    }
+
+    // Only search if query is at least 2 characters to reduce API calls
+    if (query.trim().length < 2) {
       setSearchResults([]);
       setShowHistory(true);
       return;
@@ -146,7 +153,7 @@ const SearchPage = () => {
     } finally {
       setIsSearching(false);
     }
-  };
+  }, []);
 
   const handleSongSelect = async (song: Song) => {
     // Add to search history
@@ -205,7 +212,7 @@ const SearchPage = () => {
       searchQuery: historyItem.searchQuery,
     });
 
-    // Navigate to lyrics page
+    // Navigate to lyrics page with loading state
     navigate("/lyrics", {
       state: {
         song: {
@@ -214,36 +221,52 @@ const SearchPage = () => {
           artist: historyItem.artist,
           imageUrl: historyItem.imageUrl,
           url: historyItem.url,
-          lyrics: historyItem.hasLyrics
-            ? "Loading cached lyrics..."
-            : "Loading...",
+          lyrics: "Loading...",
         },
         isLiked: isLiked(historyItem.id),
-        isLoadingLyrics: !historyItem.hasLyrics,
+        isLoadingLyrics: true,
       },
     });
 
-    // If lyrics are cached, fetch them immediately
-    if (historyItem.hasLyrics) {
-      try {
-        const lyrics = await musixmatchApi.getSongLyrics(historyItem.id);
-        navigate("/lyrics", {
-          state: {
-            song: {
-              id: historyItem.id,
-              title: historyItem.title,
-              artist: historyItem.artist,
-              imageUrl: historyItem.imageUrl,
-              url: historyItem.url,
-              lyrics,
-            },
-            isLiked: isLiked(historyItem.id),
-            isLoadingLyrics: false,
+    // Always fetch lyrics from API (no caching per MusixMatch terms)
+    try {
+      const lyrics = await musixmatchApi.getSongLyrics(historyItem.id, {
+        id: historyItem.id,
+        title: historyItem.title,
+        artist: historyItem.artist,
+        imageUrl: historyItem.imageUrl,
+        url: historyItem.url,
+      });
+      navigate("/lyrics", {
+        state: {
+          song: {
+            id: historyItem.id,
+            title: historyItem.title,
+            artist: historyItem.artist,
+            imageUrl: historyItem.imageUrl,
+            url: historyItem.url,
+            lyrics,
           },
-        });
-      } catch (error) {
-        console.error("Failed to fetch cached lyrics:", error);
-      }
+          isLiked: isLiked(historyItem.id),
+          isLoadingLyrics: false,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to fetch lyrics:", error);
+      navigate("/lyrics", {
+        state: {
+          song: {
+            id: historyItem.id,
+            title: historyItem.title,
+            artist: historyItem.artist,
+            imageUrl: historyItem.imageUrl,
+            url: historyItem.url,
+            lyrics: "Lyrics not available for this song.",
+          },
+          isLiked: isLiked(historyItem.id),
+          isLoadingLyrics: false,
+        },
+      });
     }
   };
 

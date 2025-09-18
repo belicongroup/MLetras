@@ -110,10 +110,22 @@ export interface Song {
 }
 
 class MusixmatchApiService {
+  private lastRequestTime = 0;
+  private readonly minRequestInterval = 100; // Minimum 100ms between requests
+
   private async makeRequest(
     endpoint: string,
     params: Record<string, string> = {},
   ): Promise<any> {
+    // Throttle requests to prevent excessive API calls
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      await new Promise(resolve => setTimeout(resolve, this.minRequestInterval - timeSinceLastRequest));
+    }
+    
+    this.lastRequestTime = Date.now();
     // Use Cloudflare Worker proxy - API key handled server-side
     const url = new URL(`${MUSIXMATCH_BASE_URL}${endpoint}`);
 

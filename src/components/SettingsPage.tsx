@@ -39,10 +39,8 @@ const SettingsPage = () => {
         <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
           <Settings className="w-6 h-6 text-white" />
         </div>
-        <h2 className="text-mobile-hero mb-2">
-          <span className="bg-gradient-primary bg-clip-text text-transparent">
-            {t.settings}
-          </span>
+        <h2 className="text-mobile-hero mb-2 text-black">
+          {t.settings}
         </h2>
       </div>
 
@@ -189,12 +187,20 @@ const SettingsPage = () => {
 
           <Separator />
 
-          <Button variant="ghost" className="w-full justify-start p-0 h-auto">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start p-0 h-auto"
+            onClick={() => window.open('https://mletras.com/privacy', '_blank')}
+          >
             <Shield className="w-4 h-4 mr-2 text-primary" />
             Privacy Policy
           </Button>
 
-          <Button variant="ghost" className="w-full justify-start p-0 h-auto">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start p-0 h-auto"
+            onClick={() => window.open('https://mletras.com/terms', '_blank')}
+          >
             <Info className="w-4 h-4 mr-2 text-primary" />
             Terms of Service
           </Button>

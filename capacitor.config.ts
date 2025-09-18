@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.lyricmuse.organizer",
+  appId: "com.mletras.com",
   appName: "MLetras",
   webDir: "dist",
   plugins: {

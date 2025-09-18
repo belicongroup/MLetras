@@ -1,12 +1,26 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const origin = request.headers.get('Origin');
+    
+    // Define allowed origins
+    const allowedOrigins = [
+      'https://mletras.vercel.app',
+      'http://localhost:8080',
+      'http://localhost:3000',
+      'http://127.0.0.1:8080',
+      'http://127.0.0.1:3000'
+    ];
+    
+    // Check if origin is allowed
+    const isAllowedOrigin = allowedOrigins.includes(origin);
+    const corsOrigin = isAllowedOrigin ? origin : 'https://mletras.vercel.app';
     
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
-          'Access-Control-Allow-Origin': 'https://mletras.vercel.app',
+          'Access-Control-Allow-Origin': corsOrigin,
           'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
         },
@@ -21,11 +35,14 @@ export default {
       const apiUrl = new URL(musixmatchUrl);
       apiUrl.searchParams.set('apikey', env.MUSIXMATCH_API_KEY);
       
+      // Debug: Log the URL being called
+      console.log('Calling Musixmatch API:', apiUrl.toString());
+      
       const response = await fetch(apiUrl.toString());
       
       // Add CORS headers
       const newResponse = new Response(response.body, response);
-      newResponse.headers.set('Access-Control-Allow-Origin', 'https://mletras.vercel.app');
+      newResponse.headers.set('Access-Control-Allow-Origin', corsOrigin);
       newResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       
       return newResponse;

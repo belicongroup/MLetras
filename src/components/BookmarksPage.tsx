@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Heart,
   FolderPlus,
@@ -296,8 +296,14 @@ const BookmarksPage = () => {
     }
   };
 
-  const handleSearchSongs = async (query: string) => {
+  const handleSearchSongs = useCallback(async (query: string) => {
     if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    // Only search if query is at least 2 characters to reduce API calls
+    if (query.trim().length < 2) {
       setSearchResults([]);
       return;
     }
@@ -312,7 +318,7 @@ const BookmarksPage = () => {
     } finally {
       setIsSearching(false);
     }
-  };
+  }, []);
 
   const handleAddSongToFolder = (song: Song) => {
     if (!selectedFolder) return;
