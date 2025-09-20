@@ -57,7 +57,12 @@ const LyricsModal = ({
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<
     "off" | "slow" | "medium" | "fast"
   >(settings.autoScrollSpeed);
-  const [fontSize, setFontSize] = useState(18); // Default font size
+  const [fontSize, setFontSize] = useState(() => {
+    // Larger default font size for tablets
+    if (window.innerWidth >= 1024) return 24; // Large tablets
+    if (window.innerWidth >= 768) return 22;  // Small tablets
+    return 18; // Phones
+  });
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
@@ -184,7 +189,7 @@ const LyricsModal = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="w-[95%] max-w-2xl h-[90vh] p-0 glass border-border/50"
+        className="w-[95%] max-w-4xl h-[90vh] p-0 glass border-border/50 tablet-container"
         aria-describedby="lyrics-description"
       >
         <div id="lyrics-description" className="sr-only">
@@ -355,7 +360,7 @@ const LyricsModal = ({
           <Card className="h-full bg-card/30 border-border/30 relative">
             <div
               ref={scrollContainerRef}
-              className="h-full p-6 overflow-y-auto lyrics-scroll"
+              className="h-full p-6 overflow-y-auto lyrics-scroll tablet-spacing"
             >
               {isLoadingLyrics ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">

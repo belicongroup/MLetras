@@ -48,7 +48,12 @@ const LyricsPage = () => {
   >("slow");
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
-  const [fontSize, setFontSize] = useState(18); // Default font size
+  const [fontSize, setFontSize] = useState(() => {
+    // Larger default font size for tablets
+    if (window.innerWidth >= 1024) return 24; // Large tablets
+    if (window.innerWidth >= 768) return 22;  // Small tablets
+    return 18; // Phones
+  });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
 
@@ -397,14 +402,14 @@ const LyricsPage = () => {
 
       {/* Lyrics Content */}
       <div
-        className={`max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 ${isLandscape ? "pt-4" : ""}`}
+        className={`max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container ${isLandscape ? "pt-4" : ""}`}
       >
         <Card
           className={`${isLandscape ? "min-h-screen" : "min-h-[calc(100vh-140px)]"} bg-card/30 border-border/30 relative`}
         >
           <div
             ref={scrollContainerRef}
-            className={`${isLandscape ? "h-screen" : "h-[calc(100vh-140px)]"} p-8 overflow-y-auto lyrics-scroll`}
+            className={`${isLandscape ? "h-screen" : "h-[calc(100vh-140px)]"} p-8 overflow-y-auto lyrics-scroll tablet-spacing`}
           >
             {isLoadingLyrics ? (
               <div className="flex flex-col items-center justify-center h-full text-center">

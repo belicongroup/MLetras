@@ -410,7 +410,7 @@ const BookmarksPage = () => {
   // Folder view
   if (selectedFolder) {
     return (
-      <div className="p-4 space-y-6">
+      <div className="p-4 space-y-6 tablet-container tablet-spacing">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -629,7 +629,7 @@ const BookmarksPage = () => {
 
   if (showLikedSongs) {
     return (
-      <div className="p-4 space-y-6">
+      <div className="p-4 space-y-6 tablet-container tablet-spacing">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -701,7 +701,7 @@ const BookmarksPage = () => {
       collisionDetection={closestCenter}
       onDragEnd={handleDragEnd}
     >
-      <div className="p-4 space-y-6">
+      <div className="p-4 space-y-6 tablet-container tablet-spacing">
         {/* Header */}
         <div className="text-center py-4">
           <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">

@@ -230,6 +230,74 @@
     @apply text-xl font-semibold;
   }
 
+  /* Tablet optimizations */
+  @media (min-width: 768px) {
+    .text-mobile-hero {
+      @apply text-4xl;
+    }
+    
+    .text-mobile-title {
+      @apply text-2xl;
+    }
+    
+    /* Larger touch targets for tablets */
+    .touch-target {
+      min-height: 48px;
+      min-width: 48px;
+    }
+    
+    /* Better spacing for tablets */
+    .tablet-spacing {
+      @apply p-6;
+    }
+    
+    /* Larger lyrics text for tablets */
+    .lyrics-text {
+      font-size: 1.25rem !important;
+      line-height: 1.8;
+    }
+    
+    /* Better container width for tablets */
+    .tablet-container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  }
+
+  /* Large tablet optimizations (10+ inches) */
+  @media (min-width: 1024px) {
+    .text-mobile-hero {
+      @apply text-5xl;
+    }
+    
+    .text-mobile-title {
+      @apply text-3xl;
+    }
+    
+    /* Even larger lyrics text for large tablets */
+    .lyrics-text {
+      font-size: 1.5rem !important;
+      line-height: 2;
+    }
+    
+    /* Wider container for large tablets */
+    .tablet-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    /* Larger touch targets */
+    .touch-target {
+      min-height: 56px;
+      min-width: 56px;
+    }
+    
+    /* Better spacing */
+    .tablet-spacing {
+      @apply p-8;
+    }
+  }
+
   /* Safe area utilities */
   .safe-top {
     padding-top: max(var(--safe-area-inset-top), 1rem);
