@@ -582,7 +582,7 @@ const BookmarksPage = () => {
             <Tabs defaultValue="liked" className="space-y-4">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="liked">
-                  {t.from} {t.likedSongs}
+                  {t.likedSongs}
                 </TabsTrigger>
                 <TabsTrigger value="notes">{t.notes}</TabsTrigger>
                 <TabsTrigger value="search">{t.searchSongs}</TabsTrigger>
@@ -647,14 +647,9 @@ const BookmarksPage = () => {
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-sm">
-                                {note.title}
-                              </h4>
-                              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                                Note
-                              </span>
-                            </div>
+                            <h4 className="font-medium text-sm mb-1">
+                              {note.title}
+                            </h4>
                             <p className="text-xs text-muted-foreground">
                               {note.artist}
                             </p>
