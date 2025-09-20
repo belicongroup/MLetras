@@ -107,7 +107,7 @@ const LyricsModal = ({
 
     const interval = setInterval(scroll, 1000 / speed);
     return () => clearInterval(interval);
-  }, [autoScrollSpeed, song.lyrics, hasUserInteracted]);
+  }, [autoScrollSpeed, hasUserInteracted]);
 
   // Update bold text state when settings change
   useEffect(() => {

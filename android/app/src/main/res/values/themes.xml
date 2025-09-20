@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Light Theme -->
-    <style name="Theme.MLetras" parent="Theme.Material3.DayNight">
+    <style name="Theme.MLetras" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryVariant">@color/colorPrimaryDark</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/colorAccent</item>
         <item name="colorOnSecondary">@color/white</item>
@@ -13,12 +12,13 @@
         <item name="colorOnSurface">@color/textPrimary</item>
         <item name="colorError">@color/error</item>
         <item name="colorOnError">@color/white</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <!-- Dark Theme -->
-    <style name="Theme.MLetras.Dark" parent="Theme.Material3.DayNight">
+    <style name="Theme.MLetras.Dark" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorAccent</item>
-        <item name="colorPrimaryVariant">@color/colorPrimary</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/colorPrimaryLight</item>
         <item name="colorOnSecondary">@color/black</item>
@@ -28,6 +28,8 @@
         <item name="colorOnSurface">@color/textPrimaryDark</item>
         <item name="colorError">@color/error</item>
         <item name="colorOnError">@color/white</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <!-- Splash Screen Theme -->

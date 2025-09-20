@@ -5,7 +5,7 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   server: {
-    host: "::",
+    host: "0.0.0.0", // Allow external connections (Android emulator)
     port: 8080,
     proxy: {
       "/api/musixmatch": {
@@ -17,6 +17,10 @@ export default defineConfig(() => ({
             console.log("proxy error", err);
           });
           proxy.on("proxyReq", (proxyReq, req, _res) => {
+            // Add API key to the request
+            const url = new URL(proxyReq.path, "https://api.musixmatch.com");
+            url.searchParams.set("apikey", "4d54e92614bedfaaffcab9fdbf56cdf3");
+            proxyReq.path = url.pathname + url.search;
             console.log("Sending Request to the Target:", req.method, req.url);
           });
           proxy.on("proxyRes", (proxyRes, req, _res) => {

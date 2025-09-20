@@ -6,15 +6,20 @@ export default {
     // Define allowed origins
     const allowedOrigins = [
       'https://mletras.vercel.app',
+      'http://localhost',
       'http://localhost:8080',
       'http://localhost:3000',
+      'http://127.0.0.1',
       'http://127.0.0.1:8080',
-      'http://127.0.0.1:3000'
+      'http://127.0.0.1:3000',
+      'http://10.0.2.2:8080',
+      'http://10.0.2.2:3000'
     ];
     
     // Check if origin is allowed
-    const isAllowedOrigin = allowedOrigins.includes(origin);
-    const corsOrigin = isAllowedOrigin ? origin : 'https://mletras.vercel.app';
+    // For Android WebView, origin might be null or different
+    const isAllowedOrigin = origin && allowedOrigins.includes(origin);
+    const corsOrigin = isAllowedOrigin ? origin : '*'; // Allow all origins for Android compatibility
     
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {

@@ -5,6 +5,10 @@
 
 // Use Cloudflare Worker proxy for all environments
 // Production: Using workers.dev URL with CORS configured for mletras.vercel.app
+// For Android emulator development, you can use either:
+// 1. Cloudflare Worker (recommended): "https://mletras-api-proxy.belicongroup.workers.dev/musixmatch"
+// 2. Local development server: "http://10.0.2.2:8080/api/musixmatch"
+
 const MUSIXMATCH_BASE_URL = "https://mletras-api-proxy.belicongroup.workers.dev/musixmatch";
 
 export interface MusixmatchTrack {

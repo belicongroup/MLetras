@@ -113,7 +113,7 @@ const LyricsPage = () => {
 
     const interval = setInterval(scroll, 1000 / speed);
     return () => clearInterval(interval);
-  }, [autoScrollSpeed, isScrollPaused, songData?.lyrics, hasUserInteracted]);
+  }, [autoScrollSpeed, isScrollPaused, hasUserInteracted]);
 
   // Update bold text state when settings change
   useEffect(() => {
