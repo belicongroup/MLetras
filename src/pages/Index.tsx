@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Search, Heart, BookOpen, Settings, Music } from "lucide-react";
+import { Search, Heart, BookOpen, Settings, Music, StickyNote } from "lucide-react";
 import SearchPage from "@/components/SearchPage";
 import BookmarksPage from "@/components/BookmarksPage";
 import SettingsPage from "@/components/SettingsPage";
+import NotesListPage from "@/components/NotesListPage";
 import { Button } from "@/components/ui/button";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
 
-type Tab = "search" | "bookmarks" | "settings";
+type Tab = "search" | "bookmarks" | "notes" | "settings";
 
 const Index = () => {
   const { settings } = useSettings();
@@ -20,6 +21,8 @@ const Index = () => {
         return <SearchPage />;
       case "bookmarks":
         return <BookmarksPage />;
+      case "notes":
+        return <NotesListPage />;
       case "settings":
         return <SettingsPage />;
       default:
@@ -61,6 +64,20 @@ const Index = () => {
           >
             <Heart className="w-5 h-5" />
             <span className="text-xs">{t.bookmarks}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveTab("notes")}
+            className={`flex flex-col items-center gap-1 h-auto p-2 transition-smooth ${
+              activeTab === "notes"
+                ? "text-primary bg-primary/10"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <StickyNote className="w-5 h-5" />
+            <span className="text-xs">{t.notes}</span>
           </Button>
 
           <Button

@@ -8,6 +8,7 @@ import {
   Search,
   GripVertical,
   Trash2,
+  StickyNote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
+import { useAllFavorites } from "@/hooks/useAllFavorites";
+import { useNotes } from "@/hooks/useNotes";
 import { useNavigate } from "react-router-dom";
 import { musixmatchApi, Song } from "@/services/musixmatchApi";
 import { translations } from "@/lib/translations";
@@ -171,6 +174,8 @@ const BookmarksPage = () => {
   const { settings } = useSettings();
   const t = translations[settings.language];
   const { likedSongs, toggleLike } = useLikedSongs();
+  const { allFavorites, toggleNoteLike } = useAllFavorites();
+  const { notes } = useNotes();
   const [showLikedSongs, setShowLikedSongs] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [showAddSongDialog, setShowAddSongDialog] = useState(false);
@@ -296,6 +301,16 @@ const BookmarksPage = () => {
     }
   };
 
+  const handleFavoriteSelect = async (favorite: any) => {
+    if (favorite.type === "song") {
+      await handleSongSelect(favorite);
+    } else if (favorite.type === "note") {
+      navigate("/note-detail", {
+        state: { note: favorite },
+      });
+    }
+  };
+
   const handleSearchSongs = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -365,6 +380,48 @@ const BookmarksPage = () => {
     }
 
     // Keep dialog open for adding more songs
+  };
+
+  const handleAddNoteToFolder = (note: any) => {
+    if (!selectedFolder) return;
+
+    // Convert note to song format for folder storage
+    const noteAsSong = {
+      id: note.id,
+      title: note.title,
+      artist: note.artist,
+      lyrics: note.lyrics,
+      type: "note",
+    };
+
+    // Check if note is already in folder
+    if (selectedFolder.songs.some((s) => s.id === note.id)) return;
+
+    // Add note to folder
+    setFolders((prev) =>
+      prev.map((folder) =>
+        folder.id === selectedFolder.id
+          ? {
+              ...folder,
+              songs: [...folder.songs, noteAsSong],
+              songCount: folder.songs.length + 1,
+            }
+          : folder,
+      ),
+    );
+
+    // Update selectedFolder state to reflect changes immediately
+    setSelectedFolder((prev) =>
+      prev
+        ? {
+            ...prev,
+            songs: [...prev.songs, noteAsSong],
+            songCount: prev.songs.length + 1,
+          }
+        : null,
+    );
+
+    // Keep dialog open for adding more items
   };
 
   const handleRemoveSongFromFolder = (songId: string) => {
@@ -455,11 +512,26 @@ const BookmarksPage = () => {
                   <div className="flex items-center justify-between">
                     <div
                       className="flex-1 cursor-pointer"
-                      onClick={() => handleSongSelect(song)}
+                      onClick={() => {
+                        if (song.type === "note") {
+                          navigate("/note-detail", {
+                            state: { note: song },
+                          });
+                        } else {
+                          handleSongSelect(song);
+                        }
+                      }}
                     >
-                      <h4 className="font-semibold text-foreground mb-1">
-                        {song.title}
-                      </h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-foreground">
+                          {song.title}
+                        </h4>
+                        {song.type === "note" && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                            Note
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
                         {song.artist}
                       </p>
@@ -504,15 +576,15 @@ const BookmarksPage = () => {
                 {t.addSong} {t.to} {selectedFolder.name}
               </DialogTitle>
               <DialogDescription>
-                {t.addSongToFolderDescription ||
-                  "Add songs to this folder from your liked songs or search for new ones."}
+                Add songs and notes to this folder from your liked items or search for new ones.
               </DialogDescription>
             </DialogHeader>
             <Tabs defaultValue="liked" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="liked">
                   {t.from} {t.likedSongs}
                 </TabsTrigger>
+                <TabsTrigger value="notes">{t.notes}</TabsTrigger>
                 <TabsTrigger value="search">{t.searchSongs}</TabsTrigger>
               </TabsList>
 
@@ -557,6 +629,59 @@ const BookmarksPage = () => {
                     <Heart className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                     <p className="text-sm text-muted-foreground">
                       {t.noSongsFound}
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent
+                value="notes"
+                className="space-y-3 max-h-96 overflow-y-auto"
+              >
+                {notes.length > 0 ? (
+                  notes.map((note) => (
+                    <Card
+                      key={note.id}
+                      className="glass border-border/30 hover:border-primary/30 transition-smooth"
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-sm">
+                                {note.title}
+                              </h4>
+                              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                                Note
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {note.artist}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddNoteToFolder(note)}
+                            disabled={selectedFolder.songs.some(
+                              (s) => s.id === note.id,
+                            )}
+                            className="bg-gradient-primary hover:bg-gradient-accent h-8 px-3"
+                          >
+                            {selectedFolder.songs.some((s) => s.id === note.id)
+                              ? "Added"
+                              : "Add"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="inline-flex p-3 bg-muted/30 rounded-2xl mb-2">
+                      <StickyNote className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t.noNotesFound}
                     </p>
                   </div>
                 )}
@@ -643,36 +768,49 @@ const BookmarksPage = () => {
           <div>
             <h2 className="text-mobile-title">{t.likedSongs}</h2>
             <p className="text-sm text-muted-foreground">
-              {likedSongs.length} {t.songs}
+              {allFavorites.length} favorites
             </p>
           </div>
         </div>
 
-        {/* Liked Songs List */}
-        {likedSongs.length > 0 ? (
+        {/* All Favorites List (Songs + Notes) */}
+        {allFavorites.length > 0 ? (
           <div className="space-y-3">
-            {likedSongs.map((song) => (
+            {allFavorites.map((favorite) => (
               <Card
-                key={song.id}
+                key={`${favorite.type}-${favorite.id}`}
                 className="glass border-border/50 hover:border-primary/30 transition-smooth"
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div
                       className="flex-1 cursor-pointer"
-                      onClick={() => handleSongSelect(song)}
+                      onClick={() => handleFavoriteSelect(favorite)}
                     >
-                      <h4 className="font-semibold text-foreground mb-1">
-                        {song.title}
-                      </h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-foreground">
+                          {favorite.title}
+                        </h4>
+                        {favorite.type === "note" && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                            Note
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground">
-                        {song.artist}
+                        {favorite.artist}
                       </p>
                     </div>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toggleLike(song)}
+                      onClick={() => {
+                        if (favorite.type === "song") {
+                          toggleLike(favorite);
+                        } else {
+                          toggleNoteLike(favorite.id);
+                        }
+                      }}
                       className="ml-3 transition-smooth text-primary hover:text-primary/80"
                     >
                       <Heart className="w-5 h-5 fill-current" />
@@ -740,7 +878,7 @@ const BookmarksPage = () => {
               <div>
                 <h3 className="font-semibold">{t.likedSongs}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {likedSongs.length} {t.songs}
+                  {allFavorites.length} favorites
                 </p>
               </div>
             </div>

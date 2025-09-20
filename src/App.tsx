@@ -8,6 +8,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LyricsPage from "./pages/LyricsPage";
+import NoteDetailPage from "./pages/NoteDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/lyrics" element={<LyricsPage />} />
+              <Route path="/note-detail" element={<NoteDetailPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

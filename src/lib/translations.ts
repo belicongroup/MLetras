@@ -58,6 +58,25 @@ export interface Translations {
   songs: string;
   song: string;
 
+  // Notes Page
+  notes: string;
+  myNotes: string;
+  createNote: string;
+  editNote: string;
+  artistName: string;
+  songName: string;
+  noteLyrics: string;
+  noteLyricsPlaceholder: string;
+  artistNameRequired: string;
+  songNameRequired: string;
+  noteCreated: string;
+  noteUpdated: string;
+  noteDeleted: string;
+  noNotesFound: string;
+  noNotesFoundSubtitle: string;
+  confirmDeleteNote: string;
+  deleteNoteDescription: string;
+
   // Common
   off: string;
   slow: string;
@@ -137,6 +156,25 @@ export const translations: Record<"en" | "es", Translations> = {
     songs: "songs",
     song: "song",
 
+    // Notes Page
+    notes: "Notes",
+    myNotes: "My Notes",
+    createNote: "Create Note",
+    editNote: "Edit Note",
+    artistName: "Artist Name",
+    songName: "Song Name",
+    noteLyrics: "Note Lyrics",
+    noteLyricsPlaceholder: "Write your lyrics or notes here...",
+    artistNameRequired: "Artist name is required",
+    songNameRequired: "Song name is required",
+    noteCreated: "Note created successfully",
+    noteUpdated: "Note updated successfully",
+    noteDeleted: "Note deleted successfully",
+    noNotesFound: "No notes found",
+    noNotesFoundSubtitle: "Create your first note to get started",
+    confirmDeleteNote: "Delete Note",
+    deleteNoteDescription: "Are you sure you want to delete this note? This action cannot be undone.",
+
     // Common
     off: "Off",
     slow: "Slow",
@@ -215,6 +253,25 @@ export const translations: Record<"en" | "es", Translations> = {
     noSongsFoundSubtitle: "Intenta buscar una canción o artista diferente",
     songs: "canciones",
     song: "canción",
+
+    // Notes Page
+    notes: "Notas",
+    myNotes: "Mis Notas",
+    createNote: "Crear Nota",
+    editNote: "Editar Nota",
+    artistName: "Nombre del Artista",
+    songName: "Nombre de la Canción",
+    noteLyrics: "Letras de la Nota",
+    noteLyricsPlaceholder: "Escribe tus letras o notas aquí...",
+    artistNameRequired: "El nombre del artista es requerido",
+    songNameRequired: "El nombre de la canción es requerido",
+    noteCreated: "Nota creada exitosamente",
+    noteUpdated: "Nota actualizada exitosamente",
+    noteDeleted: "Nota eliminada exitosamente",
+    noNotesFound: "No se encontraron notas",
+    noNotesFoundSubtitle: "Crea tu primera nota para comenzar",
+    confirmDeleteNote: "Eliminar Nota",
+    deleteNoteDescription: "¿Estás seguro de que quieres eliminar esta nota? Esta acción no se puede deshacer.",
 
     // Common
     off: "Apagado",
