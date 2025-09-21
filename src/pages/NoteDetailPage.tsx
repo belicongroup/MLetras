@@ -170,7 +170,7 @@ const NoteDetailPage = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Note not found</h2>
-          <Button onClick={() => navigate("/")}>Go back to Notes</Button>
+          <Button onClick={() => navigate("/", { state: { activeTab: "notes" } })}>Go back to Notes</Button>
         </div>
       </div>
     );
@@ -191,7 +191,7 @@ const NoteDetailPage = () => {
                   setTimeout(() => {
                     e.currentTarget?.blur();
                   }, 10);
-                  navigate("/");
+                  navigate("/", { state: { activeTab: "notes" } });
                 }}
                 onBlur={(e) => e.target?.blur()}
                 onFocus={(e) => e.target?.blur()}

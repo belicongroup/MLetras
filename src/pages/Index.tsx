@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Search, Heart, BookOpen, Settings, Music, StickyNote } from "lucide-react";
 import SearchPage from "@/components/SearchPage";
 import BookmarksPage from "@/components/BookmarksPage";
@@ -13,16 +14,46 @@ type Tab = "search" | "bookmarks" | "notes" | "settings";
 const Index = () => {
   const { settings } = useSettings();
   const t = translations[settings.language];
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("search");
+  const [searchRefreshKey, setSearchRefreshKey] = useState(0);
+  const [notesRefreshKey, setNotesRefreshKey] = useState(0);
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+
+  const handleSearchTabClick = () => {
+    if (activeTab === "search") {
+      // If already on search tab, refresh it
+      setSearchRefreshKey(prev => prev + 1);
+    } else {
+      // If not on search tab, switch to it
+      setActiveTab("search");
+    }
+  };
+
+  const handleNotesTabClick = () => {
+    if (activeTab === "notes") {
+      // If already on notes tab, refresh it
+      setNotesRefreshKey(prev => prev + 1);
+    } else {
+      // If not on notes tab, switch to it
+      setActiveTab("notes");
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case "search":
-        return <SearchPage />;
+        return <SearchPage key={searchRefreshKey} />;
       case "bookmarks":
         return <BookmarksPage />;
       case "notes":
-        return <NotesListPage />;
+        return <NotesListPage key={notesRefreshKey} />;
       case "settings":
         return <SettingsPage />;
       default:
@@ -41,7 +72,7 @@ const Index = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setActiveTab("search")}
+            onClick={handleSearchTabClick}
             className={`flex flex-col items-center gap-1 h-auto p-2 transition-smooth ${
               activeTab === "search"
                 ? "text-primary bg-primary/10"
@@ -69,7 +100,7 @@ const Index = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setActiveTab("notes")}
+            onClick={handleNotesTabClick}
             className={`flex flex-col items-center gap-1 h-auto p-2 transition-smooth ${
               activeTab === "notes"
                 ? "text-primary bg-primary/10"

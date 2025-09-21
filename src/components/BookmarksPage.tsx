@@ -9,6 +9,8 @@ import {
   GripVertical,
   Trash2,
   StickyNote,
+  Loader2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -182,6 +184,7 @@ const BookmarksPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Default folders
   const defaultFolders: Folder[] = [
@@ -324,6 +327,7 @@ const BookmarksPage = () => {
     }
 
     setIsSearching(true);
+    setHasSearched(true);
     try {
       const results = await musixmatchApi.searchSongs(query);
       setSearchResults(results);
@@ -335,14 +339,14 @@ const BookmarksPage = () => {
     }
   }, []);
 
-  // Debounced search - increased delay to reduce API calls
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSearchSongs(searchQuery);
-    }, 500); // 500ms delay to reduce API calls
+  // Removed debounced search to prevent auto API calls
+  // Search now only triggers on icon click
 
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, handleSearchSongs]);
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSearchResults([]);
+    setHasSearched(false);
+  };
 
   const handleAddSongToFolder = (song: Song) => {
     if (!selectedFolder) return;
@@ -684,15 +688,38 @@ const BookmarksPage = () => {
 
               <TabsContent value="search" className="space-y-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder={t.searchSongs}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                     }}
-                    className="pl-10 bg-card/50 border-border/50"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearchSongs(searchQuery);
+                      }
+                    }}
+                    className="pr-10 bg-card/50 border-border/50"
                   />
+                  <button
+                    onClick={() => {
+                      if (searchResults.length > 0) {
+                        clearSearch();
+                      } else {
+                        handleSearchSongs(searchQuery);
+                      }
+                    }}
+                    disabled={isSearching}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSearching ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    ) : searchResults.length > 0 ? (
+                      <X className="w-4 h-4" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
 
                 <div className="max-h-80 overflow-y-auto space-y-2">
@@ -728,16 +755,16 @@ const BookmarksPage = () => {
                     </Card>
                   ))}
 
-                  {searchQuery &&
-                    !isSearching &&
-                    searchResults.length === 0 && (
-                      <div className="text-center py-6">
-                        <Search className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          {t.noSongsFound}
-                        </p>
-                      </div>
-                    )}
+                  {/* No Results Found */}
+                  {hasSearched && !isSearching && searchResults.length === 0 && (
+                    <div className="text-center py-6">
+                      <Search className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {t.noSongsFound}
+                      </p>
+                    </div>
+                  )}
+
                 </div>
               </TabsContent>
             </Tabs>

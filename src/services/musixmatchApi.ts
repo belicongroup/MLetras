@@ -163,7 +163,7 @@ class MusixmatchApiService {
 
   async searchSongs(
     query: string,
-    pageSize: number = 5, // Reduced from 10 to 5
+    pageSize: number = 3, // Reduced from 5 to 3
     page: number = 1,
   ): Promise<Song[]> {
     if (!query.trim()) return [];
@@ -242,7 +242,7 @@ class MusixmatchApiService {
   // Method to search by artist
   async searchByArtist(
     artistName: string,
-    pageSize: number = 5, // Reduced from 10 to 5
+    pageSize: number = 3, // Reduced from 5 to 3
   ): Promise<Song[]> {
     if (!artistName.trim()) return [];
 

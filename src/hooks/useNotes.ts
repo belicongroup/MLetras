@@ -98,6 +98,24 @@ export const useNotes = () => {
     return likedNotes.includes(noteId);
   };
 
+  const refreshNotes = () => {
+    const loadNotes = async () => {
+      try {
+        const saved = localStorage.getItem(NOTES_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setNotes(parsed);
+        } else {
+          setNotes([]);
+        }
+      } catch (error) {
+        console.error("Error refreshing notes:", error);
+        setNotes([]);
+      }
+    };
+    loadNotes();
+  };
+
   return {
     notes,
     createNote,
@@ -106,6 +124,7 @@ export const useNotes = () => {
     getNoteById,
     toggleNoteLike,
     isNoteLiked,
+    refreshNotes,
     isLoading,
   };
 };

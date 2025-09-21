@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Loader2, Music2, Heart, Clock } from "lucide-react";
+import { Search, Loader2, Music2, Heart, Clock, X } from "lucide-react";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Input } from "@/components/ui/input";
@@ -121,6 +121,7 @@ const SearchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const [searchHistoryItems, setSearchHistoryItems] = useState<
     (SearchHistoryItem & { hasLyrics: boolean })[]
   >([]);
@@ -143,6 +144,7 @@ const SearchPage = () => {
 
     setIsSearching(true);
     setShowHistory(false);
+    setHasSearched(true);
 
     try {
       const results = await musixmatchApi.searchSongs(query);
@@ -154,6 +156,13 @@ const SearchPage = () => {
       setIsSearching(false);
     }
   }, []);
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSearchResults([]);
+    setHasSearched(false);
+    setShowHistory(true);
+  };
 
   const handleSongSelect = async (song: Song) => {
     // Add to search history
@@ -294,14 +303,8 @@ const SearchPage = () => {
     loadHistory();
   }, []);
 
-  // Debounced search - increased delay to reduce API calls
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSearch(searchQuery);
-    }, 500); // Increased from 300ms to 500ms
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
+  // Removed debounced search to prevent auto API calls
+  // Search now only triggers on icon click
 
   return (
     <div className="safe-area space-y-6 tablet-container">
@@ -332,18 +335,36 @@ const SearchPage = () => {
 
       {/* Search Bar */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
         <Input
           placeholder={t.searchPlaceholder}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 h-12 bg-card/50 border-border/50 focus:border-primary/50 transition-smooth"
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              handleSearch(searchQuery);
+            }
+          }}
+          className="pr-12 h-12 bg-card/50 border-border/50 focus:border-primary/50 transition-smooth"
         />
-        {isSearching && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+        <button
+          onClick={() => {
+            if (searchResults.length > 0) {
+              clearSearch();
+            } else {
+              handleSearch(searchQuery);
+            }
+          }}
+          disabled={isSearching}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSearching ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          </div>
-        )}
+          ) : searchResults.length > 0 ? (
+            <X className="w-5 h-5" />
+          ) : (
+            <Search className="w-5 h-5" />
+          )}
+        </button>
       </div>
 
       {/* Search History */}
@@ -418,8 +439,8 @@ const SearchPage = () => {
         </div>
       )}
 
-      {/* Empty States */}
-      {searchQuery && !isSearching && searchResults.length === 0 && (
+      {/* No Results Found */}
+      {hasSearched && !isSearching && searchResults.length === 0 && (
         <div className="text-center py-8">
           <Music2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">{t.noLyricsFound}</h3>

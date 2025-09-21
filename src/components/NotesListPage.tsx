@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StickyNote, Plus, Trash2, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,10 +29,15 @@ const NotesListPage = () => {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const t = translations[settings.language];
-  const { notes, deleteNote } = useNotes();
+  const { notes, deleteNote, refreshNotes } = useNotes();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<UserNote | null>(null);
   const [editingNote, setEditingNote] = useState<UserNote | null>(null);
+
+  // Refresh notes when component mounts to ensure we have the latest data
+  useEffect(() => {
+    refreshNotes();
+  }, []);
 
   const handleNoteClick = (note: UserNote) => {
     navigate("/note-detail", {
@@ -55,6 +60,7 @@ const NotesListPage = () => {
     if (noteToDelete) {
       await deleteNote(noteToDelete.id);
       setNoteToDelete(null);
+      refreshNotes();
     }
   };
 
@@ -179,7 +185,10 @@ const NotesListPage = () => {
           </DialogHeader>
           <NoteEditorModal
             note={editingNote}
-            onSave={() => setShowCreateDialog(false)}
+            onSave={() => {
+              setShowCreateDialog(false);
+              refreshNotes();
+            }}
             onCancel={() => setShowCreateDialog(false)}
           />
         </DialogContent>
