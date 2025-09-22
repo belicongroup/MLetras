@@ -1,83 +1,85 @@
-# MLetras
+# MLetras - Lyrics & Music App
 
-A beautiful, mobile-first lyrics viewer and organizer with advanced features including pinch-to-resize gestures.
+A modern lyrics and music application with email-based authentication.
 
 ## Features
 
-- **Pinch Gesture Support**: Pinch in/out on lyrics to resize font size dynamically
-- **Auto-scroll**: Automatically scroll through lyrics at different speeds
-- **Bold Text Toggle**: Switch between normal and bold text for better readability
-- **Mobile Optimized**: Touch-friendly interface with responsive design
-- **Dark/Light Theme**: Beautiful theme switching with musical color palette
-- **Search & Organize**: Search for songs and organize your favorites
+- 🔐 **Email Authentication** - OTP-based login/signup via Resend
+- 🎵 **Lyrics Search** - Search for songs and view lyrics
+- 📱 **Responsive Design** - Works on desktop and mobile
+- 🎨 **Modern UI** - Built with React and Tailwind CSS
 
-## Getting Started
+## Quick Start
 
-### Prerequisites
+### Option 1: Test with Real Emails
+```bash
+.\test-email.bat
+```
+This will:
+- Start the backend with email support
+- Start the frontend
+- Send real emails via Resend to test OTP authentication
 
-- Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Option 2: Test with Console OTPs
+```bash
+.\test-otp.bat
+```
+This will:
+- Start the backend with console OTP display
+- Start the frontend
+- Display OTP codes in the backend console (no emails sent)
 
-### Installation
+## Manual Setup
 
-```sh
-# Step 1: Clone the repository
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory
-cd mletras
-
-# Step 3: Install the necessary dependencies
+### Backend
+```bash
 npm install
+npm start
+```
+Backend runs on: `http://localhost:8787`
 
-# Step 4: Start the development server
+### Frontend
+```bash
+cd mletras-auth-frontend
+npm install
 npm run dev
 ```
+Frontend runs on: `http://localhost:3000`
 
-### Building for Production
+## Email Configuration
 
-```sh
-# Build and start production server (includes Musixmatch proxy)
-npm run build:prod
+The backend uses Resend for email delivery:
+- **Sender**: `noreply@mail.mletras.com`
+- **API Key**: Configured in `backend.js`
+- **Domain**: `mail.mletras.com` (verified in Resend)
 
-# Or build and start separately
-npm run build
-npm start
+## Project Structure
 
-# Build for mobile (Android)
-npx cap add android
-npx cap sync android
-npx cap run android
+```
+├── backend.js              # Main backend server
+├── test-email.bat          # Start with real email testing
+├── test-otp.bat            # Start with console OTP testing
+├── mletras-auth-frontend/  # React frontend
+├── src/                    # Main app source code
+└── package.json           # Backend dependencies
 ```
 
-## Technologies Used
+## Authentication Flow
 
-This project is built with:
+1. User enters email address
+2. Backend generates OTP and sends email via Resend
+3. User receives email with OTP code
+4. User enters OTP in frontend
+5. Backend verifies OTP and creates session
+6. User is authenticated and redirected to dashboard
 
-- **Vite** - Fast build tool and dev server
-- **TypeScript** - Type-safe JavaScript
-- **React** - UI library
-- **shadcn/ui** - Beautiful UI components
-- **Tailwind CSS** - Utility-first CSS framework
-- **Capacitor** - Cross-platform mobile development
-- **Musixmatch API** - Lyrics data provider
+## Development
 
-## Mobile Development
+- **Backend**: Express.js with CORS support
+- **Frontend**: React with TypeScript and Tailwind CSS
+- **Email**: Resend API integration
+- **Authentication**: Session-based with JWT-style tokens
 
-This project uses Capacitor to build native mobile apps from the web codebase. The app can be deployed to both iOS and Android platforms.
+## License
 
-## API Integration
-
-The app integrates with the Musixmatch API for lyrics data. Due to CORS restrictions:
-
-- **Development**: Uses Vite's proxy server to bypass CORS
-- **Production**: Includes an Express.js proxy server (`server.js`) to handle API requests
-
-The proxy server automatically forwards requests from `/api/musixmatch/*` to the Musixmatch API with proper CORS headers.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Private project - All rights reserved.
