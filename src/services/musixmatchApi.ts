@@ -1,15 +1,12 @@
-// Note: No caching of Musixmatch API data per terms of service
-
 // Note: API key is now handled server-side by Cloudflare Worker proxy
 // No client-side API key needed for security
 
-// Use Cloudflare Worker proxy for all environments
-// Production: Using workers.dev URL with CORS configured for mletras.vercel.app
-// For Android emulator development, you can use either:
-// 1. Cloudflare Worker (recommended): "https://mletras-api-proxy.belicongroup.workers.dev/musixmatch"
-// 2. Local development server: "http://10.0.2.2:8080/api/musixmatch"
+// Use Smart Proxy with KV caching for all environments
+// The smart proxy provides intelligent caching to reduce API calls
+// Production: Using smart proxy with KV caching
+// For Android emulator development, the smart proxy supports all development domains
 
-const MUSIXMATCH_BASE_URL = "https://mletras-api-proxy.belicongroup.workers.dev/musixmatch";
+const MUSIXMATCH_BASE_URL = "https://mletras-smart-proxy.belicongroup.workers.dev";
 
 export interface MusixmatchTrack {
   track_id: number;
@@ -130,10 +127,10 @@ class MusixmatchApiService {
     }
     
     this.lastRequestTime = Date.now();
-    // Use Cloudflare Worker proxy - API key handled server-side
-    const url = new URL(`${MUSIXMATCH_BASE_URL}${endpoint}`);
+    // Use Smart Proxy with KV caching - API key handled server-side
+    const url = new URL(`${MUSIXMATCH_BASE_URL}/${endpoint}`);
 
-    // Add parameters (API key is added by Cloudflare Worker)
+    // Add parameters (API key is added by Smart Proxy)
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.append(key, value);
     });
@@ -206,7 +203,7 @@ class MusixmatchApiService {
   async getSongLyrics(trackId: string, song?: Song): Promise<string> {
     console.log("Fetching lyrics for track ID:", trackId);
 
-    // Always fetch from API - no caching allowed per Musixmatch terms
+    // Smart Proxy handles caching server-side with KV storage
     try {
       const data: MusixmatchLyricsResponse = await this.makeRequest(
         "/track.lyrics.get",
@@ -230,7 +227,7 @@ class MusixmatchApiService {
         }
       }
 
-      // Note: No caching of Musixmatch API data per terms of service
+      // Smart Proxy handles caching server-side with KV storage
       return lyricsText;
     } catch (error) {
       console.error("Musixmatch lyrics fetch error:", error);

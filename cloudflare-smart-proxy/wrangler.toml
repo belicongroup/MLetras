@@ -1,0 +1,26 @@
+name = "mletras-smart-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# KV Namespace for caching
+[[kv_namespaces]]
+binding = "MUSIXMATCH_CACHE"
+id = "be9ee410602c45b296f71febd64bb7cb"
+preview_id = "05d5e8d4a6224844992e35527faa1a63"
+
+# Environment variables (secrets)
+# MUSIXMATCH_API_KEY should be set via: wrangler secret put MUSIXMATCH_API_KEY
+
+# Route configuration (optional - can be set via dashboard)
+# routes = [
+#   { pattern = "mletras-smart-proxy.belicongroup.workers.dev/*", zone_name = "belicongroup.workers.dev" }
+# ]
+
+# Development settings
+[env.development]
+name = "mletras-smart-proxy-dev"
+
+# Production settings
+[env.production]
+name = "mletras-smart-proxy"
