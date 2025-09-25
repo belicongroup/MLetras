@@ -414,6 +414,116 @@
     box-shadow: none !important;
   }
 
+  /* DEV-ONLY: Remove purple tap highlight effects - Comprehensive fix */
+  
+  /* Remove ALL focus and active state styling that causes purple overlays */
+  *:focus,
+  *:focus-visible,
+  *:active,
+  *:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-offset-shadow: none !important;
+    --tw-ring-shadow: none !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-offset-color: transparent !important;
+    --tw-ring-width: 0px !important;
+    --tw-ring-opacity: 0 !important;
+    --tw-ring-offset-width: 0px !important;
+  }
+
+  /* Target all possible button and interactive element states */
+  button,
+  [role="button"],
+  [tabindex],
+  .cursor-pointer,
+  .interactive,
+  [onclick],
+  [data-clickable] {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  button:focus,
+  button:focus-visible,
+  button:active,
+  button:focus-within,
+  [role="button"]:focus,
+  [role="button"]:focus-visible,
+  [role="button"]:active,
+  [role="button"]:focus-within,
+  [tabindex]:focus,
+  [tabindex]:focus-visible,
+  [tabindex]:active,
+  [tabindex]:focus-within,
+  .cursor-pointer:focus,
+  .cursor-pointer:focus-visible,
+  .cursor-pointer:active,
+  .cursor-pointer:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-offset-shadow: none !important;
+    --tw-ring-shadow: none !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-offset-color: transparent !important;
+    --tw-ring-width: 0px !important;
+    --tw-ring-opacity: 0 !important;
+    --tw-ring-offset-width: 0px !important;
+  }
+
+  /* Remove purple overlay from all divs and spans that might be clickable */
+  div:focus,
+  div:focus-visible,
+  div:active,
+  div:focus-within,
+  span:focus,
+  span:focus-visible,
+  span:active,
+  span:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-offset-shadow: none !important;
+    --tw-ring-shadow: none !important;
+    --tw-ring-color: transparent !important;
+    --tw-ring-offset-color: transparent !important;
+    --tw-ring-width: 0px !important;
+    --tw-ring-opacity: 0 !important;
+    --tw-ring-offset-width: 0px !important;
+  }
+
+  /* Remove purple highlight from icons and SVGs */
+  svg:focus,
+  svg:focus-visible,
+  svg:active,
+  svg:focus-within,
+  [data-icon]:focus,
+  [data-icon]:focus-visible,
+  [data-icon]:active,
+  [data-icon]:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Disable webkit tap highlight completely */
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+  }
+
+  /* Re-enable text selection for input fields */
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+  }
+
 /* Custom Utility Classes */
 .glass {
   background: rgba(255, 255, 255, 0.1);
@@ -542,5 +652,14 @@
 
   .safe-right {
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* Restore hover styles */
+  .hover\:bg-accent:hover {
+    background-color: hsl(var(--accent));
+  }
+
+  .hover\:text-accent-foreground:hover {
+    color: hsl(var(--accent-foreground));
   }
 }

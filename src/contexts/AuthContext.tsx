@@ -33,10 +33,34 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    isAuthenticated: false,
+  // Development mode - bypass authentication for local development
+  const isDevMode = process.env.NODE_ENV === 'development' && 
+    typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    if (isDevMode) {
+      // Mock user for development
+      return {
+        user: {
+          id: 'dev-user-123',
+          email: 'dev@mletras.com',
+          username: 'Developer',
+          subscription_type: 'pro',
+          email_verified: true,
+          created_at: new Date().toISOString(),
+          last_login_at: new Date().toISOString(),
+        },
+        isLoading: false,
+        isAuthenticated: true,
+      };
+    }
+    
+    return {
+      user: null,
+      isLoading: true,
+      isAuthenticated: false,
+    };
   });
 
   // API base URL for the authentication system
@@ -213,10 +237,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return response;
   };
 
-  // Load user on mount
+  // Load user on mount (skip in development mode)
   useEffect(() => {
-    refreshUser();
-  }, []);
+    if (isDevMode) {
+      console.log('🚀 Development Mode: Authentication bypassed - logged in as "Developer"');
+    } else {
+      refreshUser();
+    }
+  }, [isDevMode]);
 
   const value: AuthContextType = {
     ...authState,
