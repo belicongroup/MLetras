@@ -1,4 +1,11 @@
 {
+  "name": "MLetras",
+  "short_name": "MLetras",
+  "description": "Organize and manage your favorite song lyrics",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
   "icons": [
     {
       "src": "../icons/icon-48.webp",

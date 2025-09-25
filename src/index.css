@@ -4,6 +4,22 @@
 
 /* MLETRAS Design System - Musical Theme with Beautiful Gradients */
 
+/* Status Bar Handling for Web App */
+@supports (padding: max(0px)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Ensure status bar area doesn't overlap content */
+#root {
+  min-height: 100vh;
+  position: relative;
+}
+
 @layer base {
   :root {
     /* MLETRAS Light Theme - Musical Colors */
