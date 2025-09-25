@@ -16,6 +16,7 @@
         <item name="android:background">@color/backgroundColor</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:fitsSystemWindows">true</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.MLetras.Splash">

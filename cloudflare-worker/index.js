@@ -6,6 +6,8 @@ export default {
     // Define allowed origins
     const allowedOrigins = [
       'https://mletras.vercel.app',
+      'https://mletras.com',
+      'https://localhost',
       'http://localhost',
       'http://localhost:8080',
       'http://localhost:3000',

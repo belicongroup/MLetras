@@ -59,6 +59,11 @@ const SettingsPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {user?.username && (
+              <div className="text-center py-2">
+                <p className="text-lg font-medium text-primary">Welcome {user.username}</p>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium capitalize">{user?.subscription_type} Plan</p>
