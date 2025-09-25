@@ -36,3 +36,4 @@ echo - View usage: npx wrangler d1 execute mletras-auth-db --local --command="SE
 echo.
 call npx wrangler dev --local
 
+

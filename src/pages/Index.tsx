@@ -8,11 +8,13 @@ import NotesListPage from "@/components/NotesListPage";
 import { Button } from "@/components/ui/button";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Tab = "search" | "bookmarks" | "notes" | "settings";
 
 const Index = () => {
   const { settings } = useSettings();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const t = translations[settings.language];
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("search");
@@ -63,6 +65,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+
       {/* Main Content */}
       <main className="flex-1 pb-20">{renderContent()}</main>
 

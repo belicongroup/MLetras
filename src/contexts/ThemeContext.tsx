@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useAuth } from "./AuthContext";
 
 type Theme = "light" | "dark";
 
@@ -23,10 +24,18 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
   const [theme, setTheme] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem("mletras-theme");
-    return (savedTheme as Theme) || "dark";
+    return (savedTheme as Theme) || "light"; // Default to light mode
   });
+
+  // Force light mode for free users
+  useEffect(() => {
+    if (isAuthenticated && user?.subscription_type === 'free' && theme === 'dark') {
+      setTheme('light');
+    }
+  }, [isAuthenticated, user?.subscription_type, theme]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -38,6 +47,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [theme]);
 
   const toggleTheme = () => {
+    // Prevent free users from switching to dark mode
+    if (isAuthenticated && user?.subscription_type === 'free') {
+      return; // Do nothing for free users
+    }
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };
 

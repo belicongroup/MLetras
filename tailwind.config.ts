@@ -65,6 +65,9 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      borderColor: {
+        border: "hsl(var(--border))",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -91,6 +94,13 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      backgroundImage: {
+        "gradient-primary": "linear-gradient(135deg, hsl(259 94% 51%), hsl(217 91% 60%))",
+        "gradient-accent": "linear-gradient(135deg, hsl(217 91% 60%), hsl(259 94% 51%))",
+      },
+      backdropBlur: {
+        'glass': '10px',
       },
     },
   },

@@ -6,13 +6,17 @@ import {
   Shield,
   Palette,
   Play,
+  Crown,
+  Lock,
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -26,6 +30,7 @@ import { translations } from "@/lib/translations";
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
   const { settings, setSettings } = useSettings();
+  const { user, isAuthenticated } = useAuth();
   // Note: Cache management removed per Musixmatch terms of service
   const t = translations[settings.language];
 
@@ -44,6 +49,47 @@ const SettingsPage = () => {
         </h2>
       </div>
 
+      {/* Subscription Status */}
+      {isAuthenticated && (
+        <Card className="glass border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Crown className="w-5 h-5 text-primary" />
+              Subscription Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium capitalize">{user?.subscription_type} Plan</p>
+                <p className="text-sm text-muted-foreground">
+                  {user?.subscription_type === 'free' 
+                    ? "Limited features, upgrade to Pro for full access"
+                    : "Full access to all features"
+                  }
+                </p>
+              </div>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                user?.subscription_type === 'free' 
+                  ? 'bg-amber-100 text-amber-800' 
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {user?.subscription_type === 'free' ? 'Free' : 'Pro'}
+              </div>
+            </div>
+            
+            {user?.subscription_type === 'free' && (
+              <Alert>
+                <Crown className="h-4 w-4" />
+                <AlertDescription>
+                  Upgrade to Pro for unlimited folders, notes, dark mode, and auto-scroll features.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* App Preferences */}
       <Card className="glass border-border/50">
         <CardHeader className="pb-3">
@@ -55,9 +101,20 @@ const SettingsPage = () => {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">{t.autoScrollSpeed}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{t.autoScrollSpeed}</p>
+                {isAuthenticated && user?.subscription_type === 'free' && (
+                  <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                    <Crown className="w-3 h-3" />
+                    Pro
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
-                {t.autoScrollSpeedDescription}
+                {isAuthenticated && user?.subscription_type === 'free' 
+                  ? "Auto-scroll is available with Pro subscription"
+                  : t.autoScrollSpeedDescription
+                }
               </p>
             </div>
             <Select
@@ -68,6 +125,7 @@ const SettingsPage = () => {
                   autoScrollSpeed: value as "off" | "slow" | "medium" | "fast",
                 }));
               }}
+              disabled={isAuthenticated && user?.subscription_type === 'free'}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -108,12 +166,27 @@ const SettingsPage = () => {
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">{t.darkMode}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{t.darkMode}</p>
+                {isAuthenticated && user?.subscription_type === 'free' && (
+                  <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                    <Crown className="w-3 h-3" />
+                    Pro
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
-                {t.darkModeDescription}
+                {isAuthenticated && user?.subscription_type === 'free' 
+                  ? "Dark mode is available with Pro subscription"
+                  : t.darkModeDescription
+                }
               </p>
             </div>
-            <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
+            <Switch 
+              checked={theme === "dark"} 
+              onCheckedChange={toggleTheme}
+              disabled={isAuthenticated && user?.subscription_type === 'free'}
+            />
           </div>
 
           <Separator />

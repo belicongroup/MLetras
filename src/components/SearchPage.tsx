@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Loader2, Music2, Heart, Clock, X } from "lucide-react";
 import { translations } from "@/lib/translations";
@@ -9,9 +9,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { musixmatchApi, Song } from "@/services/musixmatchApi";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { searchHistory, SearchHistoryItem } from "@/services/searchHistory";
+import { usePerformanceOptimizations } from "@/hooks/usePerformanceOptimizations";
 
-// Swipeable History Item Component
-const SwipeableHistoryItem = ({
+// Swipeable History Item Component (memoized for performance)
+const SwipeableHistoryItem = memo(({
   historyItem,
   onSelect,
   onLike,
@@ -112,12 +113,13 @@ const SwipeableHistoryItem = ({
       )}
     </div>
   );
-};
+});
 
 const SearchPage = () => {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const t = translations[settings.language];
+  const { debounce } = usePerformanceOptimizations();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
@@ -125,7 +127,7 @@ const SearchPage = () => {
   const [searchHistoryItems, setSearchHistoryItems] = useState<
     (SearchHistoryItem & { hasLyrics: boolean })[]
   >([]);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
   const { isLiked, toggleLike } = useLikedSongs();
 
   const handleSearch = useCallback(async (query: string) => {
@@ -156,6 +158,12 @@ const SearchPage = () => {
       setIsSearching(false);
     }
   }, []);
+
+  // Debounced search to prevent excessive API calls
+  const debouncedSearch = useMemo(
+    () => debounce(handleSearch, 500),
+    [debounce, handleSearch]
+  );
 
   const clearSearch = () => {
     setSearchQuery("");
@@ -303,8 +311,18 @@ const SearchPage = () => {
     loadHistory();
   }, []);
 
-  // Removed debounced search to prevent auto API calls
-  // Search now only triggers on icon click
+  // Trigger debounced search when query changes
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      debouncedSearch(searchQuery);
+    } else {
+      setSearchResults([]);
+      setShowHistory(true);
+      setHasSearched(false);
+    }
+  }, [searchQuery, debouncedSearch]);
+
+  // Debounced search automatically triggers as user types
 
   return (
     <div className="safe-area space-y-6 tablet-container">
@@ -348,10 +366,8 @@ const SearchPage = () => {
         />
         <button
           onClick={() => {
-            if (searchResults.length > 0) {
+            if (searchResults.length > 0 || hasSearched) {
               clearSearch();
-            } else {
-              handleSearch(searchQuery);
             }
           }}
           disabled={isSearching}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { StickyNote, Plus, Trash2, Edit3 } from "lucide-react";
+import { StickyNote, Plus, Trash2, Edit3, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -19,7 +19,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNotes, UserNote } from "@/hooks/useNotes";
+import { useAuth } from "@/contexts/AuthContext";
+import { userDataApi, Note } from "@/services/userDataApi";
 import { useNavigate } from "react-router-dom";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -28,16 +31,41 @@ import { formatDistanceToNow } from "date-fns";
 const NotesListPage = () => {
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const { user, isAuthenticated } = useAuth();
   const t = translations[settings.language];
   const { notes, deleteNote, refreshNotes } = useNotes();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<UserNote | null>(null);
   const [editingNote, setEditingNote] = useState<UserNote | null>(null);
 
+  // User data state
+  const [userNotes, setUserNotes] = useState<Note[]>([]);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+
   // Refresh notes when component mounts to ensure we have the latest data
   useEffect(() => {
     refreshNotes();
   }, []);
+
+  // Load user data when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUserNotes();
+    }
+  }, [isAuthenticated]);
+
+  // Load user notes
+  const loadUserNotes = async () => {
+    setIsLoadingUserData(true);
+    try {
+      const response = await userDataApi.getNotes();
+      setUserNotes(response.notes);
+    } catch (error) {
+      console.error('Failed to load user notes:', error);
+    } finally {
+      setIsLoadingUserData(false);
+    }
+  };
 
   const handleNoteClick = (note: UserNote) => {
     navigate("/note-detail", {
@@ -69,6 +97,28 @@ const NotesListPage = () => {
     setShowCreateDialog(true);
   };
 
+  // Show authentication prompt if not logged in
+  if (!isAuthenticated) {
+    return (
+      <div className="p-4 space-y-6 tablet-container tablet-spacing">
+        <div className="text-center py-8">
+          <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
+            <User className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-mobile-hero mb-2">Sign In Required</h2>
+          <p className="text-muted-foreground mb-6">
+            Sign in to save your notes and sync them across all devices.
+          </p>
+          <Alert>
+            <AlertDescription>
+              Your notes will be safely stored in the cloud and accessible from anywhere.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 space-y-6 tablet-container tablet-spacing">
       {/* Header */}
@@ -97,22 +147,42 @@ const NotesListPage = () => {
       </div>
 
       {/* Notes List */}
-      {notes.length > 0 ? (
+      {isLoadingUserData ? (
+        <div className="text-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+          <p className="text-muted-foreground">Loading your notes...</p>
+        </div>
+      ) : userNotes.length > 0 ? (
         <div className="space-y-3">
-          {notes.map((note) => (
+          {userNotes.map((note) => (
             <Card
               key={note.id}
               className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer"
-              onClick={() => handleNoteClick(note)}
+              onClick={() => {
+                // Convert user note to local note format for compatibility
+                const localNote: UserNote = {
+                  id: note.id,
+                  title: note.note_title,
+                  content: note.note_content,
+                  artist: note.artist_name || '',
+                  song: note.song_name || '',
+                  createdAt: note.created_at,
+                  updatedAt: note.updated_at,
+                };
+                handleNoteClick(localNote);
+              }}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <h4 className="font-semibold text-foreground mb-1">
-                      {note.title}
+                      {note.note_title}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      {note.artist}
+                      {note.artist_name && note.song_name 
+                        ? `${note.artist_name} - ${note.song_name}`
+                        : note.artist_name || note.song_name || 'General Note'
+                      }
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-3">
@@ -143,22 +213,22 @@ const NotesListPage = () => {
           <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
             <StickyNote className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold mb-2">{t.noNotesFound}</h3>
+          <h3 className="text-lg font-semibold mb-2">No notes yet</h3>
           <p className="text-muted-foreground mb-4">
-            {t.noNotesFoundSubtitle}
+            Create your first note to get started.
           </p>
           <Button
             onClick={handleCreateNote}
             className="bg-gradient-primary hover:bg-gradient-accent"
           >
             <Plus className="w-4 h-4 mr-2" />
-            {t.createNote}
+            Create Note
           </Button>
         </div>
       )}
 
       {/* Floating Action Button */}
-      {notes.length > 0 && (
+      {userNotes.length > 0 && (
         <div className="fixed bottom-24 right-4 z-40">
           <Button
             onClick={handleCreateNote}

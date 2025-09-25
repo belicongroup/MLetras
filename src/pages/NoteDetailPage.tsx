@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { useNotes, UserNote } from "@/hooks/useNotes";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePinch } from "@use-gesture/react";
 import { translations } from "@/lib/translations";
 
@@ -17,6 +18,7 @@ const NoteDetailPage = () => {
   const location = useLocation();
   const noteData = location.state?.note as UserNote;
   const { settings } = useSettings();
+  const { user } = useAuth();
   const t = translations[settings.language];
 
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
@@ -37,6 +39,26 @@ const NoteDetailPage = () => {
   });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
+  const timeoutIdsRef = useRef<number[]>([]);
+
+  // Utility function to manage timeout cleanup
+  const addTimeout = useCallback((callback: () => void, delay: number) => {
+    const timeoutId = setTimeout(() => {
+      callback();
+      // Remove from tracking array when timeout completes
+      timeoutIdsRef.current = timeoutIdsRef.current.filter(id => id !== timeoutId);
+    }, delay);
+    timeoutIdsRef.current.push(timeoutId);
+    return timeoutId;
+  }, []);
+
+  // Cleanup all pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutIdsRef.current.forEach(clearTimeout);
+      timeoutIdsRef.current = [];
+    };
+  }, []);
 
   const scrollSpeeds = {
     off: 0,
@@ -124,7 +146,7 @@ const NoteDetailPage = () => {
 
   const toggleAutoScroll = (e: React.MouseEvent<HTMLButtonElement>) => {
     // Remove focus after click to prevent purple overlay
-    setTimeout(() => {
+    addTimeout(() => {
       e.currentTarget?.blur();
     }, 10);
 
@@ -188,7 +210,7 @@ const NoteDetailPage = () => {
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
-                  setTimeout(() => {
+                  addTimeout(() => {
                     e.currentTarget?.blur();
                   }, 10);
                   navigate("/", { state: { activeTab: "notes" } });
@@ -216,38 +238,41 @@ const NoteDetailPage = () => {
 
             {/* Centered buttons - NO external music search icons or heart */}
             <div className="flex items-center justify-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleAutoScroll}
-                onBlur={(e) => e.target?.blur()}
-                onFocus={(e) => e.target?.blur()}
-                className={`transition-smooth btn-no-focus ${
-                  autoScrollSpeed === "off"
-                    ? "text-muted-foreground hover:text-foreground"
-                    : autoScrollSpeed === "slow"
-                      ? hasUserInteracted && !isScrollPaused
-                        ? "text-green-500 bg-green-500/10"
-                        : "text-green-500 hover:text-green-600"
-                      : autoScrollSpeed === "medium"
+              {/* Auto-scroller button - only show for Pro users */}
+              {user?.subscription_type === 'pro' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleAutoScroll}
+                  onBlur={(e) => e.target?.blur()}
+                  onFocus={(e) => e.target?.blur()}
+                  className={`transition-smooth btn-no-focus ${
+                    autoScrollSpeed === "off"
+                      ? "text-muted-foreground hover:text-foreground"
+                      : autoScrollSpeed === "slow"
                         ? hasUserInteracted && !isScrollPaused
-                          ? "text-yellow-500 bg-yellow-500/10"
-                          : "text-yellow-500 hover:text-yellow-600"
-                        : hasUserInteracted && !isScrollPaused
-                          ? "text-red-500 bg-red-500/10"
-                          : "text-red-500 hover:text-red-600"
-                }`}
-                title={`${t.autoScroll}: ${autoScrollSpeed}`}
-              >
-                <Play
-                  className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted && !isScrollPaused ? "animate-pulse" : ""}`}
-                />
-              </Button>
+                          ? "text-green-500 bg-green-500/10"
+                          : "text-green-500 hover:text-green-600"
+                        : autoScrollSpeed === "medium"
+                          ? hasUserInteracted && !isScrollPaused
+                            ? "text-yellow-500 bg-yellow-500/10"
+                            : "text-yellow-500 hover:text-yellow-600"
+                          : hasUserInteracted && !isScrollPaused
+                            ? "text-red-500 bg-red-500/10"
+                            : "text-red-500 hover:text-red-600"
+                  }`}
+                  title={`${t.autoScroll}: ${autoScrollSpeed}`}
+                >
+                  <Play
+                    className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted && !isScrollPaused ? "animate-pulse" : ""}`}
+                  />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
-                  setTimeout(() => {
+                  addTimeout(() => {
                     e.currentTarget?.blur();
                   }, 10);
                   setIsBoldText(!isBoldText);

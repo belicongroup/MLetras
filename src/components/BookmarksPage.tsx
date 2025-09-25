@@ -11,6 +11,7 @@ import {
   StickyNote,
   Loader2,
   X,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,9 +25,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useAllFavorites } from "@/hooks/useAllFavorites";
 import { useNotes } from "@/hooks/useNotes";
+import { useAuth } from "@/contexts/AuthContext";
+import { userDataApi, Folder, Bookmark } from "@/services/userDataApi";
 import { useNavigate } from "react-router-dom";
 import { musixmatchApi, Song } from "@/services/musixmatchApi";
 import { translations } from "@/lib/translations";
@@ -174,6 +178,7 @@ const SortableFolderItem = ({
 const BookmarksPage = () => {
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const { user, isAuthenticated } = useAuth();
   const t = translations[settings.language];
   const { likedSongs, toggleLike } = useLikedSongs();
   const { allFavorites, toggleNoteLike } = useAllFavorites();
@@ -185,6 +190,13 @@ const BookmarksPage = () => {
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // User data state
+  const [userFolders, setUserFolders] = useState<Folder[]>([]);
+  const [userBookmarks, setUserBookmarks] = useState<Bookmark[]>([]);
+  const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
   // Default folders
   const defaultFolders: Folder[] = [
@@ -225,13 +237,57 @@ const BookmarksPage = () => {
     return defaultFolders;
   });
 
-  const [newFolderName, setNewFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   // Save folders to localStorage whenever folders change
   useEffect(() => {
     localStorage.setItem("mletras-folders", JSON.stringify(folders));
   }, [folders]);
+
+  // Load user data when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUserData();
+    }
+  }, [isAuthenticated]);
+
+  // Load user folders and bookmarks
+  const loadUserData = async () => {
+    setIsLoadingUserData(true);
+    try {
+      const [foldersResponse, bookmarksResponse] = await Promise.all([
+        userDataApi.getFolders(),
+        userDataApi.getBookmarks()
+      ]);
+      
+      setUserFolders(foldersResponse.folders);
+      setUserBookmarks(bookmarksResponse.bookmarks);
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    } finally {
+      setIsLoadingUserData(false);
+    }
+  };
+
+  // Create new folder
+  const createFolder = async () => {
+    if (!newFolderName.trim()) return;
+    
+    try {
+      const response = await userDataApi.createFolder(newFolderName.trim());
+      if (response.success) {
+        setUserFolders(prev => [...prev, response.folder]);
+        setNewFolderName("");
+        setShowCreateFolderDialog(false);
+      }
+    } catch (error: any) {
+      console.error('Failed to create folder:', error);
+      // Handle folder limit error
+      if (error.message.includes('Folder limit reached')) {
+        // Show upgrade prompt
+      }
+    }
+  };
 
   // DnD sensors
   const sensors = useSensors(
@@ -855,6 +911,28 @@ const BookmarksPage = () => {
     );
   }
 
+  // Show authentication prompt if not logged in
+  if (!isAuthenticated) {
+    return (
+      <div className="p-4 space-y-6 tablet-container tablet-spacing">
+        <div className="text-center py-8">
+          <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
+            <User className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-mobile-hero mb-2">Sign In Required</h2>
+          <p className="text-muted-foreground mb-6">
+            Sign in to save your favorite songs and organize them into folders.
+          </p>
+          <Alert>
+            <AlertDescription>
+              Your bookmarks will be synced across all devices when you sign in.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -944,7 +1022,7 @@ const BookmarksPage = () => {
                       {t.cancel}
                     </Button>
                     <Button
-                      onClick={handleCreateFolder}
+                      onClick={createFolder}
                       disabled={!newFolderName.trim()}
                       className="bg-gradient-primary hover:bg-gradient-accent"
                     >
@@ -956,23 +1034,71 @@ const BookmarksPage = () => {
             </Dialog>
           </div>
 
-          {/* Folders Grid */}
-          <SortableContext
-            items={folders.map((folder) => folder.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {folders.map((folder) => (
-              <SortableFolderItem
-                key={folder.id}
-                folder={folder}
-                onDelete={handleDeleteFolder}
-                onClick={() => setSelectedFolder(folder)}
-                deleteText={t.delete}
-                songText={t.song}
-                songsText={t.songs}
-              />
-            ))}
-          </SortableContext>
+          {/* User Folders Grid */}
+          {isLoadingUserData ? (
+            <div className="text-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+              <p className="text-muted-foreground">Loading your folders...</p>
+            </div>
+          ) : userFolders.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {userFolders.map((folder) => (
+                <Card
+                  key={folder.id}
+                  className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer hover-scale"
+                  onClick={() => {
+                    // Convert user folder to local folder format for compatibility
+                    const localFolder: Folder = {
+                      id: folder.id,
+                      name: folder.folder_name,
+                      songCount: userBookmarks.filter(b => b.folder_id === folder.id).length,
+                      color: "from-blue-500 to-purple-500", // Default color
+                      songs: userBookmarks.filter(b => b.folder_id === folder.id).map(bookmark => ({
+                        id: bookmark.id,
+                        title: bookmark.song_title,
+                        artist: bookmark.artist_name,
+                        album: "",
+                        duration: 0,
+                        year: 0,
+                        genre: "",
+                        lyrics: "",
+                        albumArt: "",
+                        isLiked: false,
+                      }))
+                    };
+                    setSelectedFolder(localFolder);
+                  }}
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gradient-primary rounded-full" />
+                      {folder.folder_name}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      {userBookmarks.filter(b => b.folder_id === folder.id).length} songs
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FolderPlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No folders yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Create your first folder to organize your favorite songs.
+              </p>
+              <Button
+                onClick={() => setIsCreating(true)}
+                className="bg-gradient-primary hover:bg-gradient-accent"
+              >
+                <FolderPlus className="w-4 h-4 mr-2" />
+                Create Folder
+              </Button>
+            </div>
+          )}
 
           {folders.length === 0 && (
             <div className="text-center py-8">

@@ -18,6 +18,9 @@ app.use(cors({
         'http://127.0.0.1',
         'http://127.0.0.1:8080',
         'http://127.0.0.1:3000',
+        'https://localhost',  // Android app origin (HTTPS)
+        'http://localhost',   // Android app origin (HTTP)
+        'capacitor://localhost',  // Alternative Capacitor origin
         'http://10.0.2.2:8080',
         'http://10.0.2.2:3000'
     ],
@@ -289,8 +292,9 @@ app.get('/api/musixmatch/track.lyrics.get', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Simple backend running on http://localhost:${PORT}`);
+    console.log(`🌐 Also accessible from Android emulator at http://10.0.2.2:${PORT}`);
     console.log(`📧 OTP codes will be displayed in this console`);
     console.log(`🎵 Mock lyrics and search results available`);
 });

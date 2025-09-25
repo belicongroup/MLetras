@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useSettings } from "@/contexts/SettingsContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { usePinch } from "@use-gesture/react";
 import { translations } from "@/lib/translations";
 import {
@@ -52,6 +53,7 @@ const LyricsModal = ({
   isLoadingLyrics,
 }: LyricsModalProps) => {
   const { settings } = useSettings();
+  const { user } = useAuth();
   const t = translations[settings.language];
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<
@@ -230,33 +232,36 @@ const LyricsModal = ({
 
             {/* Centered buttons */}
             <div className="flex items-center justify-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleAutoScroll}
-                onBlur={(e) => e.target.blur()}
-                onFocus={(e) => e.target.blur()}
-                className={`transition-smooth btn-no-focus ${
-                  autoScrollSpeed === "off"
-                    ? "text-muted-foreground hover:text-foreground"
-                    : autoScrollSpeed === "slow"
-                      ? hasUserInteracted
-                        ? "text-green-500 bg-green-500/10"
-                        : "text-green-500 hover:text-green-600"
-                      : autoScrollSpeed === "medium"
+              {/* Auto-scroller button - only show for Pro users */}
+              {user?.subscription_type === 'pro' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleAutoScroll}
+                  onBlur={(e) => e.target.blur()}
+                  onFocus={(e) => e.target.blur()}
+                  className={`transition-smooth btn-no-focus ${
+                    autoScrollSpeed === "off"
+                      ? "text-muted-foreground hover:text-foreground"
+                      : autoScrollSpeed === "slow"
                         ? hasUserInteracted
-                          ? "text-yellow-500 bg-yellow-500/10"
-                          : "text-yellow-500 hover:text-yellow-600"
-                        : hasUserInteracted
-                          ? "text-red-500 bg-red-500/10"
-                          : "text-red-500 hover:text-red-600"
-                }`}
-                title={`${t.autoScroll}: ${autoScrollSpeed}`}
-              >
-                <Play
-                  className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted ? "animate-pulse" : ""}`}
-                />
-              </Button>
+                          ? "text-green-500 bg-green-500/10"
+                          : "text-green-500 hover:text-green-600"
+                        : autoScrollSpeed === "medium"
+                          ? hasUserInteracted
+                            ? "text-yellow-500 bg-yellow-500/10"
+                            : "text-yellow-500 hover:text-yellow-600"
+                          : hasUserInteracted
+                            ? "text-red-500 bg-red-500/10"
+                            : "text-red-500 hover:text-red-600"
+                  }`}
+                  title={`${t.autoScroll}: ${autoScrollSpeed}`}
+                >
+                  <Play
+                    className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted ? "animate-pulse" : ""}`}
+                  />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

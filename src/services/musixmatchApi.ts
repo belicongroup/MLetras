@@ -201,8 +201,6 @@ class MusixmatchApiService {
   }
 
   async getSongLyrics(trackId: string, song?: Song): Promise<string> {
-    console.log("Fetching lyrics for track ID:", trackId);
-
     // Smart Proxy handles caching server-side with KV storage
     try {
       const data: MusixmatchLyricsResponse = await this.makeRequest(

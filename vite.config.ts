@@ -14,21 +14,14 @@ export default defineConfig(() => ({
         rewrite: (path) => path.replace(/^\/api\/musixmatch/, ""),
         configure: (proxy, _options) => {
           proxy.on("error", (err, _req, _res) => {
-            console.log("proxy error", err);
+            // Proxy error handling - logged server-side
           });
           proxy.on("proxyReq", (proxyReq, req, _res) => {
-            // Add API key to the request
-            const url = new URL(proxyReq.path, "https://api.musixmatch.com");
-            url.searchParams.set("apikey", "4d54e92614bedfaaffcab9fdbf56cdf3");
-            proxyReq.path = url.pathname + url.search;
-            console.log("Sending Request to the Target:", req.method, req.url);
+            // API key removed from client - handled by smart proxy
+            // Request proxied to Musixmatch API
           });
           proxy.on("proxyRes", (proxyRes, req, _res) => {
-            console.log(
-              "Received Response from the Target:",
-              proxyRes.statusCode,
-              req.url,
-            );
+            // Response received from Musixmatch API
           });
         },
       },
@@ -39,5 +32,34 @@ export default defineConfig(() => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React libraries
+          vendor: ['react', 'react-dom'],
+          // Router and state management
+          routing: ['react-router-dom', '@tanstack/react-query'],
+          // UI component libraries
+          'radix-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip'
+          ],
+          // Utility libraries
+          utils: ['clsx', 'tailwind-merge', 'class-variance-authority'],
+          // Icons and UI helpers
+          icons: ['lucide-react', 'sonner'],
+          // Date and gesture utilities
+          helpers: ['date-fns', '@use-gesture/react']
+        }
+      }
+    },
+    // Increase chunk size warning limit since we're splitting
+    chunkSizeWarningLimit: 1000
   },
 }));

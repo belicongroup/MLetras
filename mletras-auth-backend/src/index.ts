@@ -24,6 +24,7 @@ interface Env {
 interface User {
   id: string;
   email: string;
+  username?: string;
   email_verified: boolean;
   subscription_type: 'free' | 'pro';
   created_at: string;
@@ -479,6 +480,7 @@ noreply@mail.mletras.com
         user: {
           id: user!.id,
           email: user!.email,
+          username: user!.username || null,
           subscription_type: user!.subscription_type,
           email_verified: user!.email_verified
         },
@@ -729,13 +731,14 @@ noreply@mail.mletras.com
       }
 
       const user = await this.env.DB.prepare(
-        'SELECT id, email, subscription_type, email_verified, created_at FROM users WHERE id = ?'
+        'SELECT id, email, username, subscription_type, email_verified, created_at FROM users WHERE id = ?'
       ).bind(session.userId).first();
 
       const response = new Response(JSON.stringify({
         user: {
           id: user?.id,
           email: user?.email,
+          username: user?.username || null,
           subscription_type: user?.subscription_type,
           email_verified: user?.email_verified,
           created_at: user?.created_at
@@ -755,13 +758,17 @@ noreply@mail.mletras.com
   }
 
   /**
-   * Handle API routes (lyrics endpoints)
+   * Handle API routes (lyrics and user data endpoints)
    */
   private async handleAPIRoutes(request: Request, origin?: string): Promise<Response> {
-    const cookie = request.headers.get('Cookie') || '';
-    const session = await this.getSessionFromCookie(cookie);
+    const url = new URL(request.url);
+    const path = url.pathname;
     
-    if (!session) {
+    // Check for Authorization header (Bearer token)
+    const authHeader = request.headers.get('Authorization');
+    const sessionToken = authHeader ? authHeader.replace('Bearer ', '') : null;
+    
+    if (!sessionToken) {
       const response = new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
@@ -769,7 +776,156 @@ noreply@mail.mletras.com
       return this.setCorsHeaders(response, origin);
     }
 
-    return await this.handleLyricsRequest(request, session);
+    // Verify session token
+    const session = await this.getSessionFromToken(sessionToken);
+    if (!session) {
+      const response = new Response(JSON.stringify({ error: 'Invalid session' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+
+    // Route to appropriate handler
+    if (path.startsWith('/api/user/')) {
+      return this.handleUserDataRoutes(request, session, origin);
+    } else if (path.startsWith('/api/track.')) {
+      return await this.handleLyricsRequest(request, session);
+    } else {
+      const response = new Response(JSON.stringify({ error: 'API endpoint not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Get session from JWT token
+   */
+  private async getSessionFromToken(token: string): Promise<SessionData | null> {
+    try {
+      const payload = await this.verifyJWT(token);
+      if (!payload) return null;
+
+      // Get session from KV
+      const sessionData = await this.env.SESSIONS.get(`session:${payload.userId}`);
+      if (!sessionData) return null;
+
+      const session = JSON.parse(sessionData) as SessionData;
+      
+      // Check if session is expired
+      if (session.expiresAt < Date.now()) {
+        await this.env.SESSIONS.delete(`session:${payload.userId}`);
+        return null;
+      }
+
+      return session;
+    } catch (error) {
+      console.error('Session verification error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Handle user data routes (folders, bookmarks, notes)
+   */
+  private async handleUserDataRoutes(request: Request, session: SessionData, origin?: string): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const method = request.method;
+
+    try {
+      // Folder routes
+      if (path === '/api/user/folders' && method === 'GET') {
+        return this.getUserFolders(session, origin);
+      }
+      if (path === '/api/user/folders' && method === 'POST') {
+        const body = await request.json();
+        return this.createUserFolder(session, body, origin);
+      }
+      if (path.startsWith('/api/user/folders/') && method === 'PUT') {
+        const folderId = path.split('/')[4];
+        const body = await request.json();
+        return this.updateUserFolder(session, folderId, body, origin);
+      }
+      if (path.startsWith('/api/user/folders/') && method === 'DELETE') {
+        const folderId = path.split('/')[4];
+        return this.deleteUserFolder(session, folderId, origin);
+      }
+
+      // Bookmark routes
+      if (path === '/api/user/bookmarks' && method === 'GET') {
+        return this.getUserBookmarks(session, origin);
+      }
+      if (path === '/api/user/bookmarks' && method === 'POST') {
+        const body = await request.json();
+        return this.createUserBookmark(session, body, origin);
+      }
+      if (path.startsWith('/api/user/bookmarks/') && method === 'PUT') {
+        const bookmarkId = path.split('/')[4];
+        const body = await request.json();
+        return this.updateUserBookmark(session, bookmarkId, body, origin);
+      }
+      if (path.startsWith('/api/user/bookmarks/') && method === 'DELETE') {
+        const bookmarkId = path.split('/')[4];
+        return this.deleteUserBookmark(session, bookmarkId, origin);
+      }
+
+      // Notes routes
+      if (path === '/api/user/notes' && method === 'GET') {
+        return this.getUserNotes(session, origin);
+      }
+      if (path === '/api/user/notes' && method === 'POST') {
+        const body = await request.json();
+        return this.createUserNote(session, body, origin);
+      }
+      if (path.startsWith('/api/user/notes/') && method === 'PUT') {
+        const noteId = path.split('/')[4];
+        const body = await request.json();
+        return this.updateUserNote(session, noteId, body, origin);
+      }
+      if (path.startsWith('/api/user/notes/') && method === 'DELETE') {
+        const noteId = path.split('/')[4];
+        return this.deleteUserNote(session, noteId, origin);
+      }
+
+      // Username routes
+      if (path === '/api/user/username' && method === 'POST') {
+        const body = await request.json();
+        return this.setUsername(session, body, origin);
+      }
+      if (path === '/api/user/profile' && method === 'GET') {
+        return this.getUserProfile(session, origin);
+      }
+
+      // Test endpoint (temporary)
+      if (path === '/api/test' && method === 'GET') {
+        const response = new Response(JSON.stringify({
+          success: true,
+          message: 'API is working',
+          timestamp: new Date().toISOString()
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({ error: 'User data endpoint not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+
+    } catch (error) {
+      console.error('User data route error:', error);
+      const response = new Response(JSON.stringify({ error: 'Internal server error' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
   }
 
   /**
@@ -783,6 +939,671 @@ noreply@mail.mletras.com
     });
 
     return this.setCorsHeaders(response, origin);
+  }
+
+  // ===== FOLDER MANAGEMENT METHODS =====
+
+  /**
+   * Get user's folders
+   */
+  private async getUserFolders(session: SessionData, origin?: string): Promise<Response> {
+    try {
+      const folders = await this.env.DB.prepare(
+        'SELECT * FROM user_folders WHERE user_id = ? ORDER BY created_at ASC'
+      ).bind(session.userId).all();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        folders: folders.results
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Get folders error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to get folders' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Create new folder (with 3-folder limit for free users)
+   */
+  private async createUserFolder(session: SessionData, body: any, origin?: string): Promise<Response> {
+    try {
+      const { folder_name } = body;
+      
+      if (!folder_name || typeof folder_name !== 'string' || folder_name.trim().length === 0) {
+        const response = new Response(JSON.stringify({ error: 'Folder name is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Check folder count limit for free users
+      if (session.subscription_type === 'free') {
+        const folderCount = await this.env.DB.prepare(
+          'SELECT COUNT(*) as count FROM user_folders WHERE user_id = ?'
+        ).bind(session.userId).first();
+
+        if (folderCount && folderCount.count >= 3) {
+          const response = new Response(JSON.stringify({ 
+            error: 'Folder limit reached',
+            message: 'Free users can create up to 3 folders. Upgrade to Pro for unlimited folders.',
+            limit: 3,
+            current: folderCount.count
+          }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return this.setCorsHeaders(response, origin);
+        }
+      }
+
+      const folderId = this.generateRandomString();
+      await this.env.DB.prepare(
+        'INSERT INTO user_folders (id, user_id, folder_name) VALUES (?, ?, ?)'
+      ).bind(folderId, session.userId, folder_name.trim()).run();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Folder created successfully',
+        folder: {
+          id: folderId,
+          user_id: session.userId,
+          folder_name: folder_name.trim(),
+          created_at: new Date().toISOString()
+        }
+      }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Create folder error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to create folder' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Update folder name
+   */
+  private async updateUserFolder(session: SessionData, folderId: string, body: any, origin?: string): Promise<Response> {
+    try {
+      const { folder_name } = body;
+      
+      if (!folder_name || typeof folder_name !== 'string' || folder_name.trim().length === 0) {
+        const response = new Response(JSON.stringify({ error: 'Folder name is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const result = await this.env.DB.prepare(
+        'UPDATE user_folders SET folder_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
+      ).bind(folder_name.trim(), folderId, session.userId).run();
+
+      if (result.changes === 0) {
+        const response = new Response(JSON.stringify({ error: 'Folder not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Folder updated successfully'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Update folder error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to update folder' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Delete folder
+   */
+  private async deleteUserFolder(session: SessionData, folderId: string, origin?: string): Promise<Response> {
+    try {
+      const result = await this.env.DB.prepare(
+        'DELETE FROM user_folders WHERE id = ? AND user_id = ?'
+      ).bind(folderId, session.userId).run();
+
+      if (result.changes === 0) {
+        const response = new Response(JSON.stringify({ error: 'Folder not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Folder deleted successfully'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Delete folder error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to delete folder' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  // ===== BOOKMARK MANAGEMENT METHODS =====
+
+  /**
+   * Get user's bookmarks
+   */
+  private async getUserBookmarks(session: SessionData, origin?: string): Promise<Response> {
+    try {
+      const bookmarks = await this.env.DB.prepare(`
+        SELECT b.*, f.folder_name 
+        FROM user_bookmarks b 
+        LEFT JOIN user_folders f ON b.folder_id = f.id 
+        WHERE b.user_id = ? 
+        ORDER BY b.created_at DESC
+      `).bind(session.userId).all();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        bookmarks: bookmarks.results
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Get bookmarks error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to get bookmarks' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Create new bookmark
+   */
+  private async createUserBookmark(session: SessionData, body: any, origin?: string): Promise<Response> {
+    try {
+      const { song_title, artist_name, folder_id } = body;
+      
+      if (!song_title || !artist_name) {
+        const response = new Response(JSON.stringify({ error: 'Song title and artist name are required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Verify folder belongs to user if provided
+      if (folder_id) {
+        const folder = await this.env.DB.prepare(
+          'SELECT id FROM user_folders WHERE id = ? AND user_id = ?'
+        ).bind(folder_id, session.userId).first();
+
+        if (!folder) {
+          const response = new Response(JSON.stringify({ error: 'Folder not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return this.setCorsHeaders(response, origin);
+        }
+      }
+
+      const bookmarkId = this.generateRandomString();
+      await this.env.DB.prepare(
+        'INSERT INTO user_bookmarks (id, user_id, folder_id, song_title, artist_name) VALUES (?, ?, ?, ?, ?)'
+      ).bind(bookmarkId, session.userId, folder_id || null, song_title.trim(), artist_name.trim()).run();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Bookmark created successfully',
+        bookmark: {
+          id: bookmarkId,
+          user_id: session.userId,
+          folder_id: folder_id || null,
+          song_title: song_title.trim(),
+          artist_name: artist_name.trim(),
+          created_at: new Date().toISOString()
+        }
+      }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Create bookmark error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to create bookmark' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Update bookmark (move between folders)
+   */
+  private async updateUserBookmark(session: SessionData, bookmarkId: string, body: any, origin?: string): Promise<Response> {
+    try {
+      const { folder_id } = body;
+
+      // Verify folder belongs to user if provided
+      if (folder_id) {
+        const folder = await this.env.DB.prepare(
+          'SELECT id FROM user_folders WHERE id = ? AND user_id = ?'
+        ).bind(folder_id, session.userId).first();
+
+        if (!folder) {
+          const response = new Response(JSON.stringify({ error: 'Folder not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return this.setCorsHeaders(response, origin);
+        }
+      }
+
+      const result = await this.env.DB.prepare(
+        'UPDATE user_bookmarks SET folder_id = ? WHERE id = ? AND user_id = ?'
+      ).bind(folder_id || null, bookmarkId, session.userId).run();
+
+      if (result.changes === 0) {
+        const response = new Response(JSON.stringify({ error: 'Bookmark not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Bookmark updated successfully'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Update bookmark error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to update bookmark' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Delete bookmark
+   */
+  private async deleteUserBookmark(session: SessionData, bookmarkId: string, origin?: string): Promise<Response> {
+    try {
+      const result = await this.env.DB.prepare(
+        'DELETE FROM user_bookmarks WHERE id = ? AND user_id = ?'
+      ).bind(bookmarkId, session.userId).run();
+
+      if (result.changes === 0) {
+        const response = new Response(JSON.stringify({ error: 'Bookmark not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Bookmark deleted successfully'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Delete bookmark error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to delete bookmark' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  // ===== NOTES MANAGEMENT METHODS =====
+
+  /**
+   * Get user's notes
+   */
+  private async getUserNotes(session: SessionData, origin?: string): Promise<Response> {
+    try {
+      const notes = await this.env.DB.prepare(
+        'SELECT * FROM user_notes WHERE user_id = ? ORDER BY updated_at DESC'
+      ).bind(session.userId).all();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        notes: notes.results
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Get notes error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to get notes' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Create new note (with 10-note limit for free users)
+   */
+  private async createUserNote(session: SessionData, body: any, origin?: string): Promise<Response> {
+    try {
+      const { note_title, note_content, artist_name, song_name } = body;
+      
+      if (!note_title || !note_content) {
+        const response = new Response(JSON.stringify({ error: 'Note title and content are required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Check note count limit for free users
+      if (session.subscription_type === 'free') {
+        const noteCount = await this.env.DB.prepare(
+          'SELECT COUNT(*) as count FROM user_notes WHERE user_id = ?'
+        ).bind(session.userId).first();
+
+        if (noteCount && noteCount.count >= 10) {
+          const response = new Response(JSON.stringify({ 
+            error: 'Note limit reached',
+            message: 'Free users can create up to 10 notes. Upgrade to Pro for unlimited notes.',
+            limit: 10,
+            current: noteCount.count
+          }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return this.setCorsHeaders(response, origin);
+        }
+      }
+
+      const noteId = this.generateRandomString();
+      await this.env.DB.prepare(
+        'INSERT INTO user_notes (id, user_id, note_title, note_content, artist_name, song_name) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(
+        noteId, 
+        session.userId, 
+        note_title.trim(), 
+        note_content.trim(),
+        artist_name ? artist_name.trim() : null,
+        song_name ? song_name.trim() : null
+      ).run();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Note created successfully',
+        note: {
+          id: noteId,
+          user_id: session.userId,
+          note_title: note_title.trim(),
+          note_content: note_content.trim(),
+          artist_name: artist_name ? artist_name.trim() : null,
+          song_name: song_name ? song_name.trim() : null,
+          created_at: new Date().toISOString()
+        }
+      }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Create note error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to create note' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Update note
+   */
+  private async updateUserNote(session: SessionData, noteId: string, body: any, origin?: string): Promise<Response> {
+    try {
+      const { note_title, note_content, artist_name, song_name } = body;
+      
+      if (!note_title || !note_content) {
+        const response = new Response(JSON.stringify({ error: 'Note title and content are required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const result = await this.env.DB.prepare(
+        'UPDATE user_notes SET note_title = ?, note_content = ?, artist_name = ?, song_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?'
+      ).bind(
+        note_title.trim(), 
+        note_content.trim(),
+        artist_name ? artist_name.trim() : null,
+        song_name ? song_name.trim() : null,
+        noteId, 
+        session.userId
+      ).run();
+
+      if (result.changes === 0) {
+        const response = new Response(JSON.stringify({ error: 'Note not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Note updated successfully'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Update note error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to update note' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Delete note
+   */
+  private async deleteUserNote(session: SessionData, noteId: string, origin?: string): Promise<Response> {
+    try {
+      const result = await this.env.DB.prepare(
+        'DELETE FROM user_notes WHERE id = ? AND user_id = ?'
+      ).bind(noteId, session.userId).run();
+
+      if (result.changes === 0) {
+        const response = new Response(JSON.stringify({ error: 'Note not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Note deleted successfully'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Delete note error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to delete note' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  // ===== USERNAME MANAGEMENT METHODS =====
+
+  /**
+   * Set username
+   */
+  private async setUsername(session: SessionData, body: any, origin?: string): Promise<Response> {
+    try {
+      const { username } = body;
+      
+      if (!username || typeof username !== 'string' || username.trim().length === 0) {
+        const response = new Response(JSON.stringify({ error: 'Username is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const trimmedUsername = username.trim();
+      
+      // Validate username format
+      if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
+        const response = new Response(JSON.stringify({ error: 'Username must be 3-20 characters long' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+        const response = new Response(JSON.stringify({ error: 'Username can only contain letters, numbers, and underscores' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Check if username is already taken
+      const existingUser = await this.env.DB.prepare(
+        'SELECT id FROM users WHERE username = ? AND id != ?'
+      ).bind(trimmedUsername, session.userId).first();
+
+      if (existingUser) {
+        const response = new Response(JSON.stringify({ error: 'Username is already taken' }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      await this.env.DB.prepare(
+        'UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).bind(trimmedUsername, session.userId).run();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Username set successfully',
+        username: trimmedUsername
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Set username error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to set username' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Get user profile
+   */
+  private async getUserProfile(session: SessionData, origin?: string): Promise<Response> {
+    try {
+      const user = await this.env.DB.prepare(
+        'SELECT id, email, username, subscription_type, email_verified, created_at, last_login_at FROM users WHERE id = ?'
+      ).bind(session.userId).first();
+
+      if (!user) {
+        const response = new Response(JSON.stringify({ error: 'User not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        user: user
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Get profile error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to get profile' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
   }
 }
 
