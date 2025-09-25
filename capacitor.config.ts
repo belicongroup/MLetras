@@ -5,15 +5,17 @@ const config: CapacitorConfig = {
   appName: "MLetras",
   webDir: "dist",
   server: {
-    androidScheme: process.env.NODE_ENV === 'development' ? "http" : "https",
+    androidScheme: "https",  // Always use HTTPS for production APIs
     allowNavigation: [
       "localhost",
       "10.0.0.*",
       "192.168.*",
       "*.local",
-      "10.0.2.2:8787",  // Android emulator host IP for localhost
+      "10.0.2.2:8787",  // Android emulator host IP for localhost (if needed)
       "mletras.vercel.app",  // Production domain
-      "*.vercel.app"  // Vercel domains
+      "*.vercel.app",  // Vercel domains
+      "mletras-auth-api-dev.belicongroup.workers.dev",  // Production API
+      "*.workers.dev"  // Cloudflare Workers domains
     ]
   },
   plugins: {
@@ -22,7 +24,7 @@ const config: CapacitorConfig = {
     },
   },
   android: {
-    allowMixedContent: process.env.NODE_ENV === 'development',
+    allowMixedContent: false,  // Disable mixed content for production APIs
     captureInput: true,
     webContentsDebuggingEnabled: process.env.NODE_ENV === 'development'
   }

@@ -2,16 +2,15 @@
 // Use local development server when running locally
 // For Android emulator, use 10.0.2.2 instead of localhost
 // API URL configuration for different environments
-// Check if we're in development mode (local development or Android emulator)
-const isDevelopment = process.env.NODE_ENV === 'development' || 
-  (typeof window !== 'undefined' && 
-   (window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname === '10.0.2.2'));
+// Check if we're in local web development (not Android emulator)
+const isLocalWebDev = process.env.NODE_ENV === 'development' && 
+  typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || 
+   window.location.hostname === '127.0.0.1');
 
-const API_BASE_URL = isDevelopment 
-  ? 'http://10.0.2.2:8787'  // Use local backend for development/emulator
-  : 'https://mletras-auth-api-dev.belicongroup.workers.dev';  // Production API
+const API_BASE_URL = isLocalWebDev 
+  ? 'http://10.0.2.2:8787'  // Use local backend for web development only
+  : 'https://mletras-auth-api-dev.belicongroup.workers.dev';  // Production API for emulator and production
 
 interface Folder {
   id: string;
