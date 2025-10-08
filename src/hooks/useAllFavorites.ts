@@ -65,7 +65,8 @@ export const useAllFavorites = () => {
     console.log('🟢 useAllFavorites recomputing with:', {
       likedSongsCount: likedSongs.length,
       notesCount: notes.length,
-      likedNotesCount: likedNotes.length
+      likedNotesCount: likedNotes.length,
+      likedSongsIds: likedSongs.map(s => s.id)
     });
     
     const result = [
@@ -95,7 +96,7 @@ export const useAllFavorites = () => {
     
     console.log('🟢 allFavorites result count:', result.length);
     return result;
-  }, [likedSongs, notes, likedNotes]); // Sort by creation date, newest first
+  }, [likedSongs.length, likedSongs.map(s => s.id).join(','), notes, likedNotes]); // Use length and IDs as dependencies
 
   return {
     allFavorites,
