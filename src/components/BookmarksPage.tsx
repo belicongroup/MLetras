@@ -528,7 +528,14 @@ const BookmarksPage = () => {
     // Check if note is already in folder
     if (selectedFolder.songs.some((s) => s.id === note.id)) return;
 
-    // Add note to folder
+    console.log('📝 Adding note to folder:', {
+      noteTitle: note.title,
+      folderId: selectedFolder.id,
+      folderName: selectedFolder.name,
+      isAuthenticated
+    });
+
+    // Add note to folder (notes are stored locally only)
     setFolders((prev) =>
       prev.map((folder) =>
         folder.id === selectedFolder.id
@@ -551,6 +558,8 @@ const BookmarksPage = () => {
           }
         : null,
     );
+
+    console.log('✅ Note added to local folder:', note.title);
 
     // Keep dialog open for adding more items
   };
@@ -1210,8 +1219,8 @@ const BookmarksPage = () => {
               </div>
               ))}
               
-              {/* Local folders (for non-authenticated users or additional folders) */}
-              {!isAuthenticated && folders.map((folder) => (
+              {/* Local folders (for notes and additional local content) */}
+              {folders.map((folder) => (
                 <SortableFolderItem
                   key={folder.id}
                   folder={folder}
