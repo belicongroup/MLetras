@@ -128,7 +128,9 @@ class SyncLayerService {
         await userDataApi.createBookmark(
           operation.data.song_title,
           operation.data.artist_name,
-          operation.data.folder_id
+          operation.data.folder_id,
+          operation.data.track_id,
+          operation.data.album_art_url
         );
         break;
       case 'update':

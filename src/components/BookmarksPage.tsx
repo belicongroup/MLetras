@@ -1054,7 +1054,7 @@ const BookmarksPage = () => {
                       songCount: userBookmarks.filter(b => b.folder_id === folder.id).length,
                       color: "from-blue-500 to-purple-500", // Default color
                       songs: userBookmarks.filter(b => b.folder_id === folder.id).map(bookmark => ({
-                        id: bookmark.id,
+                        id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
                         title: bookmark.song_title,
                         artist: bookmark.artist_name,
                         album: "",
@@ -1062,7 +1062,7 @@ const BookmarksPage = () => {
                         year: 0,
                         genre: "",
                         lyrics: "",
-                        albumArt: "",
+                        albumArt: bookmark.album_art_url || "",
                         isLiked: false,
                       }))
                     };
