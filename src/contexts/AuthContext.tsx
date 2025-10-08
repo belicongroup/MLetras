@@ -75,7 +75,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   const API_BASE_URL = isLocalWebDev 
     ? 'http://10.0.2.2:8787'  // Use local backend for web development only
-    : 'https://mletras-auth-api-dev.belicongroup.workers.dev';  // Development API (working)
+    : 'https://mletras-auth-api-dev.belicongroup.workers.dev';  // Using dev worker until production is fixed
 
   /**
    * Make authenticated API request
