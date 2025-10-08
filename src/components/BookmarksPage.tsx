@@ -251,6 +251,13 @@ const BookmarksPage = () => {
     }
   }, [isAuthenticated]);
 
+  // Reload bookmarks when likedSongs changes (when songs are liked/unliked)
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadUserData();
+    }
+  }, [likedSongs.length, isAuthenticated]);
+
   // Load user folders and bookmarks
   const loadUserData = async () => {
     setIsLoadingUserData(true);
