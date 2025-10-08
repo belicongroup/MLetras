@@ -19,6 +19,12 @@ const LIKED_NOTES_KEY = "likedNotes";
 export const useAllFavorites = () => {
   const { likedSongs } = useLikedSongs();
   const { notes } = useNotes();
+  
+  // Debug what we're receiving from useLikedSongs
+  console.log('🟡 useAllFavorites render - received likedSongs:', {
+    count: likedSongs.length,
+    ids: likedSongs.map(s => s.id)
+  });
   const [likedNotes, setLikedNotes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

@@ -76,14 +76,21 @@ export const useLikedSongs = () => {
 
     console.log('🔵 toggleLike called:', { songId: song.id, songTitle: song.title, isLiked });
     console.log('🔵 Current likedSongs count:', likedSongs.length);
+    console.log('🔵 Current likedSongs IDs:', likedSongs.map(s => s.id));
 
     if (isLiked) {
       // Unlike song - update localStorage immediately (instant UX)
       const updatedSongs = likedSongs.filter((s) => s.id !== song.id);
       console.log('🔴 UNLIKING - Updated count:', updatedSongs.length);
+      console.log('🔴 UNLIKING - Updated IDs:', updatedSongs.map(s => s.id));
       setLikedSongs(updatedSongs);
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
       console.log('🔴 State and localStorage updated');
+      
+      // Force a small delay to see if there's a race condition
+      setTimeout(() => {
+        console.log('🔴 After timeout - likedSongs should be:', updatedSongs.length);
+      }, 100);
       
       // TEMPORARILY DISABLED: Queue server sync (batched, rate-limited)
       // syncLayer.queueSync({
