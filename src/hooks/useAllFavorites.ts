@@ -25,6 +25,20 @@ export const useAllFavorites = () => {
     count: likedSongs.length,
     ids: likedSongs.map(s => s.id)
   });
+  
+  // Force re-render when likedSongs changes by using a local state
+  const [likedSongsSnapshot, setLikedSongsSnapshot] = useState(likedSongs);
+  
+  useEffect(() => {
+    console.log('🟠 likedSongs changed, updating snapshot:', {
+      oldCount: likedSongsSnapshot.length,
+      newCount: likedSongs.length,
+      oldIds: likedSongsSnapshot.map(s => s.id),
+      newIds: likedSongs.map(s => s.id)
+    });
+    setLikedSongsSnapshot(likedSongs);
+  }, [likedSongs, likedSongsSnapshot]);
+  
   const [likedNotes, setLikedNotes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,15 +83,15 @@ export const useAllFavorites = () => {
   // Combine all favorites - memoized to update when dependencies change
   const allFavorites: FavoriteItem[] = useMemo(() => {
     console.log('🟢 useAllFavorites recomputing with:', {
-      likedSongsCount: likedSongs.length,
+      likedSongsCount: likedSongsSnapshot.length,
       notesCount: notes.length,
       likedNotesCount: likedNotes.length,
-      likedSongsIds: likedSongs.map(s => s.id)
+      likedSongsIds: likedSongsSnapshot.map(s => s.id)
     });
     
     const result = [
       // Add liked songs
-      ...likedSongs.map(song => ({
+      ...likedSongsSnapshot.map(song => ({
         id: song.id,
         title: song.title,
         artist: song.artist,
@@ -102,7 +116,7 @@ export const useAllFavorites = () => {
     
     console.log('🟢 allFavorites result count:', result.length);
     return result;
-  }, [likedSongs.length, likedSongs.map(s => s.id).join(','), notes, likedNotes]); // Use length and IDs as dependencies
+  }, [likedSongsSnapshot, notes, likedNotes]); // Use snapshot instead of direct likedSongs
 
   return {
     allFavorites,
