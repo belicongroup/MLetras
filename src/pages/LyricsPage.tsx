@@ -9,7 +9,6 @@ import {
   Music,
   ExternalLink,
 } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { lockScreenOrientation, unlockScreenOrientation, isCapacitorEnvironment } from "@/lib/capacitor";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -56,6 +55,9 @@ const LyricsPage = () => {
     if (window.innerWidth >= 768) return 22;  // Small tablets
     return 18; // Phones
   });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuItemsDisabled, setMenuItemsDisabled] = useState(true);
+  const menuOpenTimeRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
   const timeoutIdsRef = useRef<number[]>([]);
@@ -167,7 +169,7 @@ const LyricsPage = () => {
       setFontSize(newFontSize);
     },
     {
-      target: lyricsRef,
+      target: scrollContainerRef,
       eventOptions: { passive: false },
       scaleBounds: { min: 0.5, max: 3.0 },
       rubberband: true,
@@ -232,6 +234,12 @@ const LyricsPage = () => {
   ) => {
     if (!songData) return;
 
+    // Prevent click if menu items are still disabled
+    if (menuItemsDisabled) {
+      console.log('Menu items still disabled - prevented click');
+      return;
+    }
+
     const searchQuery = encodeURIComponent(
       `${songData.title} ${songData.artist}`,
     );
@@ -271,10 +279,10 @@ const LyricsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background overflow-hidden flex flex-col">
       {/* Header - Hide in landscape mode */}
       {!isLandscape && (
-        <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4">
+        <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4 z-10" style={{ pointerEvents: 'none', touchAction: 'none' }}>
           <div className="max-w-4xl mx-auto">
             {/* Back button and song title row */}
             <div className="flex items-center justify-between mb-4">
@@ -290,6 +298,7 @@ const LyricsPage = () => {
                 onBlur={(e) => e.target?.blur()}
                 onFocus={(e) => e.target?.blur()}
                 className="text-muted-foreground hover:text-foreground btn-no-focus"
+                style={{ pointerEvents: 'auto' }}
               >
                 <ArrowLeft className="w-4 h-4" />
               </Button>
@@ -318,6 +327,7 @@ const LyricsPage = () => {
                   onClick={toggleAutoScroll}
                   onBlur={(e) => e.target?.blur()}
                   onFocus={(e) => e.target?.blur()}
+                  style={{ pointerEvents: 'auto' }}
                   className={`transition-smooth btn-no-focus ${
                     autoScrollSpeed === "off"
                       ? "text-muted-foreground hover:text-foreground"
@@ -351,6 +361,7 @@ const LyricsPage = () => {
                 }}
                 onBlur={(e) => e.target?.blur()}
                 onFocus={(e) => e.target?.blur()}
+                style={{ pointerEvents: 'auto' }}
                 className={`transition-smooth btn-no-focus ${
                   isBoldText
                     ? "text-primary bg-primary/10"
@@ -359,23 +370,59 @@ const LyricsPage = () => {
               >
                 <Type className="w-4 h-4" />
               </Button>
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={(open) => {
+                if (open) {
+                  menuOpenTimeRef.current = Date.now();
+                  setIsMenuOpen(true);
+                  setMenuItemsDisabled(true);
+                  // Enable menu items after 300ms
+                  addTimeout(() => {
+                    setMenuItemsDisabled(false);
+                  }, 300);
+                } else {
+                  setIsMenuOpen(false);
+                  setMenuItemsDisabled(true);
+                }
+              }}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
                     onBlur={(e) => e.target?.blur()}
                     onFocus={(e) => e.target?.blur()}
+                    style={{ pointerEvents: 'auto' }}
                     className="transition-smooth btn-no-focus text-muted-foreground hover:text-foreground"
                     title={t.listenOnStreamingServices}
                   >
                     <Music className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="center" className="w-48">
+                <DropdownMenuContent 
+                  align="center" 
+                  className="w-48"
+                  style={{ 
+                    opacity: menuItemsDisabled ? 0.5 : 1,
+                    pointerEvents: menuItemsDisabled ? 'none' : 'auto',
+                    transition: 'opacity 0.3s ease'
+                  }}
+                >
                   <DropdownMenuItem
                     onClick={() => openStreamingService("spotify")}
                     className="flex items-center gap-2 cursor-pointer"
+                    onPointerDown={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     <div className="w-4 h-4 bg-green-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
@@ -386,6 +433,20 @@ const LyricsPage = () => {
                   <DropdownMenuItem
                     onClick={() => openStreamingService("apple")}
                     className="flex items-center gap-2 cursor-pointer"
+                    onPointerDown={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     <div className="w-4 h-4 bg-pink-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
@@ -396,6 +457,20 @@ const LyricsPage = () => {
                   <DropdownMenuItem
                     onClick={() => openStreamingService("youtube")}
                     className="flex items-center gap-2 cursor-pointer"
+                    onPointerDown={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     <div className="w-4 h-4 bg-red-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
@@ -406,6 +481,20 @@ const LyricsPage = () => {
                   <DropdownMenuItem
                     onClick={() => openStreamingService("chords")}
                     className="flex items-center gap-2 cursor-pointer"
+                    onPointerDown={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      const timeSinceOpen = Date.now() - menuOpenTimeRef.current;
+                      if (timeSinceOpen < 1000) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                   >
                     <div className="w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center">
                       <div className="w-2 h-2 bg-white rounded-sm"></div>
@@ -421,6 +510,7 @@ const LyricsPage = () => {
                 onClick={handleToggleLike}
                 onBlur={(e) => e.target?.blur()}
                 onFocus={(e) => e.target?.blur()}
+                style={{ pointerEvents: 'auto' }}
                 className={`transition-smooth btn-no-focus ${
                   isLiked(songData?.id || "")
                     ? "text-primary hover:text-primary/80"
@@ -438,14 +528,25 @@ const LyricsPage = () => {
 
       {/* Lyrics Content */}
       <div
-        className={`max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container ${isLandscape ? "pt-4" : ""}`}
+        className="flex-1 overflow-hidden"
+        style={{ 
+          position: 'relative', 
+          zIndex: 1,
+          touchAction: 'none'
+        }}
       >
-        <Card
-          className={`${isLandscape ? "min-h-screen" : "min-h-[calc(100vh-140px)]"} bg-card/30 border-border/30 relative`}
-        >
+        <div className="h-full max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container">
           <div
             ref={scrollContainerRef}
-            className={`${isLandscape ? "h-screen" : "h-[calc(100vh-140px)]"} p-8 overflow-y-auto lyrics-scroll tablet-spacing`}
+            className="h-full p-8 overflow-y-auto lyrics-scroll tablet-spacing"
+            style={{ 
+              scrollbarGutter: 'stable',
+              touchAction: 'pan-y pinch-zoom',
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
+              position: 'relative',
+              isolation: 'isolate'
+            }}
           >
             {isLoadingLyrics ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
@@ -477,7 +578,7 @@ const LyricsPage = () => {
               </div>
             )}
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

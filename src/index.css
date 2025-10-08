@@ -339,6 +339,11 @@
   }
 
   /* Custom scrollbar for lyrics */
+  .lyrics-scroll {
+    touch-action: pan-y pinch-zoom;
+    overscroll-behavior-y: contain;
+  }
+
   .lyrics-scroll::-webkit-scrollbar {
     width: 4px;
   }
@@ -354,10 +359,11 @@
 
   /* Touch-friendly lyrics area */
   .lyrics-touch-area {
-    touch-action: manipulation;
+    touch-action: pan-y pinch-zoom;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    overscroll-behavior: contain;
   }
 
   /* Smooth font size transitions */
