@@ -10,7 +10,7 @@ const isLocalWebDev = process.env.NODE_ENV === 'development' &&
 
 const API_BASE_URL = isLocalWebDev 
   ? 'http://10.0.2.2:8787'  // Use local backend for web development only
-  : 'https://mletras-auth-api.belicongroup.workers.dev';  // Production API
+  : 'https://mletras-auth-api-dev.belicongroup.workers.dev';  // Development API (working)
 
 interface Folder {
   id: string;
