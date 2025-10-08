@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLikedSongs } from "./useLikedSongs";
 import { useNotes } from "./useNotes";
 
@@ -60,8 +60,8 @@ export const useAllFavorites = () => {
     return likedNotes.includes(noteId);
   };
 
-  // Combine all favorites
-  const allFavorites: FavoriteItem[] = [
+  // Combine all favorites - memoized to update when dependencies change
+  const allFavorites: FavoriteItem[] = useMemo(() => [
     // Add liked songs
     ...likedSongs.map(song => ({
       id: song.id,
@@ -84,7 +84,7 @@ export const useAllFavorites = () => {
         updatedAt: note.updatedAt,
         lyrics: note.lyrics,
       })),
-  ].sort((a, b) => b.createdAt - a.createdAt); // Sort by creation date, newest first
+  ].sort((a, b) => b.createdAt - a.createdAt), [likedSongs, notes, likedNotes]); // Sort by creation date, newest first
 
   return {
     allFavorites,
