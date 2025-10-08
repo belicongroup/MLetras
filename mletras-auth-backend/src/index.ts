@@ -1232,7 +1232,7 @@ class AuthAPI {
    */
   private async createUserBookmark(session: SessionData, body: any, origin?: string): Promise<Response> {
     try {
-      const { song_title, artist_name, folder_id, track_id, album_art_url } = body;
+      const { song_title, artist_name, folder_id, track_id } = body;
       
       if (!song_title || !artist_name) {
         const response = new Response(JSON.stringify({ error: 'Song title and artist name are required' }), {
@@ -1259,15 +1259,14 @@ class AuthAPI {
 
       const bookmarkId = this.generateRandomString();
       await this.env.DB.prepare(
-        'INSERT INTO user_bookmarks (id, user_id, folder_id, song_title, artist_name, track_id, album_art_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO user_bookmarks (id, user_id, folder_id, song_title, artist_name, track_id) VALUES (?, ?, ?, ?, ?, ?)'
       ).bind(
         bookmarkId, 
         session.userId, 
         folder_id || null, 
         song_title.trim(), 
         artist_name.trim(),
-        track_id || null,
-        album_art_url || null
+        track_id || null
       ).run();
 
       const response = new Response(JSON.stringify({
@@ -1280,7 +1279,6 @@ class AuthAPI {
           song_title: song_title.trim(),
           artist_name: artist_name.trim(),
           track_id: track_id || null,
-          album_art_url: album_art_url || null,
           created_at: new Date().toISOString()
         }
       }), {

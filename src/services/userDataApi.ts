@@ -27,7 +27,6 @@ interface Bookmark {
   song_title: string;
   artist_name: string;
   track_id?: string;  // Musixmatch track ID for fetching lyrics
-  album_art_url?: string;
   created_at: string;
   folder_name?: string;
 }
@@ -106,15 +105,14 @@ class UserDataApi {
     return this.makeRequest('/api/user/bookmarks');
   }
 
-  async createBookmark(songTitle: string, artistName: string, folderId?: string, trackId?: string, albumArtUrl?: string): Promise<{ success: boolean; bookmark: Bookmark; message: string }> {
+  async createBookmark(songTitle: string, artistName: string, folderId?: string, trackId?: string): Promise<{ success: boolean; bookmark: Bookmark; message: string }> {
     return this.makeRequest('/api/user/bookmarks', {
       method: 'POST',
       body: JSON.stringify({ 
         song_title: songTitle, 
         artist_name: artistName, 
         folder_id: folderId,
-        track_id: trackId,
-        album_art_url: albumArtUrl
+        track_id: trackId
       }),
     });
   }

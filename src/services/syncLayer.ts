@@ -129,8 +129,7 @@ class SyncLayerService {
           operation.data.song_title,
           operation.data.artist_name,
           operation.data.folder_id,
-          operation.data.track_id,
-          operation.data.album_art_url
+          operation.data.track_id
         );
         break;
       case 'update':

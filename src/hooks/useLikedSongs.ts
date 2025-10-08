@@ -43,7 +43,6 @@ export const useLikedSongs = () => {
                 id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
                 title: bookmark.song_title,
                 artist: bookmark.artist_name,
-                imageUrl: bookmark.album_art_url,
               }));
 
               // Merge: Server data is source of truth
@@ -108,8 +107,7 @@ export const useLikedSongs = () => {
           song_title: song.title,
           artist_name: song.artist,
           folder_id: undefined,
-          track_id: song.id,  // Pass Musixmatch track ID
-          album_art_url: song.imageUrl
+          track_id: song.id  // Pass Musixmatch track ID
         }
       });
     }

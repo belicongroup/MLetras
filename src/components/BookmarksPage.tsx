@@ -1062,7 +1062,7 @@ const BookmarksPage = () => {
                         year: 0,
                         genre: "",
                         lyrics: "",
-                        albumArt: bookmark.album_art_url || "",
+                        albumArt: "",
                         isLiked: false,
                       }))
                     };
