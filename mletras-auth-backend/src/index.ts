@@ -193,7 +193,7 @@ If you didn't request this code, please ignore this email.
 
 --
 MLetras Team
-onboarding@resend.dev
+noreply@mail.mletras.com
       `;
 
       const response = await fetch('https://api.resend.com/emails', {
@@ -203,7 +203,7 @@ onboarding@resend.dev
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'MLetras <onboarding@resend.dev>',
+          from: 'MLetras <noreply@mail.mletras.com>',
           to: [email],
           subject: subject,
           html: htmlContent,
