@@ -441,35 +441,69 @@ const BookmarksPage = () => {
     setHasSearched(false);
   };
 
-  const handleAddSongToFolder = (song: Song) => {
+  const handleAddSongToFolder = async (song: Song) => {
     if (!selectedFolder) return;
 
     // Check if song is already in folder
     if (selectedFolder.songs.some((s) => s.id === song.id)) return;
 
-    // Add song to folder
-    setFolders((prev) =>
-      prev.map((folder) =>
-        folder.id === selectedFolder.id
-          ? {
-              ...folder,
-              songs: [...folder.songs, song],
-              songCount: folder.songs.length + 1,
-            }
-          : folder,
-      ),
-    );
+    if (isAuthenticated) {
+      // Authenticated user - add to server folder
+      try {
+        const response = await userDataApi.createBookmark(
+          song.title,
+          song.artist,
+          selectedFolder.id,
+          song.id
+        );
+        
+        if (response.success) {
+          // Update userBookmarks to reflect the new bookmark
+          setUserBookmarks(prev => [...prev, response.bookmark]);
+          
+          // Update selectedFolder state to reflect changes immediately
+          setSelectedFolder((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  songs: [...prev.songs, song],
+                  songCount: prev.songs.length + 1,
+                }
+              : null,
+          );
+          
+          console.log('✅ Song added to server folder:', song.title);
+        }
+      } catch (error) {
+        console.error('Failed to add song to folder:', error);
+      }
+    } else {
+      // Local user - add to local folder
+      setFolders((prev) =>
+        prev.map((folder) =>
+          folder.id === selectedFolder.id
+            ? {
+                ...folder,
+                songs: [...folder.songs, song],
+                songCount: folder.songs.length + 1,
+              }
+            : folder,
+        ),
+      );
 
-    // Update selectedFolder state to reflect changes immediately
-    setSelectedFolder((prev) =>
-      prev
-        ? {
-            ...prev,
-            songs: [...prev.songs, song],
-            songCount: prev.songs.length + 1,
-          }
-        : null,
-    );
+      // Update selectedFolder state to reflect changes immediately
+      setSelectedFolder((prev) =>
+        prev
+          ? {
+              ...prev,
+              songs: [...prev.songs, song],
+              songCount: prev.songs.length + 1,
+            }
+          : null,
+      );
+      
+      console.log('✅ Song added to local folder:', song.title);
+    }
 
     // Automatically add song to liked songs if not already liked
     if (!likedSongs.some((s) => s.id === song.id)) {
@@ -521,31 +555,69 @@ const BookmarksPage = () => {
     // Keep dialog open for adding more items
   };
 
-  const handleRemoveSongFromFolder = (songId: string) => {
+  const handleRemoveSongFromFolder = async (songId: string) => {
     if (!selectedFolder) return;
 
-    setFolders((prev) =>
-      prev.map((folder) =>
-        folder.id === selectedFolder.id
-          ? {
-              ...folder,
-              songs: folder.songs.filter((s) => s.id !== songId),
-              songCount: folder.songs.length - 1,
-            }
-          : folder,
-      ),
-    );
-
-    // Update selectedFolder state
-    setSelectedFolder((prev) =>
-      prev
-        ? {
-            ...prev,
-            songs: prev.songs.filter((s) => s.id !== songId),
-            songCount: prev.songs.length - 1,
+    if (isAuthenticated) {
+      // Authenticated user - remove from server folder
+      try {
+        // Find the bookmark to delete
+        const bookmarkToDelete = userBookmarks.find(
+          bookmark => bookmark.folder_id === selectedFolder.id && 
+          (bookmark.track_id === songId || bookmark.id === songId)
+        );
+        
+        if (bookmarkToDelete) {
+          const response = await userDataApi.deleteBookmark(bookmarkToDelete.id);
+          
+          if (response.success) {
+            // Update userBookmarks to reflect the deletion
+            setUserBookmarks(prev => prev.filter(bookmark => bookmark.id !== bookmarkToDelete.id));
+            
+            // Update selectedFolder state
+            setSelectedFolder((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    songs: prev.songs.filter((s) => s.id !== songId),
+                    songCount: prev.songs.length - 1,
+                  }
+                : null,
+            );
+            
+            console.log('✅ Song removed from server folder:', songId);
           }
-        : null,
-    );
+        }
+      } catch (error) {
+        console.error('Failed to remove song from folder:', error);
+      }
+    } else {
+      // Local user - remove from local folder
+      setFolders((prev) =>
+        prev.map((folder) =>
+          folder.id === selectedFolder.id
+            ? {
+                ...folder,
+                songs: folder.songs.filter((s) => s.id !== songId),
+                songCount: folder.songs.length - 1,
+              }
+            : folder,
+        ),
+      );
+
+      // Update selectedFolder state
+      setSelectedFolder((prev) =>
+        prev
+          ? {
+              ...prev,
+              songs: prev.songs.filter((s) => s.id !== songId),
+              songCount: prev.songs.length - 1,
+            }
+          : null,
+      );
+      
+      console.log('✅ Song removed from local folder:', songId);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
