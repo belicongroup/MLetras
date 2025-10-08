@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { userDataApi } from "@/services/userDataApi";
+import { syncLayer } from "@/services/syncLayer";
 
 export interface UserNote {
   id: string;
@@ -11,19 +13,54 @@ export interface UserNote {
 }
 
 const NOTES_KEY = "userNotes";
+const LAST_SYNC_KEY = "userNotes_lastSync";
 
 export const useNotes = () => {
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load notes from localStorage
+  // Load and sync notes from both localStorage and server
   useEffect(() => {
-    const loadNotes = async () => {
+    const loadAndSyncNotes = async () => {
       try {
+        // Step 1: Load from localStorage immediately (instant UX)
         const saved = localStorage.getItem(NOTES_KEY);
+        let localNotes: UserNote[] = [];
         if (saved) {
-          const parsed = JSON.parse(saved);
-          setNotes(parsed);
+          localNotes = JSON.parse(saved);
+          setNotes(localNotes);
+          setIsLoading(false);
+        }
+
+        // Step 2: Fetch from server in background
+        try {
+          const sessionToken = localStorage.getItem('sessionToken');
+          if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
+            const response = await userDataApi.getNotes();
+            if (response.success && response.notes) {
+              // Convert server notes to UserNote format
+              const serverNotes: UserNote[] = response.notes.map(note => ({
+                id: note.id,
+                title: note.note_title,
+                artist: note.artist_name || '',
+                lyrics: note.note_content,
+                createdAt: new Date(note.created_at).getTime(),
+                updatedAt: new Date(note.updated_at).getTime(),
+              }));
+
+              // Merge: Server data is source of truth
+              const mergedNotes = serverNotes;
+              
+              // Save merged data to localStorage
+              localStorage.setItem(NOTES_KEY, JSON.stringify(mergedNotes));
+              localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+              setNotes(mergedNotes);
+              
+              console.log('✅ Notes synced from server');
+            }
+          }
+        } catch (syncError) {
+          console.warn('Server sync failed, using local data:', syncError);
         }
       } catch (error) {
         console.error("Error loading notes:", error);
@@ -33,7 +70,7 @@ export const useNotes = () => {
       }
     };
 
-    loadNotes();
+    loadAndSyncNotes();
   }, []);
 
   const createNote = async (noteData: Omit<UserNote, "id" | "createdAt" | "updatedAt">) => {
@@ -44,13 +81,28 @@ export const useNotes = () => {
       updatedAt: Date.now(),
     };
 
+    // Update localStorage immediately (instant UX)
     const newNotes = [newNote, ...notes];
     setNotes(newNotes);
     localStorage.setItem(NOTES_KEY, JSON.stringify(newNotes));
+    
+    // Queue server sync (batched, rate-limited)
+    syncLayer.queueSync({
+      type: 'note',
+      action: 'create',
+      data: {
+        note_title: newNote.title,
+        note_content: newNote.lyrics,
+        artist_name: newNote.artist,
+        song_name: undefined
+      }
+    });
+    
     return newNote;
   };
 
   const updateNote = async (id: string, noteData: Partial<Omit<UserNote, "id" | "createdAt">>) => {
+    // Update localStorage immediately (instant UX)
     const updatedNotes = notes.map((note) =>
       note.id === id
         ? {
@@ -63,13 +115,38 @@ export const useNotes = () => {
 
     setNotes(updatedNotes);
     localStorage.setItem(NOTES_KEY, JSON.stringify(updatedNotes));
-    return updatedNotes.find((note) => note.id === id);
+    
+    // Queue server sync (batched, rate-limited)
+    const updatedNote = updatedNotes.find((note) => note.id === id);
+    if (updatedNote) {
+      syncLayer.queueSync({
+        type: 'note',
+        action: 'update',
+        data: {
+          id: updatedNote.id,
+          note_title: updatedNote.title,
+          note_content: updatedNote.lyrics,
+          artist_name: updatedNote.artist,
+          song_name: undefined
+        }
+      });
+    }
+    
+    return updatedNote;
   };
 
   const deleteNote = async (id: string) => {
+    // Update localStorage immediately (instant UX)
     const updatedNotes = notes.filter((note) => note.id !== id);
     setNotes(updatedNotes);
     localStorage.setItem(NOTES_KEY, JSON.stringify(updatedNotes));
+    
+    // Queue server sync (batched, rate-limited)
+    syncLayer.queueSync({
+      type: 'note',
+      action: 'delete',
+      data: { id }
+    });
   };
 
   const getNoteById = (id: string): UserNote | null => {
