@@ -114,6 +114,53 @@ class MusixmatchApiService {
   private lastRequestTime = 0;
   private readonly minRequestInterval = 300; // Increased to 300ms between requests
 
+  /**
+   * Normalize search query - remove diacritics, lowercase, trim, collapse spaces
+   */
+  private normalizeQuery(query: string): string {
+    return query
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ') // Collapse multiple spaces
+      .normalize('NFD') // Decompose combined characters
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+      .replace(/ñ/g, 'n') // Spanish ñ
+      .replace(/ü/g, 'u'); // Spanish ü
+  }
+
+  /**
+   * Generate plural/singular variations for Spanish words
+   */
+  private getPluralSingularVariations(query: string): string[] {
+    const variations: string[] = [query];
+    const words = query.split(' ');
+    
+    words.forEach((word, index) => {
+      // Try removing trailing 's' for plural → singular
+      if (word.endsWith('s') && word.length > 3) {
+        const singular = word.slice(0, -1);
+        const newQuery = [...words.slice(0, index), singular, ...words.slice(index + 1)].join(' ');
+        variations.push(newQuery);
+      }
+      
+      // Try removing trailing 'es' for plural → singular
+      if (word.endsWith('es') && word.length > 4) {
+        const singular = word.slice(0, -2);
+        const newQuery = [...words.slice(0, index), singular, ...words.slice(index + 1)].join(' ');
+        variations.push(newQuery);
+      }
+      
+      // Try adding 's' for singular → plural
+      if (!word.endsWith('s') && word.length > 3) {
+        const plural = word + 's';
+        const newQuery = [...words.slice(0, index), plural, ...words.slice(index + 1)].join(' ');
+        variations.push(newQuery);
+      }
+    });
+    
+    return [...new Set(variations)]; // Remove duplicates
+  }
+
   private async makeRequest(
     endpoint: string,
     params: Record<string, string> = {},
@@ -160,16 +207,20 @@ class MusixmatchApiService {
 
   async searchSongs(
     query: string,
-    pageSize: number = 3, // Reduced from 5 to 3
+    pageSize: number = 5,
     page: number = 1,
   ): Promise<Song[]> {
     if (!query.trim()) return [];
 
+    // Normalize the query
+    const normalizedQuery = this.normalizeQuery(query);
+
     try {
+      // First attempt: search with normalized query
       const data: MusixmatchSearchResponse = await this.makeRequest(
         "/track.search",
         {
-          q_track: query,
+          q_track: normalizedQuery,
           page_size: pageSize.toString(),
           page: page.toString(),
           s_track_rating: "desc", // Sort by track rating
@@ -177,10 +228,54 @@ class MusixmatchApiService {
         },
       );
 
-      if (!data.message.body.track_list) {
+      if (!data.message.body.track_list || data.message.body.track_list.length === 0) {
+        // Silent fallback: try plural/singular variations
+        console.log('Zero results - trying plural/singular variations');
+        const variations = this.getPluralSingularVariations(normalizedQuery);
+        
+        // Try each variation until we get results
+        for (const variation of variations) {
+          if (variation === normalizedQuery) continue; // Skip original
+          
+          try {
+            const fallbackData: MusixmatchSearchResponse = await this.makeRequest(
+              "/track.search",
+              {
+                q_track: variation,
+                page_size: pageSize.toString(),
+                page: page.toString(),
+                s_track_rating: "desc",
+                f_has_lyrics: "1",
+              },
+            );
+            
+            if (fallbackData.message.body.track_list && fallbackData.message.body.track_list.length > 0) {
+              console.log(`Found results with variation: "${variation}"`);
+              return fallbackData.message.body.track_list.map((item) => ({
+                id: item.track.track_id.toString(),
+                title: item.track.track_name,
+                artist: item.track.artist_name,
+                album: item.track.album_name,
+                imageUrl:
+                  item.track.album_coverart_500x500 ||
+                  item.track.album_coverart_350x350 ||
+                  item.track.album_coverart_100x100,
+                url: item.track.track_share_url,
+                trackLength: item.track.track_length,
+                hasLyrics: item.track.has_lyrics === 1,
+              }));
+            }
+          } catch (fallbackError) {
+            console.log(`Variation "${variation}" failed, trying next...`);
+            continue;
+          }
+        }
+        
+        // No results found with any variation
         return [];
       }
 
+      // Return results from first attempt
       return data.message.body.track_list.map((item) => ({
         id: item.track.track_id.toString(),
         title: item.track.track_name,
@@ -237,7 +332,7 @@ class MusixmatchApiService {
   // Method to search by artist
   async searchByArtist(
     artistName: string,
-    pageSize: number = 3, // Reduced from 5 to 3
+    pageSize: number = 5,
   ): Promise<Song[]> {
     if (!artistName.trim()) return [];
 

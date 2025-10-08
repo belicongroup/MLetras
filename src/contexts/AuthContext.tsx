@@ -75,7 +75,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   const API_BASE_URL = isLocalWebDev 
     ? 'http://10.0.2.2:8787'  // Use local backend for web development only
-    : 'https://mletras-auth-api-dev.belicongroup.workers.dev';  // Production API for emulator and production
+    : 'https://mletras-auth-api.belicongroup.workers.dev';  // Production API
 
   /**
    * Make authenticated API request
@@ -175,6 +175,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Verify OTP code
    */
   const verifyOTP = async (email: string, code: string) => {
+    // DEV BYPASS: Auto-login with Pro access for specific email
+    const bypassEmail = 'dev@mletras.pro';
+    if (email.toLowerCase() === bypassEmail && code === '000000') {
+      const mockUser = {
+        id: 'dev-pro-user-123',
+        email: bypassEmail,
+        username: 'ProDev',
+        subscription_type: 'pro' as const,
+        email_verified: true,
+        created_at: new Date().toISOString(),
+        last_login_at: new Date().toISOString(),
+      };
+      
+      localStorage.setItem('sessionToken', 'dev-bypass-token-' + Date.now());
+      setAuthState({
+        user: mockUser,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+      
+      console.log('🚀 DEV BYPASS: Logged in as Pro user');
+      return { success: true, user: mockUser, message: 'Dev bypass login successful' };
+    }
+
     const response = await makeRequest('/auth/verify', {
       method: 'POST',
       body: JSON.stringify({ email, code }),
