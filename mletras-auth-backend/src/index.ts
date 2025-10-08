@@ -494,22 +494,30 @@ class AuthAPI {
     try {
       const normalizedEmail = email.toLowerCase().trim();
 
+      console.log(`[OTP Verify] Attempting to verify OTP for ${normalizedEmail} with code ${code}`);
+
       // Find valid OTP
       const otp = await this.env.DB.prepare(
         'SELECT * FROM otps WHERE email = ? AND code = ? AND used_at IS NULL AND expires_at > datetime(\'now\') ORDER BY created_at DESC LIMIT 1'
       ).bind(normalizedEmail, code).first();
 
+      console.log('[OTP Verify] OTP query result:', otp);
+
       if (!otp) {
+        console.log('[OTP Verify] No valid OTP found');
         return new Response(JSON.stringify({ error: 'Invalid or expired OTP' }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
         });
       }
 
-      // Mark OTP as used
+      // Mark OTP as used - cast to any to access properties
+      const otpData = otp as any;
+      console.log('[OTP Verify] Marking OTP as used, ID:', otpData.id);
+      
       await this.env.DB.prepare(
         'UPDATE otps SET used_at = CURRENT_TIMESTAMP WHERE id = ?'
-      ).bind(otp.id).run();
+      ).bind(otpData.id).run();
 
       // Get or create user
       let user = await this.env.DB.prepare(
