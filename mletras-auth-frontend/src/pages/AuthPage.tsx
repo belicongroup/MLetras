@@ -35,7 +35,17 @@ export function AuthPage() {
         const loginResponse = await login(email);
         setStep('otp');
       } catch (loginErr: any) {
-        setError(loginErr.message || 'Failed to send verification code');
+        const errorMessage = loginErr.message || 'Failed to send verification code';
+        const errorDetails = loginErr.details || '';
+        
+        // Show more helpful error message
+        if (errorDetails.includes('EMAIL_API_KEY')) {
+          setError('Email service is not properly configured. Please contact support or try again later.');
+        } else if (errorMessage.includes('verification email')) {
+          setError('Unable to send verification email. Please check your email address and try again.');
+        } else {
+          setError(errorMessage);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -244,6 +254,7 @@ export function AuthPage() {
     </div>
   );
 }
+
 
 
 

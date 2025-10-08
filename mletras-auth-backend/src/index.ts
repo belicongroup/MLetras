@@ -117,12 +117,107 @@ class AuthAPI {
   }
 
   /**
+   * Test email sending endpoint
+   */
+  private async handleTestEmail(request: Request): Promise<Response> {
+    try {
+      const body = await request.json();
+      const { email } = body;
+      
+      if (!email) {
+        return new Response(JSON.stringify({ error: 'Email is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log('=== EMAIL TEST START ===');
+      console.log('Testing email to:', email);
+      console.log('EMAIL_API_KEY present:', !!this.env.EMAIL_API_KEY);
+      console.log('EMAIL_API_KEY length:', this.env.EMAIL_API_KEY?.length || 0);
+      console.log('EMAIL_API_KEY starts with re_:', this.env.EMAIL_API_KEY?.startsWith('re_') || false);
+      
+      const requestBody = {
+        from: 'MLetras <noreply@mail.mletras.com>',
+        to: [email],
+        subject: 'Test Email from Worker',
+        html: '<p>This is a test email from the MLetras worker to verify email sending works.</p>',
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.env.EMAIL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const responseText = await response.text();
+      console.log('Response body:', responseText);
+      
+      if (!response.ok) {
+        console.error('Email sending failed:', response.status, responseText);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to send test email',
+          status: response.status,
+          details: responseText,
+          requestBody: requestBody
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const result = JSON.parse(responseText);
+      console.log(`Test email sent successfully to ${email}, message ID: ${result.id}`);
+      console.log('=== EMAIL TEST END ===');
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Test email sent successfully',
+        messageId: result.id,
+        email: email
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+    } catch (error) {
+      console.error('Test email error:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  /**
    * Send OTP email using Resend
    */
   private async sendOTPEmail(email: string, code: string, type: string): Promise<boolean> {
     try {
-      // Log OTP for debugging
-      console.log(`[DEV] OTP for ${email}: ${code}`);
+      // Always log OTP for debugging (visible in Cloudflare logs)
+      console.log(`[${this.env.ENVIRONMENT}] OTP for ${email}: ${code}`);
+
+      // Check if EMAIL_API_KEY is configured
+      if (!this.env.EMAIL_API_KEY) {
+        console.error('EMAIL_API_KEY is not configured!');
+        if (this.env.ENVIRONMENT === 'production') {
+          return false;
+        }
+        // In development, allow OTP to be used even without email
+        console.log(`[DEV FALLBACK] Email service not configured, but OTP ${code} is valid for ${email}`);
+        return true;
+      }
 
       const emailType = type === 'signup' ? 'sign up' : 'log in';
       const subject = `Your MLetras ${emailType} code`;
@@ -130,7 +225,7 @@ class AuthAPI {
       // Simple HTML content
       const htmlContent = `<p>Your MLetras ${emailType} code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p><p>If you didn't request this code, please ignore this email.</p>`;
 
-      // Use the exact same request that worked in direct test
+      // Send email via Resend API
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -148,9 +243,15 @@ class AuthAPI {
       if (!response.ok) {
         const errorData = await response.text();
         console.error('Resend API error:', response.status, errorData);
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
         
-        // If email fails, log the OTP and return true so the flow continues
-        console.log(`[FALLBACK] Email failed, but OTP ${code} is valid for ${email}`);
+        // In production, fail if email can't be sent
+        if (this.env.ENVIRONMENT === 'production') {
+          return false;
+        }
+        
+        // In development, allow fallback
+        console.log(`[DEV FALLBACK] Email failed, but OTP ${code} is valid for ${email}`);
         return true;
       }
 
@@ -161,8 +262,13 @@ class AuthAPI {
     } catch (error) {
       console.error('Failed to send OTP email:', error);
       
-      // If email fails, log the OTP and return true so the flow continues
-      console.log(`[FALLBACK] Email failed, but OTP ${code} is valid for ${email}`);
+      // In production, fail if email can't be sent
+      if (this.env.ENVIRONMENT === 'production') {
+        return false;
+      }
+      
+      // In development, allow fallback with console logging
+      console.log(`[DEV FALLBACK] Email failed, but OTP ${code} is valid for ${email}`);
       return true;
     }
   }
@@ -345,7 +451,18 @@ class AuthAPI {
       const emailSent = await this.sendOTPEmail(normalizedEmail, otpCode, type);
 
       if (!emailSent) {
-        return new Response(JSON.stringify({ error: 'Failed to send OTP email' }), {
+        // Clean up the OTP from database if email fails
+        await this.env.DB.prepare(
+          'DELETE FROM otps WHERE id = ?'
+        ).bind(otpId).run();
+
+        return new Response(JSON.stringify({ 
+          error: 'Failed to send verification email',
+          message: 'Unable to send verification code to your email. Please try again later or contact support.',
+          details: this.env.ENVIRONMENT === 'production' 
+            ? 'Email service is currently unavailable' 
+            : 'EMAIL_API_KEY may not be properly configured'
+        }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         });
@@ -633,6 +750,10 @@ class AuthAPI {
       return this.setCorsHeaders(response, origin);
     }
 
+    if (path === '/test-email' && request.method === 'POST') {
+      return this.handleTestEmail(request);
+    }
+    
     if (path === '/auth/login' && request.method === 'POST') {
       const body = await request.json();
       const response = await this.handleAuthRequest(body.email, 'login');
