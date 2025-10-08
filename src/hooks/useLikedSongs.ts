@@ -32,33 +32,34 @@ export const useLikedSongs = () => {
           setIsLoading(false);
         }
 
-        // Step 2: Fetch from server in background
-        try {
-          const sessionToken = localStorage.getItem('sessionToken');
-          if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
-            const response = await userDataApi.getBookmarks();
-            if (response.success && response.bookmarks) {
-              // Convert server bookmarks to Song format
-              const serverSongs: Song[] = response.bookmarks.map(bookmark => ({
-                id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
-                title: bookmark.song_title,
-                artist: bookmark.artist_name,
-              }));
+        // TEMPORARILY DISABLED: Step 2: Fetch from server in background
+        // try {
+        //   const sessionToken = localStorage.getItem('sessionToken');
+        //   if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
+        //     const response = await userDataApi.getBookmarks();
+        //     if (response.success && response.bookmarks) {
+        //       // Convert server bookmarks to Song format
+        //       const serverSongs: Song[] = response.bookmarks.map(bookmark => ({
+        //         id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
+        //         title: bookmark.song_title,
+        //         artist: bookmark.artist_name,
+        //       }));
 
-              // Merge: Server data is source of truth
-              const mergedSongs = serverSongs;
-              
-              // Save merged data to localStorage
-              localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(mergedSongs));
-              localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
-              setLikedSongs(mergedSongs);
-              
-              console.log('✅ Bookmarks synced from server');
-            }
-          }
-        } catch (syncError) {
-          console.warn('Server sync failed, using local data:', syncError);
-        }
+        //       // Merge: Server data is source of truth
+        //       const mergedSongs = serverSongs;
+        //       
+        //       // Save merged data to localStorage
+        //       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(mergedSongs));
+        //       localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+        //       setLikedSongs(mergedSongs);
+        //       
+        //       console.log('✅ Bookmarks synced from server');
+        //     }
+        //   }
+        // } catch (syncError) {
+        //   console.warn('Server sync failed, using local data:', syncError);
+        // }
+        console.log('🔧 Server sync temporarily disabled for troubleshooting');
       } catch (error) {
         console.error("Error loading liked songs:", error);
         setLikedSongs([]);
@@ -79,12 +80,12 @@ export const useLikedSongs = () => {
       setLikedSongs(updatedSongs);
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
       
-      // Queue server sync (batched, rate-limited)
-      syncLayer.queueSync({
-        type: 'bookmark',
-        action: 'delete',
-        data: { id: song.id }
-      });
+      // TEMPORARILY DISABLED: Queue server sync (batched, rate-limited)
+      // syncLayer.queueSync({
+      //   type: 'bookmark',
+      //   action: 'delete',
+      //   data: { id: song.id }
+      // });
     } else {
       // Like song - only store basic metadata, no lyrics per Musixmatch terms
       const songMetadata = {
@@ -99,17 +100,17 @@ export const useLikedSongs = () => {
       setLikedSongs(newLikedSongs);
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(newLikedSongs));
       
-      // Queue server sync (batched, rate-limited)
-      syncLayer.queueSync({
-        type: 'bookmark',
-        action: 'create',
-        data: { 
-          song_title: song.title,
-          artist_name: song.artist,
-          folder_id: undefined,
-          track_id: song.id  // Pass Musixmatch track ID
-        }
-      });
+      // TEMPORARILY DISABLED: Queue server sync (batched, rate-limited)
+      // syncLayer.queueSync({
+      //   type: 'bookmark',
+      //   action: 'create',
+      //   data: { 
+      //     song_title: song.title,
+      //     artist_name: song.artist,
+      //     folder_id: undefined,
+      //     track_id: song.id  // Pass Musixmatch track ID
+      //   }
+      // });
     }
   };
 
