@@ -21,25 +21,12 @@ export const useAllFavorites = (likedSongs?: any[]) => {
   const songsToUse = likedSongs || likedSongsFromHook.likedSongs;
   const { notes } = useNotes();
   
-  // Debug what we're receiving
-  console.log('🟡 useAllFavorites render - received likedSongs:', {
-    count: songsToUse.length,
-    ids: songsToUse.map(s => s.id),
-    source: likedSongs ? 'passed from parent' : 'from hook'
-  });
-  
   // Use a ref to track the latest likedSongs and force updates
   const likedSongsRef = useRef(songsToUse);
   const [forceUpdate, setForceUpdate] = useState(0);
   
   // Update ref and force re-render when songsToUse changes
   useEffect(() => {
-    console.log('🟠 songsToUse changed, updating ref and forcing update:', {
-      oldCount: likedSongsRef.current.length,
-      newCount: songsToUse.length,
-      oldIds: likedSongsRef.current.map(s => s.id),
-      newIds: songsToUse.map(s => s.id)
-    });
     likedSongsRef.current = songsToUse;
     setForceUpdate(prev => prev + 1);
   }, [songsToUse]);
@@ -87,14 +74,6 @@ export const useAllFavorites = (likedSongs?: any[]) => {
 
   // Combine all favorites - memoized to update when dependencies change
   const allFavorites: FavoriteItem[] = useMemo(() => {
-    console.log('🟢 useAllFavorites recomputing with:', {
-      likedSongsCount: likedSongsRef.current.length,
-      notesCount: notes.length,
-      likedNotesCount: likedNotes.length,
-      likedSongsIds: likedSongsRef.current.map(s => s.id),
-      forceUpdate
-    });
-    
     const result = [
       // Add liked songs
       ...likedSongsRef.current.map(song => ({
@@ -120,7 +99,6 @@ export const useAllFavorites = (likedSongs?: any[]) => {
         })),
     ].sort((a, b) => b.createdAt - a.createdAt);
     
-    console.log('🟢 allFavorites result count:', result.length);
     return result;
   }, [forceUpdate, notes, likedNotes]); // Use forceUpdate to trigger recomputation
 

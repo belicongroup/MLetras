@@ -32,34 +32,33 @@ export const useLikedSongs = () => {
           setIsLoading(false);
         }
 
-        // TEMPORARILY DISABLED: Step 2: Fetch from server in background
-        // try {
-        //   const sessionToken = localStorage.getItem('sessionToken');
-        //   if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
-        //     const response = await userDataApi.getBookmarks();
-        //     if (response.success && response.bookmarks) {
-        //       // Convert server bookmarks to Song format
-        //       const serverSongs: Song[] = response.bookmarks.map(bookmark => ({
-        //         id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
-        //         title: bookmark.song_title,
-        //         artist: bookmark.artist_name,
-        //       }));
+        // Step 2: Fetch from server in background
+        try {
+          const sessionToken = localStorage.getItem('sessionToken');
+          if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
+            const response = await userDataApi.getBookmarks();
+            if (response.success && response.bookmarks) {
+              // Convert server bookmarks to Song format
+              const serverSongs: Song[] = response.bookmarks.map(bookmark => ({
+                id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
+                title: bookmark.song_title,
+                artist: bookmark.artist_name,
+              }));
 
-        //       // Merge: Server data is source of truth
-        //       const mergedSongs = serverSongs;
-        //       
-        //       // Save merged data to localStorage
-        //       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(mergedSongs));
-        //       localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
-        //       setLikedSongs(mergedSongs);
-        //       
-        //       console.log('✅ Bookmarks synced from server');
-        //     }
-        //   }
-        // } catch (syncError) {
-        //   console.warn('Server sync failed, using local data:', syncError);
-        // }
-        console.log('🔧 Server sync temporarily disabled for troubleshooting');
+              // Merge: Server data is source of truth
+              const mergedSongs = serverSongs;
+              
+              // Save merged data to localStorage
+              localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(mergedSongs));
+              localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+              setLikedSongs(mergedSongs);
+              
+              console.log('✅ Bookmarks synced from server');
+            }
+          }
+        } catch (syncError) {
+          console.warn('Server sync failed, using local data:', syncError);
+        }
       } catch (error) {
         console.error("Error loading liked songs:", error);
         setLikedSongs([]);
@@ -74,38 +73,21 @@ export const useLikedSongs = () => {
   const toggleLike = useCallback(async (song: Song) => {
     const isLiked = likedSongs.some((s) => s.id === song.id);
 
-    console.log('🔵 toggleLike called:', { songId: song.id, songTitle: song.title, isLiked });
-    console.log('🔵 Current likedSongs count:', likedSongs.length);
-    console.log('🔵 Current likedSongs IDs:', likedSongs.map(s => s.id));
+    // console.log('🔵 toggleLike called:', { songId: song.id, songTitle: song.title, isLiked });
 
     if (isLiked) {
       // Unlike song - update localStorage immediately (instant UX)
       const updatedSongs = likedSongs.filter((s) => s.id !== song.id);
-      console.log('🔴 UNLIKING - Updated count:', updatedSongs.length);
-      console.log('🔴 UNLIKING - Updated IDs:', updatedSongs.map(s => s.id));
-      
       // Use functional update to ensure we get the latest state
-      setLikedSongs(prevSongs => {
-        console.log('🔴 setLikedSongs callback - prevSongs count:', prevSongs.length);
-        const newSongs = prevSongs.filter((s) => s.id !== song.id);
-        console.log('🔴 setLikedSongs callback - newSongs count:', newSongs.length);
-        return newSongs;
-      });
-      
+      setLikedSongs(prevSongs => prevSongs.filter((s) => s.id !== song.id));
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
-      console.log('🔴 State and localStorage updated');
       
-      // Force a small delay to see if there's a race condition
-      setTimeout(() => {
-        console.log('🔴 After timeout - likedSongs should be:', updatedSongs.length);
-      }, 100);
-      
-      // TEMPORARILY DISABLED: Queue server sync (batched, rate-limited)
-      // syncLayer.queueSync({
-      //   type: 'bookmark',
-      //   action: 'delete',
-      //   data: { id: song.id }
-      // });
+      // Queue server sync (batched, rate-limited)
+      syncLayer.queueSync({
+        type: 'bookmark',
+        action: 'delete',
+        data: { id: song.id }
+      });
     } else {
       // Like song - only store basic metadata, no lyrics per Musixmatch terms
       const songMetadata = {
@@ -120,17 +102,17 @@ export const useLikedSongs = () => {
       setLikedSongs(newLikedSongs);
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(newLikedSongs));
       
-      // TEMPORARILY DISABLED: Queue server sync (batched, rate-limited)
-      // syncLayer.queueSync({
-      //   type: 'bookmark',
-      //   action: 'create',
-      //   data: { 
-      //     song_title: song.title,
-      //     artist_name: song.artist,
-      //     folder_id: undefined,
-      //     track_id: song.id  // Pass Musixmatch track ID
-      //   }
-      // });
+      // Queue server sync (batched, rate-limited)
+      syncLayer.queueSync({
+        type: 'bookmark',
+        action: 'create',
+        data: { 
+          song_title: song.title,
+          artist_name: song.artist,
+          folder_id: undefined,
+          track_id: song.id  // Pass Musixmatch track ID
+        }
+      });
     }
   }, [likedSongs]); // Add dependency array for useCallback
 
