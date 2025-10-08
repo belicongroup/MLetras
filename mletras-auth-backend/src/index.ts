@@ -120,15 +120,15 @@ class AuthAPI {
    * Send OTP email using Resend
    */
   private async sendOTPEmail(email: string, code: string, type: string): Promise<boolean> {
-    // DEV BYPASS: Skip email sending in development
-    if (this.env.ENVIRONMENT === 'development') {
-      console.log(`DEV BYPASS: Would send OTP ${code} to ${email}`);
-      return true;
-    }
-    
     try {
       // Log OTP for debugging (but still send real email)
       console.log(`[DEV] OTP for ${email}: ${code}`);
+      
+      // TEMPORARY: Only send real emails to verified address, others get bypass
+      if (email !== 'belicongroup@gmail.com') {
+        console.log(`DEV BYPASS: Would send OTP ${code} to ${email} (not verified email)`);
+        return true;
+      }
 
       const emailType = type === 'signup' ? 'sign up' : 'log in';
       const subject = `Your MLetras ${emailType} code`;
@@ -196,6 +196,10 @@ MLetras Team
 noreply@mail.mletras.com
       `;
 
+      console.log('EMAIL_API_KEY present:', !!this.env.EMAIL_API_KEY);
+      console.log('EMAIL_API_KEY length:', this.env.EMAIL_API_KEY?.length || 0);
+      console.log('EMAIL_API_KEY starts with re_:', this.env.EMAIL_API_KEY?.startsWith('re_') || false);
+      
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -206,8 +210,7 @@ noreply@mail.mletras.com
           from: 'MLetras <noreply@mail.mletras.com>',
           to: [email],
           subject: subject,
-          html: htmlContent,
-          text: textContent,
+          html: `<p>Your MLetras ${emailType} code is: <strong>${code}</strong></p><p>This code will expire in 10 minutes.</p>`,
         }),
       });
 
