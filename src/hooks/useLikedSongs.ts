@@ -74,11 +74,16 @@ export const useLikedSongs = () => {
   const toggleLike = async (song: Song) => {
     const isLiked = likedSongs.some((s) => s.id === song.id);
 
+    console.log('🔵 toggleLike called:', { songId: song.id, songTitle: song.title, isLiked });
+    console.log('🔵 Current likedSongs count:', likedSongs.length);
+
     if (isLiked) {
       // Unlike song - update localStorage immediately (instant UX)
       const updatedSongs = likedSongs.filter((s) => s.id !== song.id);
+      console.log('🔴 UNLIKING - Updated count:', updatedSongs.length);
       setLikedSongs(updatedSongs);
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
+      console.log('🔴 State and localStorage updated');
       
       // TEMPORARILY DISABLED: Queue server sync (batched, rate-limited)
       // syncLayer.queueSync({

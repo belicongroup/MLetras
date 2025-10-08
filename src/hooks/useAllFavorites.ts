@@ -61,30 +61,41 @@ export const useAllFavorites = () => {
   };
 
   // Combine all favorites - memoized to update when dependencies change
-  const allFavorites: FavoriteItem[] = useMemo(() => [
-    // Add liked songs
-    ...likedSongs.map(song => ({
-      id: song.id,
-      title: song.title,
-      artist: song.artist,
-      type: "song" as const,
-      createdAt: Date.now(), // Songs don't have createdAt, using current time
-      imageUrl: song.imageUrl,
-      url: song.url,
-    })),
-    // Add liked notes
-    ...notes
-      .filter(note => likedNotes.includes(note.id))
-      .map(note => ({
-        id: note.id,
-        title: note.title,
-        artist: note.artist,
-        type: "note" as const,
-        createdAt: note.createdAt,
-        updatedAt: note.updatedAt,
-        lyrics: note.lyrics,
+  const allFavorites: FavoriteItem[] = useMemo(() => {
+    console.log('🟢 useAllFavorites recomputing with:', {
+      likedSongsCount: likedSongs.length,
+      notesCount: notes.length,
+      likedNotesCount: likedNotes.length
+    });
+    
+    const result = [
+      // Add liked songs
+      ...likedSongs.map(song => ({
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        type: "song" as const,
+        createdAt: Date.now(), // Songs don't have createdAt, using current time
+        imageUrl: song.imageUrl,
+        url: song.url,
       })),
-  ].sort((a, b) => b.createdAt - a.createdAt), [likedSongs, notes, likedNotes]); // Sort by creation date, newest first
+      // Add liked notes
+      ...notes
+        .filter(note => likedNotes.includes(note.id))
+        .map(note => ({
+          id: note.id,
+          title: note.title,
+          artist: note.artist,
+          type: "note" as const,
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+          lyrics: note.lyrics,
+        })),
+    ].sort((a, b) => b.createdAt - a.createdAt);
+    
+    console.log('🟢 allFavorites result count:', result.length);
+    return result;
+  }, [likedSongs, notes, likedNotes]); // Sort by creation date, newest first
 
   return {
     allFavorites,
