@@ -181,7 +181,7 @@ const BookmarksPage = () => {
   const { user, isAuthenticated } = useAuth();
   const t = translations[settings.language];
   const { likedSongs, toggleLike } = useLikedSongs();
-  const { allFavorites, toggleNoteLike } = useAllFavorites();
+  const { allFavorites, toggleNoteLike } = useAllFavorites(likedSongs);
   const { notes } = useNotes();
   const [showLikedSongs, setShowLikedSongs] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);

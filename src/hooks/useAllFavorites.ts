@@ -16,31 +16,33 @@ export interface FavoriteItem {
 
 const LIKED_NOTES_KEY = "likedNotes";
 
-export const useAllFavorites = () => {
-  const { likedSongs } = useLikedSongs();
+export const useAllFavorites = (likedSongs?: any[]) => {
+  const likedSongsFromHook = useLikedSongs();
+  const songsToUse = likedSongs || likedSongsFromHook.likedSongs;
   const { notes } = useNotes();
   
-  // Debug what we're receiving from useLikedSongs
+  // Debug what we're receiving
   console.log('🟡 useAllFavorites render - received likedSongs:', {
-    count: likedSongs.length,
-    ids: likedSongs.map(s => s.id)
+    count: songsToUse.length,
+    ids: songsToUse.map(s => s.id),
+    source: likedSongs ? 'passed from parent' : 'from hook'
   });
   
   // Use a ref to track the latest likedSongs and force updates
-  const likedSongsRef = useRef(likedSongs);
+  const likedSongsRef = useRef(songsToUse);
   const [forceUpdate, setForceUpdate] = useState(0);
   
-  // Update ref and force re-render when likedSongs changes
+  // Update ref and force re-render when songsToUse changes
   useEffect(() => {
-    console.log('🟠 likedSongs changed, updating ref and forcing update:', {
+    console.log('🟠 songsToUse changed, updating ref and forcing update:', {
       oldCount: likedSongsRef.current.length,
-      newCount: likedSongs.length,
+      newCount: songsToUse.length,
       oldIds: likedSongsRef.current.map(s => s.id),
-      newIds: likedSongs.map(s => s.id)
+      newIds: songsToUse.map(s => s.id)
     });
-    likedSongsRef.current = likedSongs;
+    likedSongsRef.current = songsToUse;
     setForceUpdate(prev => prev + 1);
-  }, [likedSongs]);
+  }, [songsToUse]);
   
   const [likedNotes, setLikedNotes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
