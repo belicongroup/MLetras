@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useReducer } from "react";
 import { userDataApi } from "@/services/userDataApi";
 import { syncLayer } from "@/services/syncLayer";
 // Note: No caching of Musixmatch API data per terms of service
@@ -71,7 +71,7 @@ export const useLikedSongs = () => {
     loadAndSyncLikedSongs();
   }, []);
 
-  const toggleLike = async (song: Song) => {
+  const toggleLike = useCallback(async (song: Song) => {
     const isLiked = likedSongs.some((s) => s.id === song.id);
 
     console.log('🔵 toggleLike called:', { songId: song.id, songTitle: song.title, isLiked });
@@ -83,7 +83,15 @@ export const useLikedSongs = () => {
       const updatedSongs = likedSongs.filter((s) => s.id !== song.id);
       console.log('🔴 UNLIKING - Updated count:', updatedSongs.length);
       console.log('🔴 UNLIKING - Updated IDs:', updatedSongs.map(s => s.id));
-      setLikedSongs(updatedSongs);
+      
+      // Use functional update to ensure we get the latest state
+      setLikedSongs(prevSongs => {
+        console.log('🔴 setLikedSongs callback - prevSongs count:', prevSongs.length);
+        const newSongs = prevSongs.filter((s) => s.id !== song.id);
+        console.log('🔴 setLikedSongs callback - newSongs count:', newSongs.length);
+        return newSongs;
+      });
+      
       localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
       console.log('🔴 State and localStorage updated');
       
@@ -124,7 +132,7 @@ export const useLikedSongs = () => {
       //   }
       // });
     }
-  };
+  }, [likedSongs]); // Add dependency array for useCallback
 
   const isLiked = (songId: string) => {
     return likedSongs.some((s) => s.id === songId);

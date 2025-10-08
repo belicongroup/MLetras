@@ -240,6 +240,12 @@ const BookmarksPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Force re-render when likedSongs count changes
+  useEffect(() => {
+    console.log('🟣 BookmarksPage - likedSongs count changed:', likedSongs.length);
+    setRefreshKey(prev => prev + 1);
+  }, [likedSongs.length]);
+
   // Save folders to localStorage whenever folders change
   useEffect(() => {
     localStorage.setItem("mletras-folders", JSON.stringify(folders));
