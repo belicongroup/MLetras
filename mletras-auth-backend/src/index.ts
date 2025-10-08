@@ -120,6 +120,12 @@ class AuthAPI {
    * Send OTP email using Resend
    */
   private async sendOTPEmail(email: string, code: string, type: string): Promise<boolean> {
+    // DEV BYPASS: Skip email sending in development
+    if (this.env.ENVIRONMENT === 'development') {
+      console.log(`DEV BYPASS: Would send OTP ${code} to ${email}`);
+      return true;
+    }
+    
     try {
       // Log OTP for debugging (but still send real email)
       console.log(`[DEV] OTP for ${email}: ${code}`);
@@ -187,7 +193,7 @@ If you didn't request this code, please ignore this email.
 
 --
 MLetras Team
-noreply@mail.mletras.com
+onboarding@resend.dev
       `;
 
       const response = await fetch('https://api.resend.com/emails', {
@@ -197,7 +203,7 @@ noreply@mail.mletras.com
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'MLetras <noreply@mail.mletras.com>',
+          from: 'MLetras <onboarding@resend.dev>',
           to: [email],
           subject: subject,
           html: htmlContent,
@@ -208,6 +214,8 @@ noreply@mail.mletras.com
       if (!response.ok) {
         const errorData = await response.text();
         console.error('Resend API error:', response.status, errorData);
+        console.error('API Key being used:', this.env.EMAIL_API_KEY ? 'Present' : 'Missing');
+        console.error('API Key length:', this.env.EMAIL_API_KEY?.length || 0);
         return false;
       }
 
