@@ -282,23 +282,29 @@ const BookmarksPage = () => {
     }
   };
 
-  // Create new folder
+  // Create new folder (server + local)
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
     
-    try {
-      const response = await userDataApi.createFolder(newFolderName.trim());
-      if (response.success) {
-        setUserFolders(prev => [...prev, response.folder]);
-        setNewFolderName("");
-        setShowCreateFolderDialog(false);
+    if (isAuthenticated) {
+      // Authenticated user - create on server
+      try {
+        const response = await userDataApi.createFolder(newFolderName.trim());
+        if (response.success) {
+          setUserFolders(prev => [...prev, response.folder]);
+          setNewFolderName("");
+          setShowCreateFolderDialog(false);
+        }
+      } catch (error: any) {
+        console.error('Failed to create folder:', error);
+        // Handle folder limit error
+        if (error.message.includes('Folder limit reached')) {
+          // Show upgrade prompt
+        }
       }
-    } catch (error: any) {
-      console.error('Failed to create folder:', error);
-      // Handle folder limit error
-      if (error.message.includes('Folder limit reached')) {
-        // Show upgrade prompt
-      }
+    } else {
+      // Local user - create locally
+      handleCreateFolder();
     }
   };
 
@@ -338,6 +344,24 @@ const BookmarksPage = () => {
     setFolders((prev) => [...prev, newFolder]);
     setNewFolderName("");
     setIsCreating(false);
+  };
+
+  // Delete folder (server + local)
+  const deleteFolder = async (folderId: string) => {
+    if (isAuthenticated) {
+      // Authenticated user - delete from server
+      try {
+        const response = await userDataApi.deleteFolder(folderId);
+        if (response.success) {
+          setUserFolders(prev => prev.filter(folder => folder.id !== folderId));
+        }
+      } catch (error) {
+        console.error('Failed to delete folder:', error);
+      }
+    } else {
+      // Local user - delete locally
+      handleDeleteFolder(folderId);
+    }
   };
 
   const handleDeleteFolder = (folderId: string) => {
@@ -1051,41 +1075,41 @@ const BookmarksPage = () => {
             </Dialog>
           </div>
 
-          {/* User Folders Grid */}
+          {/* Folders Grid */}
           {isLoadingUserData ? (
             <div className="text-center py-8">
               <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
               <p className="text-muted-foreground">Loading your folders...</p>
             </div>
-          ) : userFolders.length > 0 ? (
+          ) : (userFolders.length > 0 || folders.length > 0) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {userFolders.map((folder) => (
-                <Card
-                  key={folder.id}
-                  className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer hover-scale"
-                  onClick={() => {
-                    // Convert user folder to local folder format for compatibility
-                    const localFolder: Folder = {
-                      id: folder.id,
-                      name: folder.folder_name,
-                      songCount: userBookmarks.filter(b => b.folder_id === folder.id).length,
-                      color: "from-blue-500 to-purple-500", // Default color
-                      songs: userBookmarks.filter(b => b.folder_id === folder.id).map(bookmark => ({
-                        id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
-                        title: bookmark.song_title,
-                        artist: bookmark.artist_name,
-                        album: "",
-                        duration: 0,
-                        year: 0,
-                        genre: "",
-                        lyrics: "",
-                        albumArt: "",
-                        isLiked: false,
-                      }))
-                    };
-                    setSelectedFolder(localFolder);
-                  }}
-                >
+                <div key={folder.id} className="relative">
+                  <Card
+                    className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer hover-scale"
+                    onClick={() => {
+                      // Convert user folder to local folder format for compatibility
+                      const localFolder: Folder = {
+                        id: folder.id,
+                        name: folder.folder_name,
+                        songCount: userBookmarks.filter(b => b.folder_id === folder.id).length,
+                        color: "from-blue-500 to-purple-500", // Default color
+                        songs: userBookmarks.filter(b => b.folder_id === folder.id).map(bookmark => ({
+                          id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
+                          title: bookmark.song_title,
+                          artist: bookmark.artist_name,
+                          album: "",
+                          duration: 0,
+                          year: 0,
+                          genre: "",
+                          lyrics: "",
+                          albumArt: "",
+                          isLiked: false,
+                        }))
+                      };
+                      setSelectedFolder(localFolder);
+                    }}
+                  >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <div className="w-3 h-3 bg-gradient-primary rounded-full" />
@@ -1098,6 +1122,33 @@ const BookmarksPage = () => {
                     </p>
                   </CardContent>
                 </Card>
+                
+                {/* Delete button for user folders */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteFolder(folder.id);
+                  }}
+                  className="absolute top-2 right-2 h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              ))}
+              
+              {/* Local folders (for non-authenticated users or additional folders) */}
+              {!isAuthenticated && folders.map((folder) => (
+                <SortableFolderItem
+                  key={folder.id}
+                  folder={folder}
+                  onDelete={handleDeleteFolder}
+                  onClick={() => setSelectedFolder(folder)}
+                  deleteText={t.delete}
+                  songText={t.song}
+                  songsText={t.songs}
+                />
               ))}
             </div>
           ) : (
@@ -1117,24 +1168,6 @@ const BookmarksPage = () => {
             </div>
           )}
 
-          {folders.length === 0 && (
-            <div className="text-center py-8">
-              <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
-                <FolderPlus className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">{t.noSongsFound}</h3>
-              <p className="text-muted-foreground mb-4">
-                {t.noSongsFoundSubtitle}
-              </p>
-              <Button
-                onClick={() => setIsCreating(true)}
-                className="bg-gradient-primary hover:bg-gradient-accent"
-              >
-                <FolderPlus className="w-4 h-4 mr-2" />
-                {t.createFolder}
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     </DndContext>
