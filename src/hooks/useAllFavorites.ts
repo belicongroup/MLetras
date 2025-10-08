@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useLikedSongs } from "./useLikedSongs";
 import { useNotes } from "./useNotes";
 
@@ -26,18 +26,21 @@ export const useAllFavorites = () => {
     ids: likedSongs.map(s => s.id)
   });
   
-  // Force re-render when likedSongs changes by using a local state
-  const [likedSongsSnapshot, setLikedSongsSnapshot] = useState(likedSongs);
+  // Use a ref to track the latest likedSongs and force updates
+  const likedSongsRef = useRef(likedSongs);
+  const [forceUpdate, setForceUpdate] = useState(0);
   
+  // Update ref and force re-render when likedSongs changes
   useEffect(() => {
-    console.log('🟠 likedSongs changed, updating snapshot:', {
-      oldCount: likedSongsSnapshot.length,
+    console.log('🟠 likedSongs changed, updating ref and forcing update:', {
+      oldCount: likedSongsRef.current.length,
       newCount: likedSongs.length,
-      oldIds: likedSongsSnapshot.map(s => s.id),
+      oldIds: likedSongsRef.current.map(s => s.id),
       newIds: likedSongs.map(s => s.id)
     });
-    setLikedSongsSnapshot(likedSongs);
-  }, [likedSongs, likedSongsSnapshot]);
+    likedSongsRef.current = likedSongs;
+    setForceUpdate(prev => prev + 1);
+  }, [likedSongs]);
   
   const [likedNotes, setLikedNotes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,15 +86,16 @@ export const useAllFavorites = () => {
   // Combine all favorites - memoized to update when dependencies change
   const allFavorites: FavoriteItem[] = useMemo(() => {
     console.log('🟢 useAllFavorites recomputing with:', {
-      likedSongsCount: likedSongsSnapshot.length,
+      likedSongsCount: likedSongsRef.current.length,
       notesCount: notes.length,
       likedNotesCount: likedNotes.length,
-      likedSongsIds: likedSongsSnapshot.map(s => s.id)
+      likedSongsIds: likedSongsRef.current.map(s => s.id),
+      forceUpdate
     });
     
     const result = [
       // Add liked songs
-      ...likedSongsSnapshot.map(song => ({
+      ...likedSongsRef.current.map(song => ({
         id: song.id,
         title: song.title,
         artist: song.artist,
@@ -116,7 +120,7 @@ export const useAllFavorites = () => {
     
     console.log('🟢 allFavorites result count:', result.length);
     return result;
-  }, [likedSongsSnapshot, notes, likedNotes]); // Use snapshot instead of direct likedSongs
+  }, [forceUpdate, notes, likedNotes]); // Use forceUpdate to trigger recomputation
 
   return {
     allFavorites,
