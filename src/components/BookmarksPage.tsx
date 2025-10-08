@@ -238,6 +238,7 @@ const BookmarksPage = () => {
   });
 
   const [isCreating, setIsCreating] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Save folders to localStorage whenever folders change
   useEffect(() => {
@@ -860,10 +861,10 @@ const BookmarksPage = () => {
 
         {/* All Favorites List (Songs + Notes) */}
         {allFavorites.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-3" key={refreshKey}>
             {allFavorites.map((favorite) => (
               <Card
-                key={`${favorite.type}-${favorite.id}`}
+                key={`${favorite.type}-${favorite.id}-${refreshKey}`}
                 className="glass border-border/50 hover:border-primary/30 transition-smooth"
               >
                 <CardContent className="p-4">
@@ -892,8 +893,12 @@ const BookmarksPage = () => {
                       onClick={() => {
                         if (favorite.type === "song") {
                           toggleLike(favorite);
+                          // Force re-render to show change immediately
+                          setTimeout(() => setRefreshKey(prev => prev + 1), 100);
                         } else {
                           toggleNoteLike(favorite.id);
+                          // Force re-render to show change immediately
+                          setTimeout(() => setRefreshKey(prev => prev + 1), 100);
                         }
                       }}
                       className="ml-3 transition-smooth text-primary hover:text-primary/80"
