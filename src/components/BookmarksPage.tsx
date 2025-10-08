@@ -447,7 +447,10 @@ const BookmarksPage = () => {
     // Check if song is already in folder
     if (selectedFolder.songs.some((s) => s.id === song.id)) return;
 
-    if (isAuthenticated) {
+    // Check if this is a server folder (exists in userFolders) or local folder
+    const isServerFolder = userFolders.some(folder => folder.id === selectedFolder.id);
+
+    if (isAuthenticated && isServerFolder) {
       // Authenticated user - add to server folder
       try {
         const response = await userDataApi.createBookmark(
@@ -475,10 +478,10 @@ const BookmarksPage = () => {
           console.log('✅ Song added to server folder:', song.title);
         }
       } catch (error) {
-        console.error('Failed to add song to folder:', error);
+        console.error('Failed to add song to server folder:', error);
       }
     } else {
-      // Local user - add to local folder
+      // Local folder or non-authenticated user - add to local folder
       setFolders((prev) =>
         prev.map((folder) =>
           folder.id === selectedFolder.id
@@ -567,7 +570,10 @@ const BookmarksPage = () => {
   const handleRemoveSongFromFolder = async (songId: string) => {
     if (!selectedFolder) return;
 
-    if (isAuthenticated) {
+    // Check if this is a server folder (exists in userFolders) or local folder
+    const isServerFolder = userFolders.some(folder => folder.id === selectedFolder.id);
+
+    if (isAuthenticated && isServerFolder) {
       // Authenticated user - remove from server folder
       try {
         // Find the bookmark to delete
@@ -598,10 +604,10 @@ const BookmarksPage = () => {
           }
         }
       } catch (error) {
-        console.error('Failed to remove song from folder:', error);
+        console.error('Failed to remove song from server folder:', error);
       }
     } else {
-      // Local user - remove from local folder
+      // Local folder or non-authenticated user - remove from local folder
       setFolders((prev) =>
         prev.map((folder) =>
           folder.id === selectedFolder.id
