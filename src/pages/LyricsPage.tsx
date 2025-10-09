@@ -123,17 +123,24 @@ const LyricsPage = () => {
     const scrollToTop = () => {
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
+        scrollContainerRef.current.scrollTo(0, 0);
       }
+      // Also scroll window to top
+      window.scrollTo(0, 0);
     };
     
-    // Call immediately
+    // Call immediately multiple times
+    scrollToTop();
     scrollToTop();
     
     // Call again after a frame to ensure it works on Android
     requestAnimationFrame(() => {
       scrollToTop();
-      // Double-check with a slight delay for Android
+      // Multiple aggressive attempts for Android
+      setTimeout(scrollToTop, 10);
       setTimeout(scrollToTop, 50);
+      setTimeout(scrollToTop, 100);
+      setTimeout(scrollToTop, 150);
     });
 
     return () => {
@@ -199,18 +206,25 @@ const LyricsPage = () => {
       const scrollToTop = () => {
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTop = 0;
+          scrollContainerRef.current.scrollTo(0, 0);
         }
+        // Also scroll window to top for good measure
+        window.scrollTo(0, 0);
       };
       
-      // Call immediately
+      // Call immediately multiple times
+      scrollToTop();
       scrollToTop();
       
       // Call again after render to ensure it works on Android
       requestAnimationFrame(() => {
         scrollToTop();
-        // Double-check with a slight delay for Android
+        // Multiple aggressive attempts for Android
+        setTimeout(scrollToTop, 10);
         setTimeout(scrollToTop, 50);
         setTimeout(scrollToTop, 100);
+        setTimeout(scrollToTop, 150);
+        setTimeout(scrollToTop, 300);
       });
     }
   }, [songData?.id]);
@@ -344,7 +358,7 @@ const LyricsPage = () => {
     <div className="h-screen bg-background overflow-hidden flex flex-col">
       {/* Header - In landscape mode, only show when controls are toggled on */}
       {(!isLandscape || showControlsInLandscape) && (
-        <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4 z-10 sticky top-0" style={{ pointerEvents: 'none', touchAction: 'none' }}>
+        <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4 z-50 fixed top-0 left-0 right-0" style={{ pointerEvents: 'none', touchAction: 'none' }}>
           <div className="max-w-4xl mx-auto">
             {/* Back button and song title row */}
             <div className="flex items-center justify-between mb-4">
@@ -594,7 +608,8 @@ const LyricsPage = () => {
         style={{ 
           position: 'relative', 
           zIndex: 1,
-          touchAction: isLandscape ? 'auto' : 'none'
+          touchAction: isLandscape ? 'auto' : 'none',
+          marginTop: (!isLandscape || showControlsInLandscape) ? '160px' : '0'
         }}
       >
         <div className="h-full max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container">
