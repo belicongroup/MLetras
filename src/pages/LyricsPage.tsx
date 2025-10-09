@@ -119,9 +119,22 @@ const LyricsPage = () => {
     }
 
     // Scroll to top when component mounts to ensure header is always visible
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
+    // Use requestAnimationFrame to ensure DOM is ready
+    const scrollToTop = () => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+    };
+    
+    // Call immediately
+    scrollToTop();
+    
+    // Call again after a frame to ensure it works on Android
+    requestAnimationFrame(() => {
+      scrollToTop();
+      // Double-check with a slight delay for Android
+      setTimeout(scrollToTop, 50);
+    });
 
     return () => {
       window.removeEventListener("resize", checkOrientation);
@@ -183,7 +196,22 @@ const LyricsPage = () => {
   // Scroll to top when a new song is loaded to ensure header is always visible
   useEffect(() => {
     if (scrollContainerRef.current && songData) {
-      scrollContainerRef.current.scrollTop = 0;
+      const scrollToTop = () => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = 0;
+        }
+      };
+      
+      // Call immediately
+      scrollToTop();
+      
+      // Call again after render to ensure it works on Android
+      requestAnimationFrame(() => {
+        scrollToTop();
+        // Double-check with a slight delay for Android
+        setTimeout(scrollToTop, 50);
+        setTimeout(scrollToTop, 100);
+      });
     }
   }, [songData?.id]);
 
@@ -316,7 +344,7 @@ const LyricsPage = () => {
     <div className="h-screen bg-background overflow-hidden flex flex-col">
       {/* Header - In landscape mode, only show when controls are toggled on */}
       {(!isLandscape || showControlsInLandscape) && (
-        <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4 z-10" style={{ pointerEvents: 'none', touchAction: 'none' }}>
+        <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4 z-10 sticky top-0" style={{ pointerEvents: 'none', touchAction: 'none' }}>
           <div className="max-w-4xl mx-auto">
             {/* Back button and song title row */}
             <div className="flex items-center justify-between mb-4">
