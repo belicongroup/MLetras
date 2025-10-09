@@ -32,7 +32,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         return { ...defaultSettings, ...JSON.parse(savedSettings) };
       } catch (error) {
-        console.error("Error parsing saved settings:", error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Error parsing saved settings:", error);
+        }
         return defaultSettings;
       }
     }

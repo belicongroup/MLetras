@@ -34,7 +34,9 @@ class SearchHistoryService {
       // Also cache the song in IndexedDB for offline access
       await this.cacheSongForOffline(song);
     } catch (error) {
-      console.error("Error adding to search history:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Error adding to search history:", error);
+      }
     }
   }
 
@@ -45,7 +47,9 @@ class SearchHistoryService {
         return JSON.parse(saved);
       }
     } catch (error) {
-      console.error("Error parsing search history:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Error parsing search history:", error);
+      }
     }
     return [];
   }

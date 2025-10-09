@@ -44,7 +44,9 @@ export const useAllFavorites = (likedSongs?: any[]) => {
           setLikedNotes(parsed);
         }
       } catch (error) {
-        console.error("Error loading liked notes:", error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Error loading liked notes:", error);
+        }
         setLikedNotes([]);
       } finally {
         setIsLoading(false);

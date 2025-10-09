@@ -56,14 +56,20 @@ export const useNotes = () => {
               localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
               setNotes(mergedNotes);
               
-              console.log('✅ Notes synced from server');
+              if (process.env.NODE_ENV !== 'production') {
+                console.log('✅ Notes synced from server');
+              }
             }
           }
         } catch (syncError) {
-          console.warn('Server sync failed, using local data:', syncError);
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Server sync failed, using local data:', syncError);
+          }
         }
       } catch (error) {
-        console.error("Error loading notes:", error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Error loading notes:", error);
+        }
         setNotes([]);
       } finally {
         setIsLoading(false);
@@ -186,7 +192,9 @@ export const useNotes = () => {
           setNotes([]);
         }
       } catch (error) {
-        console.error("Error refreshing notes:", error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Error refreshing notes:", error);
+        }
         setNotes([]);
       }
     };

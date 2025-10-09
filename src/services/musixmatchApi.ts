@@ -248,7 +248,9 @@ class MusixmatchApiService {
 
       if (!data.message.body.track_list || data.message.body.track_list.length === 0) {
         // Fallback: Try different parsing strategies
-        console.log('Zero results - trying alternative parsing strategies');
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('Zero results - trying alternative parsing strategies');
+        }
         
         // Strategy 2: Try as "artist track" format
         if (words.length >= 2) {
@@ -266,7 +268,9 @@ class MusixmatchApiService {
             );
             
             if (fallbackData.message.body.track_list && fallbackData.message.body.track_list.length > 0) {
-              console.log(`Found results with "artist track" parsing`);
+              if (process.env.NODE_ENV !== 'production') {
+                console.log(`Found results with "artist track" parsing`);
+              }
               return fallbackData.message.body.track_list.map((item) => ({
                 id: item.track.track_id.toString(),
                 title: item.track.track_name,
@@ -282,7 +286,9 @@ class MusixmatchApiService {
               }));
             }
           } catch (fallbackError) {
-            console.log('Artist-track parsing failed, trying next strategy...');
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('Artist-track parsing failed, trying next strategy...');
+            }
           }
         }
         
@@ -300,7 +306,9 @@ class MusixmatchApiService {
           );
             
           if (fallbackData.message.body.track_list && fallbackData.message.body.track_list.length > 0) {
-            console.log(`Found results with general search`);
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`Found results with general search`);
+            }
             return fallbackData.message.body.track_list.map((item) => ({
               id: item.track.track_id.toString(),
               title: item.track.track_name,
@@ -316,7 +324,9 @@ class MusixmatchApiService {
             }));
           }
         } catch (fallbackError) {
-          console.log('General search fallback failed');
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('General search fallback failed');
+          }
         }
         
         // No results found with any strategy
@@ -338,7 +348,9 @@ class MusixmatchApiService {
         hasLyrics: item.track.has_lyrics === 1,
       }));
     } catch (error) {
-      console.error("Musixmatch search error:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Musixmatch search error:", error);
+      }
       return [];
     }
   }
@@ -371,7 +383,9 @@ class MusixmatchApiService {
       // Smart Proxy handles caching server-side with KV storage
       return lyricsText;
     } catch (error) {
-      console.error("Musixmatch lyrics fetch error:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Musixmatch lyrics fetch error:", error);
+      }
       return "Error fetching lyrics. Please try again.";
     }
   }
@@ -413,7 +427,9 @@ class MusixmatchApiService {
         hasLyrics: item.track.has_lyrics === 1,
       }));
     } catch (error) {
-      console.error("Musixmatch artist search error:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Musixmatch artist search error:", error);
+      }
       return [];
     }
   }

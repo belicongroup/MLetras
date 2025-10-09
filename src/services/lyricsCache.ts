@@ -74,7 +74,9 @@ class LyricsCacheService {
         const request = store.getAll();
 
         request.onerror = () => {
-          console.error("Error getting all songs:", request.error);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error("Error getting all songs:", request.error);
+          }
           resolve([]);
         };
 
@@ -86,12 +88,16 @@ class LyricsCacheService {
             );
             resolve(likedSongs);
           } catch (error) {
-            console.error("Error filtering liked songs:", error);
+            if (process.env.NODE_ENV !== 'production') {
+              console.error("Error filtering liked songs:", error);
+            }
             resolve([]);
           }
         };
       } catch (error) {
-        console.error("Error in getAllLikedSongs:", error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Error in getAllLikedSongs:", error);
+        }
         resolve([]);
       }
     });

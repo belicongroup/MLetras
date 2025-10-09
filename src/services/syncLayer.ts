@@ -76,23 +76,33 @@ class SyncLayerService {
 
     // Take batch of operations
     const batch = this.syncQueue.splice(0, this.MAX_BATCH_SIZE);
-    console.log(`🔄 Processing sync batch: ${batch.length} operations`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🔄 Processing sync batch: ${batch.length} operations`);
+    }
 
     // Process each operation
     for (const operation of batch) {
       try {
         await this.executeOperation(operation);
-        console.log(`✅ Synced: ${operation.type} ${operation.action}`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`✅ Synced: ${operation.type} ${operation.action}`);
+        }
       } catch (error) {
-        console.error(`❌ Sync failed: ${operation.type} ${operation.action}`, error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error(`❌ Sync failed: ${operation.type} ${operation.action}`, error);
+        }
         
         // Retry logic
         if (operation.retries < this.MAX_RETRIES) {
           operation.retries++;
           this.syncQueue.push(operation); // Re-queue for retry
-          console.log(`🔁 Re-queued for retry (${operation.retries}/${this.MAX_RETRIES})`);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`🔁 Re-queued for retry (${operation.retries}/${this.MAX_RETRIES})`);
+          }
         } else {
-          console.error(`💥 Max retries reached for ${operation.type} ${operation.action}`);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error(`💥 Max retries reached for ${operation.type} ${operation.action}`);
+          }
         }
       }
     }

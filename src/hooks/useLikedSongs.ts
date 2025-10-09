@@ -61,14 +61,20 @@ export const useLikedSongs = () => {
               localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
               setLikedSongs(mergedSongs);
               
-              console.log('✅ Bookmarks synced from server');
+              if (process.env.NODE_ENV !== 'production') {
+                console.log('✅ Bookmarks synced from server');
+              }
             }
           }
         } catch (syncError) {
-          console.warn('Server sync failed, using local data:', syncError);
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Server sync failed, using local data:', syncError);
+          }
         }
       } catch (error) {
-        console.error("Error loading liked songs:", error);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Error loading liked songs:", error);
+        }
         setLikedSongs([]);
       } finally {
         setIsLoading(false);
@@ -141,7 +147,9 @@ export const useLikedSongs = () => {
       const likedSong = likedSongs.find(song => song.id === songId);
       return likedSong || null;
     } catch (error) {
-      console.error("Error getting liked song:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Error getting liked song:", error);
+      }
       return null;
     }
   };

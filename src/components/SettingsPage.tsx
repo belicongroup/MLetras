@@ -288,7 +288,7 @@ const SettingsPage = () => {
       {/* Footer */}
       <div className="text-center py-6">
         <p className="text-sm text-muted-foreground">
-          Made with ❤️ for music lovers
+          made by belicongroup
         </p>
         <p className="text-xs text-muted-foreground mt-1">MLETRAS © 2024</p>
       </div>
