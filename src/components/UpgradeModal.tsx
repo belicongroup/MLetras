@@ -94,18 +94,18 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                     {typeof feature.free === 'string' ? (
                       <p className="text-sm text-center">{feature.free}</p>
                     ) : feature.free ? (
-                      <Check className="w-5 h-5" />
+                      <Check className="w-5 h-5 text-green-600" />
                     ) : (
-                      <X className="w-5 h-5 text-muted-foreground" />
+                      <X className="w-5 h-5 text-red-600" />
                     )}
                   </div>
                   <div className="flex items-center justify-center">
                     {typeof feature.pro === 'string' ? (
                       <p className="text-sm text-center">{feature.pro}</p>
                     ) : feature.pro ? (
-                      <Check className="w-5 h-5" />
+                      <Check className="w-5 h-5 text-green-600" />
                     ) : (
-                      <X className="w-5 h-5 text-muted-foreground" />
+                      <X className="w-5 h-5 text-red-600" />
                     )}
                   </div>
                 </div>
@@ -132,12 +132,12 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             </Button>
 
             <Button
-              onClick={handleRestorePurchase}
+              onClick={onClose}
               variant="ghost"
               className="w-full"
               size="sm"
             >
-              Restore Previous Purchase
+              Cancel
             </Button>
           </div>
 
