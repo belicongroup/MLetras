@@ -322,8 +322,6 @@ const BookmarksPage = () => {
     } else {
       // Local user - create locally
       handleCreateFolder();
-      setNewFolderName("");
-      setShowCreateFolderDialog(false);
     }
   };
 
@@ -363,6 +361,7 @@ const BookmarksPage = () => {
     setFolders((prev) => [...prev, newFolder]);
     setNewFolderName("");
     setIsCreating(false);
+    setShowCreateFolderDialog(false);
   };
 
   // Delete folder (server + local)
@@ -1236,10 +1235,7 @@ const BookmarksPage = () => {
                     key={folder.id}
                     folder={localFolder}
                     onDelete={deleteFolder}
-                    onClick={() => {
-                      setSelectedFolder(localFolder);
-                      setShowAddSongDialog(true);
-                    }}
+                    onClick={() => setSelectedFolder(localFolder)}
                     deleteText={t.delete}
                     songText={t.song}
                     songsText={t.songs}
