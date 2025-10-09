@@ -49,6 +49,7 @@ const LyricsPage = () => {
   >("slow");
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [showControlsInLandscape, setShowControlsInLandscape] = useState(false);
   const [fontSize, setFontSize] = useState(() => {
     // Larger default font size for tablets
     if (window.innerWidth >= 1024) return 24; // Large tablets
@@ -90,7 +91,12 @@ const LyricsPage = () => {
 
   useEffect(() => {
     const checkOrientation = () => {
-      setIsLandscape(window.innerHeight < window.innerWidth);
+      const newIsLandscape = window.innerHeight < window.innerWidth;
+      setIsLandscape(newIsLandscape);
+      // Reset controls visibility when switching to portrait mode
+      if (!newIsLandscape) {
+        setShowControlsInLandscape(false);
+      }
     };
 
     checkOrientation();
@@ -101,6 +107,11 @@ const LyricsPage = () => {
     if (isCapacitorEnvironment()) {
       // Allow all orientations in mobile app
       lockScreenOrientation('any');
+    }
+
+    // Scroll to top when component mounts to ensure header is always visible
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
     }
 
     return () => {
@@ -160,6 +171,13 @@ const LyricsPage = () => {
     setAutoScrollSpeed(settings.autoScrollSpeed);
   }, [settings.autoScrollSpeed]);
 
+  // Scroll to top when a new song is loaded to ensure header is always visible
+  useEffect(() => {
+    if (scrollContainerRef.current && songData) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [songData?.id]);
+
   // Pinch gesture handler for font size control
   usePinch(
     ({ offset: [scaleOffset] }) => {
@@ -203,6 +221,13 @@ const LyricsPage = () => {
   };
 
   const handleLyricsClick = () => {
+    // In landscape mode, toggle controls visibility
+    if (isLandscape) {
+      setShowControlsInLandscape(!showControlsInLandscape);
+      return;
+    }
+
+    // Portrait mode: handle auto-scroll pause/resume
     if (autoScrollSpeed === "off") return; // Do nothing if auto-scroll is off
 
     setHasUserInteracted(true); // Mark that user has interacted
@@ -280,8 +305,8 @@ const LyricsPage = () => {
 
   return (
     <div className="h-screen bg-background overflow-hidden flex flex-col">
-      {/* Header - Hide in landscape mode */}
-      {!isLandscape && (
+      {/* Header - In landscape mode, only show when controls are toggled on */}
+      {(!isLandscape || showControlsInLandscape) && (
         <div className="flex-shrink-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4 z-10" style={{ pointerEvents: 'none', touchAction: 'none' }}>
           <div className="max-w-4xl mx-auto">
             {/* Back button and song title row */}
