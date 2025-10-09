@@ -83,11 +83,11 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 Special Launch Price
               </p>
               <div className="flex items-baseline justify-center gap-2">
-                <span className="text-4xl font-bold text-primary">$4.99</span>
+                <span className="text-4xl font-bold text-primary">$6.99</span>
                 <span className="text-muted-foreground">/month</span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Cancel anytime • 7-day free trial
+                Cancel anytime • 14-day free trial
               </p>
             </div>
           </Card>

@@ -49,6 +49,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 interface Folder {
   id: string;
@@ -191,6 +192,10 @@ const BookmarksPage = () => {
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Free tier limits
+  const FREE_FOLDER_LIMIT = 1;
 
   // No default folders - users start with an empty slate
 
@@ -274,6 +279,16 @@ const BookmarksPage = () => {
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
     
+    // Check folder limit for free users
+    if (isAuthenticated && user?.subscription_type === 'free') {
+      const totalFolders = userFolders.length + folders.length;
+      if (totalFolders >= FREE_FOLDER_LIMIT) {
+        setShowCreateFolderDialog(false);
+        setShowUpgradeModal(true);
+        return;
+      }
+    }
+    
     if (isAuthenticated) {
       // Authenticated user - create on server
       try {
@@ -288,7 +303,8 @@ const BookmarksPage = () => {
         console.error('Failed to create folder:', error);
         // Handle folder limit error
         if (error.message.includes('Folder limit reached')) {
-          // Show upgrade prompt
+          setShowCreateFolderDialog(false);
+          setShowUpgradeModal(true);
         }
       }
     } else {
@@ -1245,6 +1261,12 @@ const BookmarksPage = () => {
 
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+      />
     </DndContext>
   );
 };

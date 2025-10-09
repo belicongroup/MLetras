@@ -27,6 +27,7 @@ import { useNavigate } from "react-router-dom";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
 import { formatDistanceToNow } from "date-fns";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 const NotesListPage = () => {
   const navigate = useNavigate();
@@ -37,10 +38,14 @@ const NotesListPage = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<UserNote | null>(null);
   const [editingNote, setEditingNote] = useState<UserNote | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // User data state
   const [userNotes, setUserNotes] = useState<Note[]>([]);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
+
+  // Free tier limits
+  const FREE_NOTES_LIMIT = 3;
 
   // Refresh notes when component mounts to ensure we have the latest data
   useEffect(() => {
@@ -93,6 +98,15 @@ const NotesListPage = () => {
   };
 
   const handleCreateNote = () => {
+    // Check note limit for free users
+    if (isAuthenticated && user?.subscription_type === 'free') {
+      const totalNotes = notes.length + userNotes.length;
+      if (totalNotes >= FREE_NOTES_LIMIT) {
+        setShowUpgradeModal(true);
+        return;
+      }
+    }
+    
     setEditingNote(null);
     setShowCreateDialog(true);
   };
@@ -283,6 +297,12 @@ const NotesListPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+      />
     </div>
   );
 };
