@@ -516,7 +516,7 @@ const BookmarksPage = () => {
     // Keep dialog open for adding more songs
   };
 
-  const handleAddNoteToFolder = (note: any) => {
+  const handleAddNoteToFolder = async (note: any) => {
     if (!selectedFolder) return;
 
     // Convert note to song format for folder storage
@@ -538,7 +538,25 @@ const BookmarksPage = () => {
       isAuthenticated
     });
 
-    // Add note to folder (notes are stored locally only)
+    if (isAuthenticated) {
+      // Authenticated user - save to server as bookmark
+      try {
+        await userDataApi.createBookmark(
+          note.title,
+          note.artist || '',
+          selectedFolder.id,
+          undefined // no track_id for notes
+        );
+        console.log('✅ Note saved to server as bookmark');
+        // Refresh user data to get updated bookmarks
+        loadUserData();
+      } catch (error) {
+        console.error('Failed to save note to server:', error);
+        // Continue with local storage as fallback
+      }
+    }
+
+    // Add note to folder (local state for immediate UI update)
     setFolders((prev) =>
       prev.map((folder) =>
         folder.id === selectedFolder.id
@@ -562,7 +580,7 @@ const BookmarksPage = () => {
         : null,
     );
 
-    console.log('✅ Note added to local folder:', note.title);
+    console.log('✅ Note added to folder:', note.title);
 
     // Keep dialog open for adding more items
   };
@@ -1195,6 +1213,7 @@ const BookmarksPage = () => {
                         }))
                       };
                       setSelectedFolder(localFolder);
+                      setShowAddSongDialog(true);
                     }}
                   >
                   <CardHeader className="pb-2">
