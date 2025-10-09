@@ -92,7 +92,16 @@ const LyricsPage = () => {
   useEffect(() => {
     const checkOrientation = () => {
       const newIsLandscape = window.innerHeight < window.innerWidth;
+      const wasLandscape = isLandscape;
       setIsLandscape(newIsLandscape);
+      
+      // When switching TO landscape mode, reset auto-scroll to off
+      if (newIsLandscape && !wasLandscape) {
+        setAutoScrollSpeed("off");
+        setIsScrollPaused(false);
+        setHasUserInteracted(false);
+      }
+      
       // Reset controls visibility when switching to portrait mode
       if (!newIsLandscape) {
         setShowControlsInLandscape(false);
@@ -557,7 +566,7 @@ const LyricsPage = () => {
         style={{ 
           position: 'relative', 
           zIndex: 1,
-          touchAction: 'none'
+          touchAction: isLandscape ? 'auto' : 'none'
         }}
       >
         <div className="h-full max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container">
@@ -566,7 +575,7 @@ const LyricsPage = () => {
             className="h-full p-8 overflow-y-auto lyrics-scroll tablet-spacing"
             style={{ 
               scrollbarGutter: 'stable',
-              touchAction: 'pan-y pinch-zoom',
+              touchAction: isLandscape ? 'pinch-zoom pan-y' : 'pan-y pinch-zoom',
               overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch',
               position: 'relative',
