@@ -590,16 +590,30 @@ const LyricsPage = () => {
                 <h3 className="font-semibold mb-2">{t.loadingLyrics}</h3>
               </div>
             ) : songData.lyrics ? (
-              <div
-                ref={lyricsRef}
-                onClick={handleLyricsClick}
-                className={`whitespace-pre-line leading-relaxed transition-smooth text-center cursor-pointer lyrics-touch-area lyrics-text ${
-                  isBoldText ? "font-semibold" : "font-normal"
-                }`}
-                style={{ fontSize: `${fontSize}px` }}
-              >
-                {songData.lyrics}
-              </div>
+              <>
+                <div
+                  ref={lyricsRef}
+                  onClick={handleLyricsClick}
+                  className={`whitespace-pre-line leading-relaxed transition-smooth text-center cursor-pointer lyrics-touch-area lyrics-text ${
+                    isBoldText ? "font-semibold" : "font-normal"
+                  }`}
+                  style={{ fontSize: `${fontSize}px` }}
+                >
+                  {songData.lyrics}
+                </div>
+                {/* Musixmatch Attribution - Required by API Terms */}
+                <div className="mt-8 mb-4 text-center">
+                  <a
+                    href="https://www.musixmatch.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors inline-block"
+                    style={{ pointerEvents: 'auto' }}
+                  >
+                    Lyrics powered by Musixmatch
+                  </a>
+                </div>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="p-4 bg-muted/30 rounded-2xl mb-4">
