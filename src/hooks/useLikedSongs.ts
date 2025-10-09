@@ -27,7 +27,11 @@ export const useLikedSongs = () => {
         const saved = localStorage.getItem(LIKED_SONGS_KEY);
         let localSongs: Song[] = [];
         if (saved) {
-          localSongs = JSON.parse(saved);
+          const parsedSongs = JSON.parse(saved);
+          // Remove duplicates based on song ID
+          localSongs = parsedSongs.filter((song: Song, index: number, self: Song[]) => 
+            index === self.findIndex(s => s.id === song.id)
+          );
           setLikedSongs(localSongs);
           setIsLoading(false);
         }
@@ -38,15 +42,19 @@ export const useLikedSongs = () => {
           if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
             const response = await userDataApi.getBookmarks();
             if (response.success && response.bookmarks) {
-              // Convert server bookmarks to Song format
-              const serverSongs: Song[] = response.bookmarks.map(bookmark => ({
-                id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
-                title: bookmark.song_title,
-                artist: bookmark.artist_name,
-              }));
+              // Convert server bookmarks to Song format - only include bookmarks with track_id (real songs, not notes)
+              const serverSongs: Song[] = response.bookmarks
+                .filter(bookmark => bookmark.track_id) // Only include bookmarks with track_id (excludes notes)
+                .map(bookmark => ({
+                  id: bookmark.track_id,  // Use track_id for Musixmatch API
+                  title: bookmark.song_title,
+                  artist: bookmark.artist_name,
+                }));
 
-              // Merge: Server data is source of truth
-              const mergedSongs = serverSongs;
+              // Merge: Server data is source of truth, remove duplicates
+              const mergedSongs = serverSongs.filter((song, index, self) => 
+                index === self.findIndex(s => s.id === song.id)
+              );
               
               // Save merged data to localStorage
               localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(mergedSongs));
@@ -99,8 +107,12 @@ export const useLikedSongs = () => {
         // Note: No lyrics stored per Musixmatch terms of service
       };
       const newLikedSongs = [...likedSongs, songMetadata];
-      setLikedSongs(newLikedSongs);
-      localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(newLikedSongs));
+      // Remove duplicates based on song ID
+      const deduplicatedSongs = newLikedSongs.filter((song, index, self) => 
+        index === self.findIndex(s => s.id === song.id)
+      );
+      setLikedSongs(deduplicatedSongs);
+      localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(deduplicatedSongs));
       
       // Queue server sync (batched, rate-limited)
       syncLayer.queueSync({

@@ -305,6 +305,8 @@ const BookmarksPage = () => {
     } else {
       // Local user - create locally
       handleCreateFolder();
+      setNewFolderName("");
+      setShowCreateFolderDialog(false);
     }
   };
 
@@ -675,7 +677,10 @@ const BookmarksPage = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setSelectedFolder(null)}
+            onClick={() => {
+              setSelectedFolder(null);
+              setShowAddSongDialog(false);
+            }}
             className="text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4" />
