@@ -31,6 +31,7 @@ const NoteDetailPage = () => {
   >("slow");
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [showControlsInLandscape, setShowControlsInLandscape] = useState(false);
   const [fontSize, setFontSize] = useState(() => {
     // Larger default font size for tablets
     if (window.innerWidth >= 1024) return 24; // Large tablets
@@ -69,12 +70,31 @@ const NoteDetailPage = () => {
 
   useEffect(() => {
     const checkOrientation = () => {
-      setIsLandscape(window.innerHeight < window.innerWidth);
+      const newIsLandscape = window.innerHeight < window.innerWidth;
+      const wasLandscape = isLandscape;
+      setIsLandscape(newIsLandscape);
+      
+      // When switching TO landscape mode, reset auto-scroll to off
+      if (newIsLandscape && !wasLandscape) {
+        setAutoScrollSpeed("off");
+        setIsScrollPaused(false);
+        setHasUserInteracted(false);
+      }
+      
+      // Reset controls visibility when switching to portrait mode
+      if (!newIsLandscape) {
+        setShowControlsInLandscape(false);
+      }
     };
 
     checkOrientation();
     window.addEventListener("resize", checkOrientation);
     window.addEventListener("orientationchange", checkOrientation);
+
+    // Scroll to top when component mounts to ensure header is always visible
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
 
     return () => {
       window.removeEventListener("resize", checkOrientation);
@@ -128,6 +148,13 @@ const NoteDetailPage = () => {
     setAutoScrollSpeed(settings.autoScrollSpeed);
   }, [settings.autoScrollSpeed]);
 
+  // Scroll to top when a new note is loaded to ensure header is always visible
+  useEffect(() => {
+    if (scrollContainerRef.current && noteData) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [noteData?.id]);
+
   // Pinch gesture handler for font size control
   usePinch(
     ({ offset: [scaleOffset] }) => {
@@ -137,7 +164,7 @@ const NoteDetailPage = () => {
       setFontSize(newFontSize);
     },
     {
-      target: lyricsRef,
+      target: scrollContainerRef,
       eventOptions: { passive: false },
       scaleBounds: { min: 0.5, max: 3.0 },
       rubberband: true,
@@ -171,6 +198,13 @@ const NoteDetailPage = () => {
   };
 
   const handleLyricsClick = () => {
+    // In landscape mode, toggle controls visibility
+    if (isLandscape) {
+      setShowControlsInLandscape(!showControlsInLandscape);
+      return;
+    }
+
+    // Portrait mode: handle auto-scroll pause/resume
     if (autoScrollSpeed === "off") return; // Do nothing if auto-scroll is off
 
     setHasUserInteracted(true); // Mark that user has interacted
@@ -200,9 +234,9 @@ const NoteDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - Hide in landscape mode */}
-      {!isLandscape && (
-        <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4">
+      {/* Header - In landscape mode, only show when controls are toggled on */}
+      {(!isLandscape || showControlsInLandscape) && (
+        <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border/50 safe-top safe-left safe-right px-4 pb-4 z-10">
           <div className="max-w-4xl mx-auto">
             {/* Back button and song title row */}
             <div className="flex items-center justify-between mb-4">
@@ -295,6 +329,10 @@ const NoteDetailPage = () => {
       {/* Note Content */}
       <div
         className={`max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container ${isLandscape ? "pt-4" : ""}`}
+        style={{ 
+          position: 'relative', 
+          touchAction: isLandscape ? 'auto' : 'none'
+        }}
       >
         <Card
           className={`${isLandscape ? "min-h-screen" : "min-h-[calc(100vh-140px)]"} bg-card/30 border-border/30 relative`}
@@ -302,6 +340,11 @@ const NoteDetailPage = () => {
           <div
             ref={scrollContainerRef}
             className={`${isLandscape ? "h-screen" : "h-[calc(100vh-140px)]"} p-8 overflow-y-auto lyrics-scroll tablet-spacing`}
+            style={{ 
+              touchAction: isLandscape ? 'pinch-zoom pan-y' : 'pan-y pinch-zoom',
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch'
+            }}
           >
             {noteData.lyrics ? (
               <div
