@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Loader2, Music2, Heart, Clock, X } from "lucide-react";
 import { translations } from "@/lib/translations";
@@ -129,18 +129,59 @@ const SearchPage = () => {
   >([]);
   const [showHistory, setShowHistory] = useState(true);
   const { isLiked, toggleLike } = useLikedSongs();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Handle scroll to dismiss keyboard
   useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout | null = null;
+    
     const handleScroll = () => {
-      // Blur the active element (search input) when user scrolls
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
+      // Clear any existing timeout
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      
+      // Debounce the blur to avoid too many calls
+      scrollTimeout = setTimeout(() => {
+        // Blur the search input when user scrolls
+        if (searchInputRef.current && document.activeElement === searchInputRef.current) {
+          searchInputRef.current.blur();
+        }
+      }, 50);
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      // Only dismiss keyboard if user is touching outside the search input
+      if (searchInputRef.current && 
+          document.activeElement === searchInputRef.current &&
+          e.target !== searchInputRef.current) {
+        searchInputRef.current.blur();
       }
     };
 
+    // Listen for scroll on both window and parent container
+    const container = containerRef.current?.parentElement;
+    
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    
+    if (container) {
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    }
+    
+    return () => {
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('touchstart', handleTouchStart);
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+        container.removeEventListener('touchstart', handleTouchStart);
+      }
+    };
   }, []);
 
   const handleSearch = useCallback(async (query: string) => {
@@ -338,7 +379,7 @@ const SearchPage = () => {
   // Debounced search automatically triggers as user types
 
   return (
-    <div className="safe-area space-y-6 tablet-container">
+    <div ref={containerRef} className="safe-area space-y-6 tablet-container">
       {/* Hero Section */}
       <div className="text-center py-8">
         <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
@@ -367,12 +408,14 @@ const SearchPage = () => {
       {/* Search Bar */}
       <div className="relative">
         <Input
+          ref={searchInputRef}
           placeholder="Search by song title, artist, or lyrics"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyPress={(e) => {
             if (e.key === 'Enter') {
               handleSearch(searchQuery);
+              searchInputRef.current?.blur();
             }
           }}
           className="pr-12 h-12 bg-card/50 border-border/50 focus:border-primary/50 transition-smooth"
