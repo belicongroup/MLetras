@@ -9,6 +9,7 @@ import {
   Crown,
   Lock,
 } from "lucide-react";
+import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,11 +27,13 @@ import {
 } from "@/components/ui/select";
 // Note: No caching of Musixmatch API data per terms of service
 import { translations } from "@/lib/translations";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 const SettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
   const { settings, setSettings } = useSettings();
   const { user, isAuthenticated } = useAuth();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   // Note: Cache management removed per Musixmatch terms of service
   const t = translations[settings.language];
 
@@ -84,10 +87,13 @@ const SettingsPage = () => {
             </div>
             
             {user?.subscription_type === 'free' && (
-              <Alert>
+              <Alert className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setShowUpgradeModal(true)}>
                 <Crown className="h-4 w-4" />
                 <AlertDescription>
-                  Upgrade to Pro for unlimited folders, notes, dark mode, and auto-scroll features.
+                  <span className="font-medium">Upgrade to Pro</span> for unlimited folders, notes, dark mode, and auto-scroll features.
+                  <Button variant="link" className="h-auto p-0 ml-2 text-xs" onClick={() => setShowUpgradeModal(true)}>
+                    Learn more →
+                  </Button>
                 </AlertDescription>
               </Alert>
             )}
@@ -292,6 +298,12 @@ const SettingsPage = () => {
         </p>
         <p className="text-xs text-muted-foreground mt-1">MLETRAS © 2024</p>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+      />
     </div>
   );
 };

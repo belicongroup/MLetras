@@ -144,6 +144,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       const response = await makeRequest('/api/user/profile');
+      
+      // Cache the user profile for offline use
+      localStorage.setItem('cached_user', JSON.stringify(response.user));
+      
       setAuthState({
         user: response.user,
         isLoading: false,
@@ -151,6 +155,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
     } catch (error) {
       console.error('Failed to load user:', error);
+      
+      // Try to use cached user data instead of logging out (offline mode support)
+      const cachedUser = localStorage.getItem('cached_user');
+      if (cachedUser) {
+        try {
+          const user = JSON.parse(cachedUser);
+          setAuthState({
+            user,
+            isLoading: false,
+            isAuthenticated: true,
+          });
+          console.warn('⚠️ Using cached user profile (offline mode)');
+          return;
+        } catch (parseError) {
+          console.error('Failed to parse cached user:', parseError);
+        }
+      }
+      
+      // Only clear session if we have no cached data
       localStorage.removeItem('sessionToken');
       setAuthState({
         user: null,
@@ -207,6 +230,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Store session token if provided
     if (response.success && response.sessionToken) {
       localStorage.setItem('sessionToken', response.sessionToken);
+      // Cache user profile for offline use
+      localStorage.setItem('cached_user', JSON.stringify(response.user));
       setAuthState({
         user: response.user,
         isLoading: false,
@@ -229,6 +254,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.warn('Logout error:', error);
     } finally {
       localStorage.removeItem('sessionToken');
+      localStorage.removeItem('cached_user');
       setAuthState({
         user: null,
         isLoading: false,
@@ -248,12 +274,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     // Update user state with new username
     if (response.success && authState.user) {
+      const updatedUser = {
+        ...authState.user,
+        username: response.username,
+      };
+      // Cache updated user profile
+      localStorage.setItem('cached_user', JSON.stringify(updatedUser));
       setAuthState(prev => ({
         ...prev,
-        user: {
-          ...prev.user!,
-          username: response.username,
-        },
+        user: updatedUser,
         isAuthenticated: true, // Now fully authenticated
       }));
     }
