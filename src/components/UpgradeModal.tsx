@@ -28,18 +28,18 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     alert("Restore purchase coming soon!");
   };
 
-  const proFeatures = [
-    "Unlimited folders for organizing your songs",
-    "Unlimited notes for your lyrics",
-    "Dark mode for comfortable viewing",
-    "Auto-scroll with adjustable speeds",
-    "Priority customer support",
-    "Ad-free experience",
+  const features = [
+    { name: "Song searches", free: "Unlimited", pro: "Unlimited" },
+    { name: "Folders", free: "1 folder", pro: "Unlimited" },
+    { name: "Notes", free: "3 notes", pro: "Unlimited" },
+    { name: "Auto-scroll", free: false, pro: true },
+    { name: "Dark theme", free: false, pro: true },
+    { name: "Priority support", free: false, pro: true },
   ];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <button
             onClick={onClose}
@@ -62,35 +62,63 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Features List */}
-          <div className="space-y-3">
-            {proFeatures.map((feature, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0">
-                  <div className="p-1 bg-green-100 rounded-full">
-                    <Check className="w-4 h-4 text-green-600" />
+          {/* Pricing Comparison Table */}
+          <div className="space-y-4">
+            {/* Plan Headers */}
+            <div className="grid grid-cols-3 gap-4">
+              <div></div>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-lg">Free</p>
+                <div className="space-y-0">
+                  <p className="text-2xl font-bold">$0</p>
+                  <p className="text-xs text-muted-foreground">Forever</p>
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-lg">Pro</p>
+                <div className="space-y-0">
+                  <p className="text-2xl font-bold">$6.99</p>
+                  <p className="text-xs text-muted-foreground">per month</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Rows */}
+            <div className="space-y-2">
+              {features.map((feature, index) => (
+                <div key={index} className="grid grid-cols-3 gap-4 py-3 border-t">
+                  <div className="flex items-center">
+                    <p className="text-sm font-medium">{feature.name}</p>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    {typeof feature.free === 'string' ? (
+                      <p className="text-sm text-center">{feature.free}</p>
+                    ) : feature.free ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      <X className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-center">
+                    {typeof feature.pro === 'string' ? (
+                      <p className="text-sm text-center">{feature.pro}</p>
+                    ) : feature.pro ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      <X className="w-5 h-5 text-muted-foreground" />
+                    )}
                   </div>
                 </div>
-                <p className="text-sm text-foreground">{feature}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Pricing Card */}
-          <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20 p-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-1">
-                Special Launch Price
-              </p>
-              <div className="flex items-baseline justify-center gap-2">
-                <span className="text-4xl font-bold text-primary">$6.99</span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Cancel anytime • 14-day free trial
+            {/* Trial Info */}
+            <div className="text-center pt-2">
+              <p className="text-xs text-muted-foreground">
+                14-day free trial • Cancel anytime
               </p>
             </div>
-          </Card>
+          </div>
 
           {/* Action Buttons */}
           <div className="space-y-3">
