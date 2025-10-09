@@ -367,7 +367,7 @@ const SearchPage = () => {
       {/* Search Bar */}
       <div className="relative">
         <Input
-          placeholder={t.searchPlaceholder}
+          placeholder="Search by song title, artist, or lyrics"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyPress={(e) => {
@@ -376,6 +376,12 @@ const SearchPage = () => {
             }
           }}
           className="pr-12 h-12 bg-card/50 border-border/50 focus:border-primary/50 transition-smooth"
+          autoCapitalize="sentences"
+          autoComplete="on"
+          autoCorrect="on"
+          dir="auto"
+          rows={1}
+          spellCheck={true}
         />
         <button
           onClick={() => {
