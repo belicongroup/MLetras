@@ -49,7 +49,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             <span className="sr-only">Close</span>
           </button>
           <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl shadow-lg">
+            <div className="p-3 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl shadow-lg">
               <Crown className="w-8 h-8 text-white" />
             </div>
           </div>
@@ -124,7 +124,7 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           <div className="space-y-3">
             <Button
               onClick={handleUpgrade}
-              className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-6"
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-6"
               size="lg"
             >
               <Crown className="w-5 h-5 mr-2" />
