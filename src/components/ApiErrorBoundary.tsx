@@ -93,7 +93,7 @@ export class ApiErrorBoundary extends Component<Props, State> {
       }
 
       const { error, isNetworkError, retryCount } = this.state;
-      const isRetrying = retryTimeoutId !== null;
+      const isRetrying = this.retryTimeoutId !== null;
 
       return (
         <Card className="w-full max-w-md mx-auto">
