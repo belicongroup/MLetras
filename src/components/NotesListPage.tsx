@@ -163,7 +163,7 @@ const NotesListPage = () => {
                 const localNote: UserNote = {
                   id: note.id,
                   title: note.note_title,
-                  content: note.note_content,
+                  lyrics: note.note_content,
                   artist: note.artist_name || '',
                   song: note.song_name || '',
                   createdAt: note.created_at,
