@@ -192,30 +192,7 @@ const BookmarksPage = () => {
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
 
-  // Default folders
-  const defaultFolders: Folder[] = [
-    {
-      id: "1",
-      name: "Corridos",
-      songCount: 0,
-      color: "from-red-500 to-pink-500",
-      songs: [],
-    },
-    {
-      id: "2",
-      name: "Tumbado",
-      songCount: 0,
-      color: "from-yellow-500 to-orange-500",
-      songs: [],
-    },
-    {
-      id: "3",
-      name: "Para Bailar",
-      songCount: 0,
-      color: "from-green-500 to-emerald-500",
-      songs: [],
-    },
-  ];
+  // No default folders - users start with an empty slate
 
   // Color palette for user folders - cycling through these colors
   const folderColors = [
@@ -242,10 +219,10 @@ const BookmarksPage = () => {
         return JSON.parse(savedFolders);
       } catch (error) {
         console.error("Error parsing saved folders:", error);
-        return defaultFolders;
+        return [];
       }
     }
-    return defaultFolders;
+    return [];
   });
 
   const [isCreating, setIsCreating] = useState(false);
