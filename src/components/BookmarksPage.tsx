@@ -310,6 +310,7 @@ const BookmarksPage = () => {
         if (response.success) {
           setUserFolders(prev => [...prev, response.folder]);
           setNewFolderName("");
+          setIsCreating(false);
           setShowCreateFolderDialog(false);
         }
       } catch (error: any) {
