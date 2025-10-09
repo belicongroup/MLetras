@@ -1130,7 +1130,7 @@ const BookmarksPage = () => {
                   {t.createFolder}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[90%] glass border-border/50">
+              <DialogContent className="w-[90%] glass border-border/50 max-h-[90vh] !top-[20%] !translate-y-0">
                 <DialogHeader>
                   <DialogTitle>{t.createFolder}</DialogTitle>
                   <DialogDescription>
@@ -1143,7 +1143,13 @@ const BookmarksPage = () => {
                     placeholder={t.folderName}
                     value={newFolderName}
                     onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newFolderName.trim()) {
+                        createFolder();
+                      }
+                    }}
                     className="bg-card/50 border-border/50"
+                    autoFocus
                   />
                   <div className="flex gap-2 justify-end">
                     <Button

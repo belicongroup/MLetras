@@ -216,16 +216,22 @@ class MusixmatchApiService {
     const normalizedQuery = this.normalizeQuery(query);
 
     try {
-      // First attempt: search with normalized query
+      // Try to detect if query contains both artist and track name
+      // Examples: "luna peso pluma", "artist song name"
+      const searchParams: Record<string, string> = {
+        page_size: pageSize.toString(),
+        page: page.toString(),
+        s_track_rating: "desc", // Sort by track rating
+        f_has_lyrics: "1", // Only return tracks with lyrics
+      };
+
+      // Try combined search first (searches across track, artist, album, lyrics)
+      searchParams.q = normalizedQuery;
+
+      // First attempt: combined search with normalized query
       const data: MusixmatchSearchResponse = await this.makeRequest(
         "/track.search",
-        {
-          q_track: normalizedQuery,
-          page_size: pageSize.toString(),
-          page: page.toString(),
-          s_track_rating: "desc", // Sort by track rating
-          f_has_lyrics: "1", // Only return tracks with lyrics
-        },
+        searchParams,
       );
 
       if (!data.message.body.track_list || data.message.body.track_list.length === 0) {
@@ -241,7 +247,7 @@ class MusixmatchApiService {
             const fallbackData: MusixmatchSearchResponse = await this.makeRequest(
               "/track.search",
               {
-                q_track: variation,
+                q: variation, // Use combined search for variations too
                 page_size: pageSize.toString(),
                 page: page.toString(),
                 s_track_rating: "desc",

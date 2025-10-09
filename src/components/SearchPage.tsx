@@ -129,6 +129,19 @@ const SearchPage = () => {
   >([]);
   const [showHistory, setShowHistory] = useState(true);
   const { isLiked, toggleLike } = useLikedSongs();
+  
+  // Handle scroll to dismiss keyboard
+  useEffect(() => {
+    const handleScroll = () => {
+      // Blur the active element (search input) when user scrolls
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
