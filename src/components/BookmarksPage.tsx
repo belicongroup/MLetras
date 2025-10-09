@@ -44,12 +44,6 @@ import {
   useSensors,
   DragEndEvent,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -141,9 +135,6 @@ const SortableFolderItem = ({
       >
         <CardHeader className="p-4 pb-2">
           <div className="flex items-center gap-3">
-            <div {...attributes} {...listeners} className="p-1 drag-handle">
-              <GripVertical className="w-4 h-4 text-muted-foreground" />
-            </div>
             <div
               className={`p-2 bg-gradient-to-br ${folder.color} rounded-lg shadow-sm`}
             >
@@ -673,26 +664,8 @@ const BookmarksPage = () => {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (!active.id || !over?.id || active.id === over.id) {
-      return;
-    }
-
-    // Handle local folders (default folders)
-    const localOldIndex = folders.findIndex((item) => item.id === active.id);
-    const localNewIndex = folders.findIndex((item) => item.id === over.id);
-    
-    if (localOldIndex !== -1 && localNewIndex !== -1) {
-      setFolders((items) => {
-        return arrayMove(items, localOldIndex, localNewIndex);
-      });
-      return;
-    }
-
-    // Handle user folders (server folders) - for now, just prevent errors
-    // TODO: Implement server-side folder reordering if needed
-    console.log('User folder reordering not implemented yet');
+    // Drag and drop disabled - no action needed
+    return;
   };
 
   // Folder view
@@ -1219,59 +1192,54 @@ const BookmarksPage = () => {
               <p className="text-muted-foreground">Loading your folders...</p>
             </div>
           ) : (userFolders.length > 0 || folders.length > 0) ? (
-            <SortableContext 
-              items={[...userFolders.map(f => f.id), ...folders.map(f => f.id)]} 
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {userFolders.map((folder, index) => {
-                  // Convert user folder to local folder format for compatibility
-                  const localFolder: Folder = {
-                    id: folder.id,
-                    name: folder.folder_name,
-                    songCount: userBookmarks.filter(b => b.folder_id === folder.id).length,
-                    color: getFolderColor(index), // Assign color based on index
-                    songs: userBookmarks.filter(b => b.folder_id === folder.id).map(bookmark => ({
-                      id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
-                      title: bookmark.song_title,
-                      artist: bookmark.artist_name,
-                      album: "",
-                      duration: 0,
-                      year: 0,
-                      genre: "",
-                      lyrics: "",
-                      albumArt: "",
-                      isLiked: false,
-                    }))
-                  };
-                  
-                  return (
-                    <SortableFolderItem
-                      key={folder.id}
-                      folder={localFolder}
-                      onDelete={deleteFolder}
-                      onClick={() => setSelectedFolder(localFolder)}
-                      deleteText={t.delete}
-                      songText={t.song}
-                      songsText={t.songs}
-                    />
-                  );
-                })}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {userFolders.map((folder, index) => {
+                // Convert user folder to local folder format for compatibility
+                const localFolder: Folder = {
+                  id: folder.id,
+                  name: folder.folder_name,
+                  songCount: userBookmarks.filter(b => b.folder_id === folder.id).length,
+                  color: getFolderColor(index), // Assign color based on index
+                  songs: userBookmarks.filter(b => b.folder_id === folder.id).map(bookmark => ({
+                    id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
+                    title: bookmark.song_title,
+                    artist: bookmark.artist_name,
+                    album: "",
+                    duration: 0,
+                    year: 0,
+                    genre: "",
+                    lyrics: "",
+                    albumArt: "",
+                    isLiked: false,
+                  }))
+                };
                 
-                {/* Local folders (for notes and additional local content) */}
-                {folders.map((folder) => (
+                return (
                   <SortableFolderItem
                     key={folder.id}
-                    folder={folder}
-                    onDelete={handleDeleteFolder}
-                    onClick={() => setSelectedFolder(folder)}
+                    folder={localFolder}
+                    onDelete={deleteFolder}
+                    onClick={() => setSelectedFolder(localFolder)}
                     deleteText={t.delete}
                     songText={t.song}
                     songsText={t.songs}
                   />
-                ))}
-              </div>
-            </SortableContext>
+                );
+              })}
+              
+              {/* Local folders (for notes and additional local content) */}
+              {folders.map((folder) => (
+                <SortableFolderItem
+                  key={folder.id}
+                  folder={folder}
+                  onDelete={handleDeleteFolder}
+                  onClick={() => setSelectedFolder(folder)}
+                  deleteText={t.delete}
+                  songText={t.song}
+                  songsText={t.songs}
+                />
+              ))}
+            </div>
           ) : (
             <div className="text-center py-8">
               <FolderPlus className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
