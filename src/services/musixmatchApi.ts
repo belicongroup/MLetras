@@ -417,6 +417,54 @@ class MusixmatchApiService {
   }
 
 
+  /**
+   * Search cached lyrics by content (server-side only, exact phrase)
+   * Returns song metadata that can be merged with regular search results
+   */
+  async searchCachedLyricsSilent(query: string): Promise<Song[]> {
+    try {
+      if (!query.trim()) return [];
+
+      const url = new URL(`${MUSIXMATCH_BASE_URL}/search.cached.lyrics`);
+      url.searchParams.set('q', query.trim());
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.results && data.results.length > 0) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`🎵 Lyrics search enhanced results with ${data.results.length} songs`);
+        }
+        
+        // Convert to Song format to merge with regular results
+        return data.results.map((result: any) => ({
+          id: `lyrics-match-${result.trackName}-${result.artistName}`,
+          title: result.trackName,
+          artist: result.artistName,
+          hasLyrics: true,
+        }));
+      }
+
+      return [];
+    } catch (error) {
+      // Silently fail - lyrics search is enhancement only
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("Lyrics search skipped:", error);
+      }
+      return [];
+    }
+  }
+
   // Method to search by artist
   async searchByArtist(
     artistName: string,

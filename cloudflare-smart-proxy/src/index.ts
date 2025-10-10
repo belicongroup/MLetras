@@ -28,7 +28,7 @@ interface MusixmatchResponse {
 class SmartProxy {
   private env: Env;
   private readonly MUSIXMATCH_BASE_URL = 'https://api.musixmatch.com/ws/1.1';
-  private readonly ALLOWED_ENDPOINTS = ['track.search', 'track.lyrics.get'];
+  private readonly ALLOWED_ENDPOINTS = ['track.search', 'track.lyrics.get', 'search.cached.lyrics'];
   private readonly ALLOWED_ORIGINS = [
     'https://mletras.vercel.app',
     'http://localhost',
@@ -179,6 +179,94 @@ class SmartProxy {
   }
 
   /**
+   * Search cached lyrics by content (exact phrase)
+   */
+  private async searchCachedLyrics(query: string): Promise<Response> {
+    try {
+      if (!query || query.trim().length === 0) {
+        return new Response(JSON.stringify({ results: [] }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const searchPhrase = query.toLowerCase().trim();
+      const results: any[] = [];
+      const maxResults = 50;
+      
+      // List all keys in KV cache
+      const list = await this.env.MUSIXMATCH_CACHE.list();
+      
+      console.log(`Searching ${list.keys.length} cached items for phrase: "${searchPhrase}"`);
+      
+      for (const key of list.keys) {
+        if (results.length >= maxResults) break;
+        
+        // Only search lyrics entries (not search results)
+        if (!key.name.includes('track.lyrics.get')) continue;
+        
+        try {
+          const cached = await this.env.MUSIXMATCH_CACHE.get(key.name, 'json') as CacheEntry;
+          if (!cached || !cached.data) continue;
+          
+          // Extract lyrics from the cached response
+          const lyricsBody = cached.data?.message?.body?.lyrics?.lyrics_body;
+          if (!lyricsBody) continue;
+          
+          const lyricsLower = lyricsBody.toLowerCase();
+          
+          // Check for exact phrase match
+          if (lyricsLower.includes(searchPhrase)) {
+            // Extract track info from the cache entry
+            const trackName = cached.data?.message?.body?.lyrics?.track_name || 'Unknown';
+            const artistName = cached.data?.message?.body?.lyrics?.artist_name || 'Unknown';
+            
+            // Find matching snippet (50 chars before and after)
+            const matchIndex = lyricsLower.indexOf(searchPhrase);
+            const snippetStart = Math.max(0, matchIndex - 50);
+            const snippetEnd = Math.min(lyricsBody.length, matchIndex + searchPhrase.length + 50);
+            const snippet = lyricsBody.substring(snippetStart, snippetEnd);
+            
+            results.push({
+              trackName,
+              artistName,
+              snippet: `...${snippet}...`,
+              matchCount: (lyricsLower.match(new RegExp(searchPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length,
+              cacheKey: key.name
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing cache key ${key.name}:`, error);
+        }
+      }
+      
+      console.log(`Found ${results.length} matching songs`);
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        results,
+        totalSearched: list.keys.length,
+        query: searchPhrase
+      }), {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Search-Type': 'cached-lyrics'
+        }
+      });
+      
+    } catch (error) {
+      console.error('Lyrics search error:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Failed to search cached lyrics',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  /**
    * Process API request with caching
    */
   private async processRequest(endpoint: string, params: URLSearchParams): Promise<Response> {
@@ -191,6 +279,12 @@ class SmartProxy {
         status: 403,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // Handle special endpoint for searching cached lyrics
+    if (endpoint === 'search.cached.lyrics') {
+      const query = params.get('q') || '';
+      return await this.searchCachedLyrics(query);
     }
 
     // Generate cache key
