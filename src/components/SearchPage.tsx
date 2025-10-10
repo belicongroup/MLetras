@@ -203,26 +203,8 @@ const SearchPage = () => {
     setHasSearched(true);
 
     try {
-      // Run both searches in parallel
-      const [titleResults, lyricsResults] = await Promise.all([
-        musixmatchApi.searchSongs(query),
-        musixmatchApi.searchCachedLyricsSilent(query)
-      ]);
-
-      // Merge results, removing duplicates by title+artist
-      const mergedResults = [...titleResults];
-      const existingKeys = new Set(
-        titleResults.map(s => `${s.title.toLowerCase()}-${s.artist.toLowerCase()}`)
-      );
-
-      for (const lyricResult of lyricsResults) {
-        const key = `${lyricResult.title.toLowerCase()}-${lyricResult.artist.toLowerCase()}`;
-        if (!existingKeys.has(key)) {
-          mergedResults.push(lyricResult);
-        }
-      }
-
-      setSearchResults(mergedResults);
+      const results = await musixmatchApi.searchSongs(query);
+      setSearchResults(results);
     } catch (error) {
       console.error("Search failed:", error);
       setSearchResults([]);

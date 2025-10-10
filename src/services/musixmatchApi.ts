@@ -1,7 +1,10 @@
-// API key is handled server-side by Cloudflare Worker proxy
-// Smart Proxy provides caching to reduce API calls
+// Note: API key is now handled server-side by Cloudflare Worker proxy
+// No client-side API key needed for security
 
-import { lyricsCache } from "./lyricsCache";
+// Use Smart Proxy with KV caching for all environments
+// The smart proxy provides intelligent caching to reduce API calls
+// Production: Using smart proxy with KV caching
+// For Android emulator development, the smart proxy supports all development domains
 
 const MUSIXMATCH_BASE_URL = "https://mletras-smart-proxy.belicongroup.workers.dev";
 
@@ -353,21 +356,8 @@ class MusixmatchApiService {
   }
 
   async getSongLyrics(trackId: string, song?: Song): Promise<string> {
+    // Smart Proxy handles caching server-side with KV storage
     try {
-      // Check cache first
-      const cached = await lyricsCache.getCachedLyrics(trackId);
-      if (cached && cached.lyrics) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('✅ Lyrics loaded from cache:', trackId);
-        }
-        return cached.lyrics;
-      }
-
-      // Cache miss - fetch from API through Smart Proxy
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('⚠️ Cache miss - fetching from API:', trackId);
-      }
-
       const data: MusixmatchLyricsResponse = await this.makeRequest(
         "/track.lyrics.get",
         {
@@ -390,78 +380,13 @@ class MusixmatchApiService {
         }
       }
 
-      // Cache the lyrics for future use
-      if (lyricsText && lyricsText !== "Lyrics not available for this song." && song) {
-        await lyricsCache.cacheLyrics({
-          id: trackId,
-          title: song.title,
-          artist: song.artist,
-          lyrics: lyricsText,
-          imageUrl: song.imageUrl,
-          url: song.url,
-          timestamp: Date.now(),
-          isLiked: false,
-        });
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('💾 Lyrics cached successfully:', trackId);
-        }
-      }
-
+      // Smart Proxy handles caching server-side with KV storage
       return lyricsText;
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Musixmatch lyrics fetch error:", error);
       }
       return "Error fetching lyrics. Please try again.";
-    }
-  }
-
-
-  /**
-   * Search cached lyrics by content (server-side only, exact phrase)
-   * Returns song metadata that can be merged with regular search results
-   */
-  async searchCachedLyricsSilent(query: string): Promise<Song[]> {
-    try {
-      if (!query.trim()) return [];
-
-      const url = new URL(`${MUSIXMATCH_BASE_URL}/search.cached.lyrics`);
-      url.searchParams.set('q', query.trim());
-
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        return [];
-      }
-
-      const data = await response.json();
-      
-      if (data.success && data.results && data.results.length > 0) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`🎵 Lyrics search enhanced results with ${data.results.length} songs`);
-        }
-        
-        // Convert to Song format to merge with regular results
-        return data.results.map((result: any) => ({
-          id: `lyrics-match-${result.trackName}-${result.artistName}`,
-          title: result.trackName,
-          artist: result.artistName,
-          hasLyrics: true,
-        }));
-      }
-
-      return [];
-    } catch (error) {
-      // Silently fail - lyrics search is enhancement only
-      if (process.env.NODE_ENV !== 'production') {
-        console.log("Lyrics search skipped:", error);
-      }
-      return [];
     }
   }
 

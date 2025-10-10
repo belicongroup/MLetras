@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+// Note: No caching of Musixmatch API data per terms of service
 import { translations } from "@/lib/translations";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
@@ -33,7 +34,11 @@ const SettingsPage = () => {
   const { settings, setSettings } = useSettings();
   const { user, isAuthenticated } = useAuth();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // Note: Cache management removed per Musixmatch terms of service
   const t = translations[settings.language];
+
+
+  // Note: Cache clearing removed per Musixmatch terms of service
 
   return (
     <div className="p-4 space-y-6">
