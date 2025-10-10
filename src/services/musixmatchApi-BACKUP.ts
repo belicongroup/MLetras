@@ -210,76 +210,137 @@ class MusixmatchApiService {
     const normalizedQuery = this.normalizeQuery(query);
 
     try {
-      // Strategy 1: Simple query search (trust Musixmatch's internal ranking)
-      // This is the most effective approach - let Musixmatch handle the parsing
-      const simpleSearchData: MusixmatchSearchResponse = await this.makeRequest(
+      // Try to intelligently parse the query for artist + track combinations
+      // Examples: "luna peso pluma" -> track: "luna", artist: "peso pluma"
+      const words = normalizedQuery.split(' ');
+      
+      let searchParams: Record<string, string> = {
+        page_size: pageSize.toString(),
+        page: page.toString(),
+        s_track_rating: "desc", // Sort by track rating
+        f_has_lyrics: "1", // Only return tracks with lyrics
+      };
+
+      // Strategy 1: Try to parse as "track artist" format (most common)
+      if (words.length >= 2) {
+        // Try first word as track, rest as artist
+        const possibleTrack = words[0];
+        const possibleArtist = words.slice(1).join(' ');
+        
+        searchParams.q_track = possibleTrack;
+        searchParams.q_artist = possibleArtist;
+      } else {
+        // Single word - search as track only
+        searchParams.q_track = normalizedQuery;
+      }
+
+      // First attempt: parsed search
+      const data: MusixmatchSearchResponse = await this.makeRequest(
         "/track.search",
-        {
-          q: normalizedQuery,
-          page_size: pageSize.toString(),
-          page: page.toString(),
-          f_has_lyrics: "1",
-        },
+        searchParams,
       );
 
-      if (simpleSearchData.message.body.track_list && simpleSearchData.message.body.track_list.length > 0) {
+      if (!data.message.body.track_list || data.message.body.track_list.length === 0) {
+        // Fallback: Try different parsing strategies
         if (process.env.NODE_ENV !== 'production') {
-          console.log(`✅ Simple query search found ${simpleSearchData.message.body.track_list.length} results`);
+          console.log('Zero results - trying alternative parsing strategies');
         }
-        return simpleSearchData.message.body.track_list.map((item) => ({
-          id: item.track.track_id.toString(),
-          title: item.track.track_name,
-          artist: item.track.artist_name,
-          album: item.track.album_name,
-          imageUrl:
-            item.track.album_coverart_500x500 ||
-            item.track.album_coverart_350x350 ||
-            item.track.album_coverart_100x100,
-          url: item.track.track_share_url,
-          trackLength: item.track.track_length,
-          hasLyrics: item.track.has_lyrics === 1,
-        }));
-      }
-
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Simple search found no results, trying track name fallback...');
-      }
-
-      // Strategy 2: Track name fallback (for edge cases)
-      const trackSearchData: MusixmatchSearchResponse = await this.makeRequest(
-        "/track.search",
-        {
-          q_track: normalizedQuery,
-          page_size: pageSize.toString(),
-          page: page.toString(),
-          f_has_lyrics: "1",
-        },
-      );
-
-      if (trackSearchData.message.body.track_list && trackSearchData.message.body.track_list.length > 0) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`✅ Track name fallback found ${trackSearchData.message.body.track_list.length} results`);
+        
+        // Strategy 2: Try as "artist track" format
+        if (words.length >= 2) {
+          try {
+            const fallbackData: MusixmatchSearchResponse = await this.makeRequest(
+              "/track.search",
+              {
+                q_track: words[words.length - 1], // Last word as track
+                q_artist: words.slice(0, -1).join(' '), // All but last as artist
+                page_size: pageSize.toString(),
+                page: page.toString(),
+                s_track_rating: "desc",
+                f_has_lyrics: "1",
+              },
+            );
+            
+            if (fallbackData.message.body.track_list && fallbackData.message.body.track_list.length > 0) {
+              if (process.env.NODE_ENV !== 'production') {
+                console.log(`Found results with "artist track" parsing`);
+              }
+              return fallbackData.message.body.track_list.map((item) => ({
+                id: item.track.track_id.toString(),
+                title: item.track.track_name,
+                artist: item.track.artist_name,
+                album: item.track.album_name,
+                imageUrl:
+                  item.track.album_coverart_500x500 ||
+                  item.track.album_coverart_350x350 ||
+                  item.track.album_coverart_100x100,
+                url: item.track.track_share_url,
+                trackLength: item.track.track_length,
+                hasLyrics: item.track.has_lyrics === 1,
+              }));
+            }
+          } catch (fallbackError) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('Artist-track parsing failed, trying next strategy...');
+            }
+          }
         }
-        return trackSearchData.message.body.track_list.map((item) => ({
-          id: item.track.track_id.toString(),
-          title: item.track.track_name,
-          artist: item.track.artist_name,
-          album: item.track.album_name,
-          imageUrl:
-            item.track.album_coverart_500x500 ||
-            item.track.album_coverart_350x350 ||
-            item.track.album_coverart_100x100,
-          url: item.track.track_share_url,
-          trackLength: item.track.track_length,
-          hasLyrics: item.track.has_lyrics === 1,
-        }));
+        
+        // Strategy 3: Try as general search (original approach)
+        try {
+          const fallbackData: MusixmatchSearchResponse = await this.makeRequest(
+            "/track.search",
+            {
+              q: normalizedQuery, // General search as last resort
+              page_size: pageSize.toString(),
+              page: page.toString(),
+              s_track_rating: "desc",
+              f_has_lyrics: "1",
+            },
+          );
+            
+          if (fallbackData.message.body.track_list && fallbackData.message.body.track_list.length > 0) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`Found results with general search`);
+            }
+            return fallbackData.message.body.track_list.map((item) => ({
+              id: item.track.track_id.toString(),
+              title: item.track.track_name,
+              artist: item.track.artist_name,
+              album: item.track.album_name,
+              imageUrl:
+                item.track.album_coverart_500x500 ||
+                item.track.album_coverart_350x350 ||
+                item.track.album_coverart_100x100,
+              url: item.track.track_share_url,
+              trackLength: item.track.track_length,
+              hasLyrics: item.track.has_lyrics === 1,
+            }));
+          }
+        } catch (fallbackError) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('General search fallback failed');
+          }
+        }
+        
+        // No results found with any strategy
+        return [];
       }
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('❌ Both strategies failed, no results found');
-      }
-
-      return [];
+      // Return results from first attempt
+      return data.message.body.track_list.map((item) => ({
+        id: item.track.track_id.toString(),
+        title: item.track.track_name,
+        artist: item.track.artist_name,
+        album: item.track.album_name,
+        imageUrl:
+          item.track.album_coverart_500x500 ||
+          item.track.album_coverart_350x350 ||
+          item.track.album_coverart_100x100,
+        url: item.track.track_share_url,
+        trackLength: item.track.track_length,
+        hasLyrics: item.track.has_lyrics === 1,
+      }));
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Musixmatch search error:", error);
