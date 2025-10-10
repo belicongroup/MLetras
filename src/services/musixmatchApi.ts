@@ -1,7 +1,6 @@
 // API key is handled server-side by Cloudflare Worker proxy
 // Smart Proxy provides server-side KV caching to reduce API calls
-
-import { lyricsCache } from "./lyricsCache";
+// No local caching of lyrics to stay compliant with Musixmatch terms
 
 const MUSIXMATCH_BASE_URL = "https://mletras-smart-proxy.belicongroup.workers.dev";
 
@@ -30,8 +29,6 @@ export interface MusixmatchTrack {
   track_length: number;
   commontrack_id: number;
   commontrack_vanity_id: string;
-  instrumental: number;
-  restricted: number;
   first_release_date: string;
   updated_time: string;
   primary_genres: {
@@ -353,21 +350,9 @@ class MusixmatchApiService {
   }
 
   async getSongLyrics(trackId: string, song?: Song): Promise<string> {
+    // Fetch from server - Worker checks its KV cache, then Musixmatch API if needed
+    // No local caching to stay compliant with Musixmatch terms
     try {
-      // Step 1: Check client-side cache first (instant!)
-      const cached = await lyricsCache.getCachedLyrics(trackId);
-      if (cached && cached.lyrics) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('✅ Lyrics from client cache:', trackId);
-        }
-        return cached.lyrics;
-      }
-
-      // Step 2: Cache miss - fetch from server (Worker checks its KV cache, then API if needed)
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('⚠️ Cache miss - fetching from server:', trackId);
-      }
-
       const data: MusixmatchLyricsResponse = await this.makeRequest(
         "/track.lyrics.get",
         {
@@ -390,23 +375,7 @@ class MusixmatchApiService {
         }
       }
 
-      // Step 3: Cache the lyrics locally for instant future access
-      if (lyricsText && lyricsText !== "Lyrics not available for this song." && song) {
-        await lyricsCache.cacheLyrics({
-          id: trackId,
-          title: song.title,
-          artist: song.artist,
-          lyrics: lyricsText,
-          imageUrl: song.imageUrl,
-          url: song.url,
-          timestamp: Date.now(),
-          isLiked: false,
-        });
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('💾 Lyrics cached locally:', trackId);
-        }
-      }
-
+      // Server-side caching only (Worker KV) - no local caching
       return lyricsText;
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {

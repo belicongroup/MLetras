@@ -1,5 +1,3 @@
-import { lyricsCache } from "./lyricsCache";
-
 export interface SearchHistoryItem {
   id: string;
   title: string;
@@ -56,18 +54,11 @@ class SearchHistoryService {
   > {
     const history = this.getHistory();
     
-    // Check which songs have cached lyrics in IndexedDB
-    const historyWithCache = await Promise.all(
-      history.map(async (item) => {
-        const cached = await lyricsCache.getCachedLyrics(item.id);
-        return {
-          ...item,
-          hasLyrics: cached !== null && cached.lyrics && cached.lyrics.length > 0,
-        };
-      })
-    );
-    
-    return historyWithCache;
+    // No local caching - always show as not having lyrics locally
+    return history.map(item => ({
+      ...item,
+      hasLyrics: false,
+    }));
   }
 
   clearHistory(): void {
