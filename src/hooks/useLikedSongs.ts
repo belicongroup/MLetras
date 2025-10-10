@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useReducer } from "react";
 import { userDataApi } from "@/services/userDataApi";
 import { syncLayer } from "@/services/syncLayer";
-// Note: No caching of Musixmatch API data per terms of service
 
 interface Song {
   id: string;

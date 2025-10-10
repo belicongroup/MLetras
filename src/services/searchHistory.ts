@@ -1,4 +1,4 @@
-// Note: No caching of Musixmatch API data per terms of service
+import { lyricsCache } from "./lyricsCache";
 
 export interface SearchHistoryItem {
   id: string;
@@ -30,9 +30,6 @@ class SearchHistoryService {
 
       // Save to localStorage
       localStorage.setItem(this.HISTORY_KEY, JSON.stringify(limitedHistory));
-
-      // Also cache the song in IndexedDB for offline access
-      await this.cacheSongForOffline(song);
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Error adding to search history:", error);
@@ -58,12 +55,19 @@ class SearchHistoryService {
     (SearchHistoryItem & { hasLyrics: boolean })[]
   > {
     const history = this.getHistory();
-    // Note: Cannot check for cached lyrics per Musixmatch terms of service
-    // All items show as not having lyrics since we can't cache Musixmatch data
-    return history.map(item => ({
-      ...item,
-      hasLyrics: false, // Always false since we can't cache Musixmatch data
-    }));
+    
+    // Check which songs have cached lyrics in IndexedDB
+    const historyWithCache = await Promise.all(
+      history.map(async (item) => {
+        const cached = await lyricsCache.getCachedLyrics(item.id);
+        return {
+          ...item,
+          hasLyrics: cached !== null && cached.lyrics && cached.lyrics.length > 0,
+        };
+      })
+    );
+    
+    return historyWithCache;
   }
 
   clearHistory(): void {
@@ -74,12 +78,6 @@ class SearchHistoryService {
     const history = this.getHistory();
     const filteredHistory = history.filter((item) => item.id !== songId);
     localStorage.setItem(this.HISTORY_KEY, JSON.stringify(filteredHistory));
-  }
-
-  private async cacheSongForOffline(song: SearchHistoryItem): Promise<void> {
-    // Note: Cannot cache Musixmatch API data per terms of service
-    // This method is kept for interface compatibility but does nothing
-    return;
   }
 
   async getRecentSearches(limit: number = 10): Promise<SearchHistoryItem[]> {
