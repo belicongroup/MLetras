@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <title>Lyric Viewer Test - Accurate Replica</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 220 26% 8%;
+            --primary: 259 94% 51%;
+            --primary-foreground: 210 40% 98%;
+            --muted-foreground: 215 20.2% 45%;
+            --border: 220 26% 90%;
+            --card: 0 0% 100%;
+            --safe-area-inset-top: env(safe-area-inset-top);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom);
+            --safe-area-inset-left: env(safe-area-inset-left);
+            --safe-area-inset-right: env(safe-area-inset-right);
+        }
+
+        .dark {
+            --background: 220 26% 8%;
+            --foreground: 210 40% 98%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --border: 220 26% 16%;
+            --card: 220 26% 10%;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent !important;
+            user-select: none;
+        }
+
+        .h-screen { height: 100vh; }
+        .bg-background { background: hsl(var(--background)); }
+        .overflow-hidden { overflow: hidden; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .flex-1 { flex: 1; }
+
+        /* Safe Area Utilities */
+        .safe-top { padding-top: max(var(--safe-area-inset-top), 1rem); }
+        .safe-bottom { padding-bottom: max(var(--safe-area-inset-bottom), 1rem); }
+        .safe-left { padding-left: max(var(--safe-area-inset-left), 1rem); }
+        .safe-right { padding-right: max(var(--safe-area-inset-right), 1rem); }
+
+        /* Header */
+        .header {
+            flex-shrink: 0;
+            background: hsla(var(--background), 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid hsla(var(--border), 0.5);
+            padding-top: max(var(--safe-area-inset-top), 1rem);
+            padding-left: max(var(--safe-area-inset-left), 1rem);
+            padding-right: max(var(--safe-area-inset-right), 1rem);
+            padding-bottom: 1rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            pointer-events: none;
+            touch-action: none;
+        }
+
+        .header.hide-landscape {
+            display: none;
+        }
+
+        .header > * {
+            pointer-events: auto;
+        }
+
+        .max-w-4xl {
+            max-width: 56rem;
+            margin: 0 auto;
+        }
+
+        .song-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+            text-align: center;
+        }
+
+        .song-artist {
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            text-align: center;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--card));
+            color: hsl(var(--foreground));
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            outline: none !important;
+            box-shadow: none !important;
+            pointer-events: auto;
+        }
+
+        .btn:hover {
+            background: hsl(var(--primary) / 0.1);
+            color: hsl(var(--primary));
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn.text-muted { color: hsl(var(--muted-foreground)); }
+        .btn.text-primary { color: hsl(var(--primary)); background: hsl(var(--primary) / 0.1); }
+        .btn.text-green { color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .btn.text-yellow { color: #eab308; background: rgba(234, 179, 8, 0.1); }
+        .btn.text-red { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+
+        /* Lyrics Container */
+        .lyrics-container {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+            margin-top: 160px;
+            touch-action: none; /* Prevent pinch-zoom on red container */
+        }
+
+        .lyrics-container.landscape {
+            margin-top: 0;
+            touch-action: none; /* Still prevent pinch on red container */
+        }
+
+        .lyrics-container.landscape-with-header {
+            margin-top: 160px;
+            touch-action: none; /* Still prevent pinch on red container */
+        }
+
+        .lyrics-wrapper {
+            height: 100%;
+            max-width: 56rem;
+            margin: 0 auto;
+            padding-left: max(var(--safe-area-inset-left), 1rem);
+            padding-right: max(var(--safe-area-inset-right), 1rem);
+            padding-bottom: max(var(--safe-area-inset-bottom), 1rem);
+        }
+
+        /* Tablet container */
+        @media (min-width: 768px) {
+            .tablet-container {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .tablet-container {
+                max-width: 800px;
+            }
+        }
+
+        /* Scroll Container */
+        .lyrics-scroll {
+            height: 100%;
+            padding: 2rem;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            scrollbar-gutter: stable;
+            touch-action: pan-y pinch-zoom;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
+            isolation: isolate;
+            /* Ensure content doesn't scroll behind header */
+            padding-top: max(2rem, env(safe-area-inset-top));
+        }
+
+        .lyrics-scroll.landscape {
+            touch-action: pinch-zoom pan-y;
+        }
+
+        .lyrics-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .lyrics-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .lyrics-scroll::-webkit-scrollbar-thumb {
+            background: hsl(var(--primary));
+            border-radius: 2px;
+        }
+
+        /* Lyrics Text */
+        .lyrics-text {
+            white-space: pre-line;
+            line-height: 1.6;
+            transition: all 0.3s ease;
+            text-align: center;
+            cursor: pointer;
+            touch-action: pan-y pinch-zoom;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            overscroll-behavior: contain;
+        }
+
+        .lyrics-text.bold {
+            font-weight: 600;
+        }
+
+        /* Tablet spacing */
+        @media (min-width: 768px) {
+            .tablet-spacing {
+                padding: 1.5rem;
+            }
+            .lyrics-text {
+                font-size: 1.25rem !important;
+                line-height: 1.8;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .tablet-spacing {
+                padding: 2rem;
+            }
+            .lyrics-text {
+                font-size: 1.5rem !important;
+                line-height: 2;
+            }
+        }
+
+        /* Attribution */
+        .attribution {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+
+        .attribution a {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground) / 0.6);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            pointer-events: auto !important;
+        }
+
+        .attribution a:hover {
+            color: hsl(var(--muted-foreground));
+        }
+
+        /* Debug Colors - Visual padding layers (simplified) */
+        .show-padding-layers .lyrics-container {
+            background: rgba(255, 0, 0, 0.15) !important; /* Red - Main container */
+            border: 2px solid rgba(255, 0, 0, 0.3) !important;
+            /* Ensure red container doesn't allow pinch-zoom */
+            touch-action: none !important;
+        }
+
+        .show-padding-layers .lyrics-text {
+            background: rgba(255, 255, 0, 0.2) !important; /* Yellow - Actual text content */
+            border: 2px solid rgba(255, 255, 0, 0.4) !important;
+            padding: 1rem;
+            margin: 2px;
+            border-radius: 4px;
+        }
+
+        /* Debug Panel */
+        .debug-panel {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-size: 0.75rem;
+            max-width: 320px;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+        }
+
+        .debug-panel h3 {
+            font-size: 0.875rem;
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+        }
+
+        .debug-panel p {
+            margin: 0.25rem 0;
+            color: hsl(var(--muted-foreground));
+            line-height: 1.5;
+        }
+
+        .debug-panel .status-label {
+            font-weight: 600;
+            display: inline-block;
+            min-width: 140px;
+        }
+
+        .debug-panel button {
+            margin-top: 0.75rem;
+            width: 100%;
+        }
+
+        /* Song Selector */
+        .song-selector {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 100;
+        }
+
+        .song-selector select {
+            padding: 0.5rem;
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--card));
+            color: hsl(var(--foreground));
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 2rem;
+            height: 2rem;
+            border: 2px solid hsl(var(--primary));
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="h-screen bg-background overflow-hidden flex flex-col">
+        <!-- Song Selector (Test Only) -->
+        <div class="song-selector">
+            <select id="songSelect">
+                <option value="0">Short Song</option>
+                <option value="1">Medium Song</option>
+                <option value="2">Long Song</option>
+            </select>
+        </div>
+
+        <!-- Header -->
+        <div class="header" id="header">
+            <div class="max-w-4xl">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                    <button class="btn" id="backBtn">← Back</button>
+                    <div style="flex: 1; text-align: center;">
+                        <div class="song-title" id="songTitle">Loading...</div>
+                        <div class="song-artist" id="songArtist">Loading...</div>
+                    </div>
+                    <div style="width: 80px;"></div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn text-muted" id="autoScrollBtn">
+                        ▶ Auto-Scroll
+                    </button>
+                    <button class="btn" id="boldBtn">
+                        <strong>B</strong> Bold
+                    </button>
+                    <button class="btn" id="fontUpBtn">A+</button>
+                    <button class="btn" id="fontDownBtn">A-</button>
+                    <button class="btn" id="themeBtn">🌙 Dark</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lyrics Content -->
+        <div class="lyrics-container" id="lyricsContainer">
+            <div class="lyrics-wrapper tablet-container">
+                <div class="lyrics-scroll tablet-spacing" id="lyricsScroll">
+                    <div class="lyrics-text" id="lyricsText">
+                        Loading lyrics...
+                    </div>
+                    <div class="attribution">
+                        <a href="https://www.musixmatch.com" target="_blank" rel="noopener noreferrer">
+                            Lyrics powered by Musixmatch
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Panel -->
+        <div class="debug-panel" id="debugPanel">
+            <h3>🐛 Debug Info</h3>
+            <p><span class="status-label">Font Size:</span> <span id="debugFontSize">18px</span></p>
+            <p><span class="status-label">Auto-Scroll Speed:</span> <span id="debugScrollSpeed">off</span></p>
+            <p><span class="status-label">Is Paused:</span> <span id="debugPaused">No</span></p>
+            <p><span class="status-label">Has User Interacted:</span> <span id="debugInteracted">No</span></p>
+            <p><span class="status-label">Bold Text:</span> <span id="debugBold">No</span></p>
+            <p><span class="status-label">Orientation:</span> <span id="debugOrientation">Portrait</span></p>
+            <p><span class="status-label">Show Controls:</span> <span id="debugShowControls">N/A</span></p>
+            <p><span class="status-label">Scroll Position:</span> <span id="debugScrollPos">0 / 0</span></p>
+            <hr style="margin: 0.75rem 0; border: none; border-top: 1px solid hsl(var(--border));">
+            <p style="font-weight: bold; margin-bottom: 0.5rem;">Padding Layers:</p>
+            <p style="font-size: 0.7rem; line-height: 1.4; margin-bottom: 0.5rem;">
+                🟥 Red = Main Container (marginTop: 160px)<br>
+                🟨 Yellow = Text Content
+            </p>
+            <button class="btn" id="toggleLayersBtn">Show Layers</button>
+            <button class="btn" id="toggleDebugBtn">Hide Debug</button>
+        </div>
+    </div>
+
+    <script>
+        // Sample Songs
+        const sampleSongs = [
+            {
+                title: "Short Test Song",
+                artist: "Test Artist",
+                lyrics: `Verse 1:
+This is a short test song
+Just a few lines long
+To test the basic functionality
+
+Chorus:
+Testing features one by one
+Making sure they all work right
+Short and sweet tonight
+
+Verse 2:
+We can scroll around
+Auto-scroll is neat
+Makes viewing complete`
+            },
+            {
+                title: "Medium Length Song",
+                artist: "Sample Band",
+                lyrics: `Verse 1:
+Walking down the street at midnight
+City lights are shining bright
+Thinking about the dreams I had
+Wondering if they'll come true tonight
+
+Pre-Chorus:
+Every step I take brings me closer
+Every breath reminds me what to do
+
+Chorus:
+We're dancing in the moonlight
+Everything feels so right
+Hold me close tonight, never let me go
+We're flying so high, touching the sky
+This moment is ours, let it show
+
+Verse 2:
+Remember when we first met
+Under the stars that night
+You smiled and took my hand
+Everything just felt so right
+
+Pre-Chorus:
+Every step I take brings me closer
+Every breath reminds me what to do
+
+Chorus:
+We're dancing in the moonlight
+Everything feels so right
+Hold me close tonight, never let me go
+We're flying so high, touching the sky
+This moment is ours, let it show
+
+Bridge:
+Time stands still when I'm with you
+Colors seem more vivid too
+Every moment feels brand new
+All I want is me and you
+
+Final Chorus:
+We're dancing in the moonlight
+Everything feels so right
+Hold me close tonight, never let me go
+We're flying so high, touching the sky
+This moment is ours, let it show
+
+Outro:
+As the night fades away
+Promise me you'll stay
+Forever and a day
+By my side always`
+            },
+            {
+                title: "Epic Long Song",
+                artist: "Epic Artists",
+                lyrics: `Verse 1:
+In the beginning there was silence
+Just a void of empty space
+Then came the sound of creation
+Bringing light to every place
+
+The mountains rose from the ocean
+Rivers carved their ancient way
+Stars were born in distant galaxies
+Night gave way to brilliant day
+
+Pre-Chorus:
+This is the story that we tell
+Of how the universe began
+From the smallest grain of sand
+To the greatest canyon grand
+
+Chorus:
+We are the children of the cosmos
+Dancing on this ball of blue
+Every atom in our bodies
+Was once a star that grew
+We are connected to each other
+In ways we'll never fully know
+Every breath we take together
+Makes the universe glow
+
+Verse 2:
+Life emerged from the waters
+Single cells became complex
+Evolution wrote its story
+In the spiral of our DNA helix
+
+Creatures walked upon the land
+Some with wings and some with fins
+Dinosaurs once ruled the earth
+Until a new age could begin
+
+Pre-Chorus:
+This is the story that we tell
+Of how life found its way
+Through the struggles and the trials
+Through the night and through the day
+
+Chorus:
+We are the children of the cosmos
+Dancing on this ball of blue
+Every atom in our bodies
+Was once a star that grew
+We are connected to each other
+In ways we'll never fully know
+Every breath we take together
+Makes the universe glow
+
+Verse 3:
+Then came humanity's first steps
+Walking upright in the sun
+Creating art and music
+Stories that would never be undone
+
+We built cities and civilizations
+Reached for the stars above
+Wrote poems about our feelings
+Sang songs about our love
+
+Bridge:
+Now we stand at the threshold
+Of a new age yet to come
+Will we learn from our mistakes
+Or will we come undone?
+
+The choice is ours to make now
+To build bridges or to fight
+To embrace our common humanity
+Or to fade into the night
+
+Verse 4:
+We've sent our messages to space
+Hoping someone will reply
+Built telescopes to see further
+Into the depths of the sky
+
+We've split the atom's core
+Mapped the human genome too
+Cured diseases once thought fatal
+Found ways to start anew
+
+Pre-Chorus:
+This is the story that we tell
+Of human achievement and grace
+Of our journey from the caves
+To the edge of outer space
+
+Chorus:
+We are the children of the cosmos
+Dancing on this ball of blue
+Every atom in our bodies
+Was once a star that grew
+We are connected to each other
+In ways we'll never fully know
+Every breath we take together
+Makes the universe glow
+
+Verse 5:
+But we must not forget our home
+This precious world we share
+The forests and the oceans
+The beauty everywhere
+
+We must protect and cherish
+Every living thing we see
+For in the web of life we're woven
+Together eternally
+
+Final Chorus:
+We are the children of the cosmos
+Dancing on this ball of blue
+Every atom in our bodies
+Was once a star that grew
+We are connected to each other
+In ways we'll never fully know
+Every breath we take together
+Makes the universe glow
+
+Outro:
+So let us sing this song together
+Under the stars so bright
+Celebrating our existence
+In the cosmic dance of light
+
+For we are all made of stardust
+And to stardust we'll return
+But while we're here together
+Let our spirits brightly burn`
+            }
+        ];
+
+        // State - Exact replica of LyricsPage.tsx state
+        const state = {
+            currentSong: 0,
+            fontSize: 18,
+            isBoldText: false,
+            autoScrollSpeed: 'off', // 'off' | 'slow' | 'medium' | 'fast'
+            isScrollPaused: false,
+            lastScrollSpeed: 'slow',
+            hasUserInteracted: false,
+            isDarkMode: false,
+            isLandscape: false,
+            showControlsInLandscape: false,
+            scrollInterval: null,
+            showPaddingLayers: true // Debug feature - keep colors visible
+        };
+
+        // Scroll speeds - Exact from LyricsPage.tsx
+        const scrollSpeeds = {
+            off: 0,
+            slow: 7.5,
+            medium: 15,
+            fast: 30
+        };
+
+        // DOM Elements
+        const el = {
+            songTitle: document.getElementById('songTitle'),
+            songArtist: document.getElementById('songArtist'),
+            lyricsText: document.getElementById('lyricsText'),
+            lyricsScroll: document.getElementById('lyricsScroll'),
+            lyricsContainer: document.getElementById('lyricsContainer'),
+            header: document.getElementById('header'),
+            autoScrollBtn: document.getElementById('autoScrollBtn'),
+            boldBtn: document.getElementById('boldBtn'),
+            fontUpBtn: document.getElementById('fontUpBtn'),
+            fontDownBtn: document.getElementById('fontDownBtn'),
+            themeBtn: document.getElementById('themeBtn'),
+            backBtn: document.getElementById('backBtn'),
+            songSelect: document.getElementById('songSelect'),
+            debugPanel: document.getElementById('debugPanel'),
+            toggleDebugBtn: document.getElementById('toggleDebugBtn'),
+            toggleLayersBtn: document.getElementById('toggleLayersBtn')
+        };
+
+        // Initialize
+        function init() {
+            // Set initial font size based on screen width (like React component)
+            if (window.innerWidth >= 1024) {
+                state.fontSize = 24;
+            } else if (window.innerWidth >= 768) {
+                state.fontSize = 22;
+            } else {
+                state.fontSize = 18;
+            }
+            el.lyricsText.style.fontSize = state.fontSize + 'px';
+
+            // Enable padding layers by default
+            document.body.classList.add('show-padding-layers');
+            el.toggleLayersBtn.textContent = 'Hide Layers';
+            el.toggleLayersBtn.classList.add('text-primary');
+
+            loadSong(0);
+            attachEventListeners();
+            checkOrientation();
+            updateDebugPanel();
+            
+            // Scroll to top aggressively (like React component)
+            scrollToTop();
+            scrollToTop();
+            requestAnimationFrame(() => {
+                scrollToTop();
+                setTimeout(scrollToTop, 10);
+                setTimeout(scrollToTop, 50);
+                setTimeout(scrollToTop, 100);
+                setTimeout(scrollToTop, 150);
+            });
+
+            setInterval(updateDebugPanel, 100);
+        }
+
+        function scrollToTop() {
+            if (el.lyricsScroll) {
+                el.lyricsScroll.scrollTop = 0;
+                el.lyricsScroll.scrollTo(0, 0);
+            }
+            window.scrollTo(0, 0);
+        }
+
+        // Load Song
+        function loadSong(index) {
+            const song = sampleSongs[index];
+            state.currentSong = index;
+            el.songTitle.textContent = song.title;
+            el.songArtist.textContent = song.artist;
+            el.lyricsText.textContent = song.lyrics;
+            
+            // Reset scroll and auto-scroll
+            scrollToTop();
+            stopAutoScroll();
+            state.autoScrollSpeed = 'off';
+            state.isScrollPaused = false;
+            state.hasUserInteracted = false;
+            updateAutoScrollButton();
+        }
+
+        // Event Listeners
+        function attachEventListeners() {
+            el.songSelect.addEventListener('change', (e) => loadSong(parseInt(e.target.value)));
+            el.autoScrollBtn.addEventListener('click', toggleAutoScroll);
+            el.boldBtn.addEventListener('click', toggleBold);
+            el.fontUpBtn.addEventListener('click', () => changeFontSize(2));
+            el.fontDownBtn.addEventListener('click', () => changeFontSize(-2));
+            el.themeBtn.addEventListener('click', toggleTheme);
+            el.backBtn.addEventListener('click', () => alert('Back button clicked'));
+            el.lyricsText.addEventListener('click', handleLyricsClick);
+            el.toggleDebugBtn.addEventListener('click', toggleDebug);
+            el.toggleLayersBtn.addEventListener('click', togglePaddingLayers);
+            
+            window.addEventListener('resize', checkOrientation);
+            window.addEventListener('orientationchange', checkOrientation);
+            el.lyricsScroll.addEventListener('scroll', updateDebugPanel);
+        }
+
+        // Toggle Auto-Scroll - EXACT logic from LyricsPage.tsx
+        function toggleAutoScroll() {
+            const speeds = ['off', 'slow', 'medium', 'fast'];
+            const currentIndex = speeds.indexOf(state.autoScrollSpeed);
+            const nextIndex = (currentIndex + 1) % speeds.length;
+            const newSpeed = speeds[nextIndex];
+
+            // Save the last speed when turning on auto-scroll
+            if (newSpeed !== 'off') {
+                state.lastScrollSpeed = newSpeed;
+                state.hasUserInteracted = true; // Mark that user has interacted
+            }
+
+            state.autoScrollSpeed = newSpeed;
+            state.isScrollPaused = false; // Reset pause state when changing speed
+            
+            if (newSpeed === 'off') {
+                stopAutoScroll();
+            } else {
+                startAutoScroll();
+            }
+            
+            updateAutoScrollButton();
+        }
+
+        // Start Auto-Scroll - EXACT logic from LyricsPage.tsx
+        function startAutoScroll() {
+            stopAutoScroll();
+
+            if (state.autoScrollSpeed === 'off' || 
+                state.isScrollPaused || 
+                !state.hasUserInteracted) {
+                return;
+            }
+
+            const speed = scrollSpeeds[state.autoScrollSpeed];
+
+            const scroll = () => {
+                if (state.isScrollPaused) return;
+
+                const container = el.lyricsScroll;
+                const scrollTop = container.scrollTop;
+                const scrollHeight = container.scrollHeight;
+                const clientHeight = container.clientHeight;
+                const maxScroll = Math.max(0, scrollHeight - clientHeight - 5);
+
+                // Check if reached bottom
+                if (scrollTop >= maxScroll) {
+                    state.autoScrollSpeed = 'off';
+                    stopAutoScroll();
+                    updateAutoScrollButton();
+                    return;
+                }
+
+                container.scrollTop += 1;
+            };
+
+            state.scrollInterval = setInterval(scroll, 1000 / speed);
+        }
+
+        function stopAutoScroll() {
+            if (state.scrollInterval) {
+                clearInterval(state.scrollInterval);
+                state.scrollInterval = null;
+            }
+        }
+
+        // Update Auto-Scroll Button
+        function updateAutoScrollButton() {
+            const btn = el.autoScrollBtn;
+            btn.className = 'btn';
+
+            if (state.autoScrollSpeed === 'off') {
+                btn.className += ' text-muted';
+                btn.textContent = '▶ Off';
+            } else if (state.autoScrollSpeed === 'slow') {
+                btn.className += (state.hasUserInteracted && !state.isScrollPaused) ? ' text-green' : ' text-green';
+                btn.textContent = '▶ Slow' + (state.hasUserInteracted && !state.isScrollPaused ? ' (Active)' : '');
+            } else if (state.autoScrollSpeed === 'medium') {
+                btn.className += (state.hasUserInteracted && !state.isScrollPaused) ? ' text-yellow' : ' text-yellow';
+                btn.textContent = '▶ Medium' + (state.hasUserInteracted && !state.isScrollPaused ? ' (Active)' : '');
+            } else if (state.autoScrollSpeed === 'fast') {
+                btn.className += (state.hasUserInteracted && !state.isScrollPaused) ? ' text-red' : ' text-red';
+                btn.textContent = '▶ Fast' + (state.hasUserInteracted && !state.isScrollPaused ? ' (Active)' : '');
+            }
+
+            if (state.isScrollPaused) {
+                btn.textContent = '⏸ Paused';
+            }
+        }
+
+        // Handle Lyrics Click - EXACT logic from LyricsPage.tsx
+        function handleLyricsClick() {
+            // In landscape mode, toggle controls visibility
+            if (state.isLandscape) {
+                state.showControlsInLandscape = !state.showControlsInLandscape;
+                updateLandscapeUI();
+                return;
+            }
+
+            // Portrait mode: handle auto-scroll pause/resume
+            if (state.autoScrollSpeed === 'off') return; // Do nothing if auto-scroll is off
+
+            state.hasUserInteracted = true; // Mark that user has interacted
+
+            if (state.isScrollPaused) {
+                // Resume scrolling at the last speed
+                state.autoScrollSpeed = state.lastScrollSpeed;
+                state.isScrollPaused = false;
+                startAutoScroll();
+            } else {
+                // Pause scrolling but remember the current speed
+                state.lastScrollSpeed = state.autoScrollSpeed;
+                state.isScrollPaused = true;
+                stopAutoScroll();
+            }
+
+            updateAutoScrollButton();
+        }
+
+        // Toggle Bold
+        function toggleBold() {
+            state.isBoldText = !state.isBoldText;
+            el.lyricsText.classList.toggle('bold', state.isBoldText);
+            el.boldBtn.classList.toggle('text-primary', state.isBoldText);
+        }
+
+        // Change Font Size
+        function changeFontSize(delta) {
+            state.fontSize = Math.max(12, Math.min(48, state.fontSize + delta));
+            el.lyricsText.style.fontSize = state.fontSize + 'px';
+        }
+
+        // Toggle Theme
+        function toggleTheme() {
+            state.isDarkMode = !state.isDarkMode;
+            document.body.classList.toggle('dark', state.isDarkMode);
+            el.themeBtn.textContent = state.isDarkMode ? '☀️ Light' : '🌙 Dark';
+        }
+
+        // Check Orientation - EXACT logic from LyricsPage.tsx
+        function checkOrientation() {
+            const newIsLandscape = window.innerHeight < window.innerWidth;
+            const wasLandscape = state.isLandscape;
+            state.isLandscape = newIsLandscape;
+
+            // When switching TO landscape mode, reset auto-scroll to off
+            if (newIsLandscape && !wasLandscape) {
+                stopAutoScroll();
+                state.autoScrollSpeed = 'off';
+                state.isScrollPaused = false;
+                state.hasUserInteracted = false;
+                updateAutoScrollButton();
+            }
+
+            // Reset controls visibility when switching to portrait mode
+            if (!newIsLandscape) {
+                state.showControlsInLandscape = false;
+            }
+
+            updateLandscapeUI();
+        }
+
+        // Update Landscape UI
+        function updateLandscapeUI() {
+            // Header visibility
+            if (state.isLandscape && !state.showControlsInLandscape) {
+                el.header.classList.add('hide-landscape');
+            } else {
+                el.header.classList.remove('hide-landscape');
+            }
+
+            // Container styling
+            el.lyricsContainer.classList.remove('landscape', 'landscape-with-header');
+            if (state.isLandscape) {
+                if (state.showControlsInLandscape) {
+                    el.lyricsContainer.classList.add('landscape-with-header');
+                } else {
+                    el.lyricsContainer.classList.add('landscape');
+                }
+            }
+
+            // Scroll touch action
+            el.lyricsScroll.classList.toggle('landscape', state.isLandscape);
+        }
+
+        // Update Debug Panel
+        function updateDebugPanel() {
+            document.getElementById('debugFontSize').textContent = state.fontSize + 'px';
+            document.getElementById('debugScrollSpeed').textContent = state.autoScrollSpeed;
+            document.getElementById('debugPaused').textContent = state.isScrollPaused ? 'Yes' : 'No';
+            document.getElementById('debugInteracted').textContent = state.hasUserInteracted ? 'Yes' : 'No';
+            document.getElementById('debugBold').textContent = state.isBoldText ? 'Yes' : 'No';
+            document.getElementById('debugOrientation').textContent = state.isLandscape ? 'Landscape' : 'Portrait';
+            document.getElementById('debugShowControls').textContent = 
+                state.isLandscape ? (state.showControlsInLandscape ? 'Yes' : 'No') : 'N/A';
+            
+            const scrollTop = Math.round(el.lyricsScroll.scrollTop);
+            const scrollHeight = Math.round(el.lyricsScroll.scrollHeight);
+            document.getElementById('debugScrollPos').textContent = `${scrollTop} / ${scrollHeight}`;
+        }
+
+        // Toggle Debug
+        function toggleDebug() {
+            const isHidden = el.debugPanel.style.display === 'none';
+            el.debugPanel.style.display = isHidden ? 'block' : 'none';
+            el.toggleDebugBtn.textContent = isHidden ? 'Hide Debug' : 'Show Debug';
+        }
+
+        // Toggle Padding Layers Visualization
+        function togglePaddingLayers() {
+            state.showPaddingLayers = !state.showPaddingLayers;
+            document.body.classList.toggle('show-padding-layers', state.showPaddingLayers);
+            el.toggleLayersBtn.textContent = state.showPaddingLayers ? 'Hide Layers' : 'Show Layers';
+            el.toggleLayersBtn.classList.toggle('text-primary', state.showPaddingLayers);
+        }
+
+        // Start
+        init();
+
+        // Expose for console debugging
+        window.lyricsTestState = state;
+        console.log('%c🎵 Lyric Viewer Test - Accurate Replica', 'font-size: 16px; font-weight: bold; color: #8b5cf6;');
+        console.log('State available at: window.lyricsTestState');
+        console.log('\n📋 Test Instructions:');
+        console.log('1. Use dropdown to switch songs');
+        console.log('2. Click Auto-Scroll button to cycle: Off → Slow → Medium → Fast');
+        console.log('3. Click lyrics to pause/resume (only works if auto-scroll is on)');
+        console.log('4. In LANDSCAPE: clicking lyrics toggles header visibility');
+        console.log('5. In LANDSCAPE: auto-scroll resets to OFF automatically');
+        console.log('6. Watch debug panel for real-time state');
+        console.log('7. Click "Show Layers" to visualize padding structure with colors:');
+        console.log('   🟥 Red = Main Container | 🟨 Yellow = Text Content');
+    </script>
+</body>
+</html>

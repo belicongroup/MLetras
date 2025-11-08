@@ -61,7 +61,7 @@ const LyricsPage = () => {
   const menuOpenTimeRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
-  const timeoutIdsRef = useRef<number[]>([]);
+  const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Utility function to manage timeout cleanup
   const addTimeout = useCallback((callback: () => void, delay: number) => {
@@ -604,12 +604,20 @@ const LyricsPage = () => {
 
       {/* Lyrics Content */}
       <div
-        className="flex-1 overflow-hidden"
+        className={`flex-1 overflow-hidden ${
+          isLandscape 
+            ? showControlsInLandscape 
+              ? 'lyrics-content-landscape-with-header' 
+              : 'lyrics-content-landscape'
+            : ''
+        }`}
         style={{ 
           position: 'relative', 
           zIndex: 1,
-          touchAction: isLandscape ? 'auto' : 'none',
-          marginTop: (!isLandscape || showControlsInLandscape) ? '160px' : '0'
+          touchAction: 'none', // Prevent pinch-zoom and scrolling on main container
+          marginTop: (!isLandscape || showControlsInLandscape) ? '160px' : '0',
+          overflow: 'hidden', // Prevent any scrolling on this container
+          overscrollBehavior: 'none' // Prevent overscroll
         }}
       >
         <div className="h-full max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container">
@@ -622,7 +630,8 @@ const LyricsPage = () => {
               overscrollBehavior: 'contain',
               WebkitOverflowScrolling: 'touch',
               position: 'relative',
-              isolation: 'isolate'
+              isolation: 'isolate',
+              paddingTop: 'max(2rem, env(safe-area-inset-top))' // Ensure content doesn't scroll behind header
             }}
           >
             {isLoadingLyrics ? (

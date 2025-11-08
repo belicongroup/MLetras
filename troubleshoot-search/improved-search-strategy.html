@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Improved Search Strategy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .strategy-comparison {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .strategy-comparison h4 {
+            margin-bottom: 15px;
+            color: #28a745;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .old-strategy, .new-strategy {
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .old-strategy {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .new-strategy {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .old-strategy h5 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .new-strategy h5 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+        
+        .api-usage {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .api-usage h4 {
+            margin-bottom: 10px;
+            color: #1976d2;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus {
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .debug-section {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .debug-section h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .debug-log {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .results {
+            margin-top: 20px;
+        }
+        
+        .song-card {
+            background: #fafafa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s;
+        }
+        
+        .song-card:hover {
+            transform: translateX(5px);
+        }
+        
+        .song-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        
+        .song-artist {
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .song-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Improved Search Strategy</h1>
+        <p class="subtitle">Hybrid approach: Simple logic + API quota friendly</p>
+        
+        <div class="strategy-comparison">
+            <h4>✅ Best of Both Worlds Strategy</h4>
+            <div class="comparison-grid">
+                <div class="old-strategy">
+                    <h5>❌ Your Old Approach</h5>
+                    <ul>
+                        <li>6 different strategies</li>
+                        <li>Complex track/artist splitting</li>
+                        <li>Relevance scoring & filtering</li>
+                        <li>Multiple API calls per search</li>
+                        <li>Often rejects good results</li>
+                    </ul>
+                </div>
+                <div class="new-strategy">
+                    <h5>✅ New Hybrid Approach</h5>
+                    <ul>
+                        <li>2 simple strategies only</li>
+                        <li>Simple query (like Strvm)</li>
+                        <li>No complex filtering</li>
+                        <li>Same API usage as before</li>
+                        <li>Better results</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="api-usage">
+            <h4>📊 API Usage Comparison</h4>
+            <p><strong>Old approach:</strong> Up to 6 API calls per search (multiple strategies)</p>
+            <p><strong>New approach:</strong> Max 2 API calls per search (simple fallback)</p>
+            <p><strong>Page size:</strong> Still using 5 results (not 100 like Strvm)</p>
+        </div>
+        
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Enter song title (e.g., 'dos vicios', 'solo me dejaste')"
+                autocomplete="off"
+            />
+            <button id="searchBtn">Test Hybrid Search</button>
+        </div>
+        
+        <div id="status"></div>
+        
+        <div class="debug-section">
+            <h3>🐛 Debug Log</h3>
+            <div id="debugLog" class="debug-log">Ready to test hybrid approach...</div>
+        </div>
+        
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        // Hybrid approach: Simple like Strvm, but API-friendly
+        const MUSIXMATCH_BASE_URL = "https://mletras-smart-proxy.belicongroup.workers.dev";
+        
+        let debugMessages = [];
+        
+        function addDebugLog(message, data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            let logMessage = `[${timestamp}] ${message}`;
+            if (data) {
+                logMessage += '\n' + JSON.stringify(data, null, 2);
+            }
+            debugMessages.push(logMessage);
+            document.getElementById('debugLog').textContent = debugMessages.join('\n\n');
+            // Auto-scroll to bottom
+            const debugLog = document.getElementById('debugLog');
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        
+        async function makeRequest(endpoint, params = {}) {
+            const url = new URL(`${MUSIXMATCH_BASE_URL}/${endpoint}`);
+            Object.entries(params).forEach(([key, value]) => {
+                url.searchParams.append(key, value);
+            });
+            
+            addDebugLog(`Making request to: ${endpoint}`, params);
+            
+            const response = await fetch(url.toString(), {
+                method: "GET",
+                headers: {
+                    Accept: "application/json",
+                },
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.message.header.status_code !== 200) {
+                throw new Error(`API error: ${data.message.header.status_code}`);
+            }
+            
+            addDebugLog(`Response received:`, {
+                status: data.message.header.status_code,
+                results: data.message.body.track_list?.length || 0
+            });
+            
+            return data;
+        }
+        
+        async function hybridSearch(query, pageSize = 5) {
+            if (!query.trim()) {
+                addDebugLog('Empty query, returning empty results');
+                return [];
+            }
+            
+            addDebugLog(`=== Starting HYBRID search for: "${query}" ===`);
+            addDebugLog(`Using simplified 2-strategy approach`);
+            
+            try {
+                // Strategy 1: Simple query (like Strvm) - but with small page size
+                const simpleParams = {
+                    q: query,
+                    page_size: pageSize.toString(),
+                    page: "1",
+                    f_has_lyrics: "1",
+                };
+                
+                addDebugLog(`Strategy 1: Simple query search`, simpleParams);
+                
+                const data = await makeRequest("/track.search", simpleParams);
+                
+                if (data.message.body.track_list && data.message.body.track_list.length > 0) {
+                    addDebugLog(`✅ Strategy 1 found ${data.message.body.track_list.length} results!`);
+                    return data.message.body.track_list.map((item) => ({
+                        id: item.track.track_id.toString(),
+                        title: item.track.track_name,
+                        artist: item.track.artist_name,
+                        album: item.track.album_name,
+                        imageUrl: item.track.album_coverart_500x500 ||
+                                 item.track.album_coverart_350x350 ||
+                                 item.track.album_coverart_100x100,
+                        url: item.track.track_share_url,
+                        trackLength: item.track.track_length,
+                        hasLyrics: item.track.has_lyrics === 1,
+                    }));
+                }
+                
+                addDebugLog(`❌ Strategy 1 found no results, trying Strategy 2...`);
+                
+                // Strategy 2: Try as track name only (fallback)
+                const trackParams = {
+                    q_track: query,
+                    page_size: pageSize.toString(),
+                    page: "1",
+                    f_has_lyrics: "1",
+                };
+                
+                addDebugLog(`Strategy 2: Track name search`, trackParams);
+                
+                const trackData = await makeRequest("/track.search", trackParams);
+                
+                if (trackData.message.body.track_list && trackData.message.body.track_list.length > 0) {
+                    addDebugLog(`✅ Strategy 2 found ${trackData.message.body.track_list.length} results!`);
+                    return trackData.message.body.track_list.map((item) => ({
+                        id: item.track.track_id.toString(),
+                        title: item.track.track_name,
+                        artist: item.track.artist_name,
+                        album: item.track.album_name,
+                        imageUrl: item.track.album_coverart_500x500 ||
+                                 item.track.album_coverart_350x350 ||
+                                 item.track.album_coverart_100x100,
+                        url: item.track.track_share_url,
+                        trackLength: item.track.track_length,
+                        hasLyrics: item.track.has_lyrics === 1,
+                    }));
+                }
+                
+                addDebugLog(`❌ Both strategies failed, no results found`);
+                return [];
+                
+            } catch (error) {
+                addDebugLog('❌ Hybrid search error: ' + error.message);
+                throw error;
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+        
+        function displayResults(songs) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (songs.length === 0) {
+                resultsDiv.innerHTML = '<div class="no-results">No results found. Check the debug log for details.</div>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = `
+                <h3>Found ${songs.length} Results:</h3>
+                ${songs.map(song => `
+                    <div class="song-card">
+                        <div class="song-title">${song.title}</div>
+                        <div class="song-artist">${song.artist}</div>
+                        <div class="song-meta">
+                            Album: ${song.album || 'Unknown'} | 
+                            ID: ${song.id} | 
+                            Has Lyrics: ${song.hasLyrics ? '✅' : '❌'}
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+        
+        async function performSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchBtn = document.getElementById('searchBtn');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                alert('Please enter a search query');
+                return;
+            }
+            
+            // Clear previous results
+            document.getElementById('results').innerHTML = '';
+            debugMessages = [];
+            
+            // Show loading state
+            searchBtn.disabled = true;
+            showStatus('Searching with hybrid approach...', 'loading');
+            
+            try {
+                const results = await hybridSearch(query);
+                showStatus(`Found ${results.length} results`, 'success');
+                displayResults(results);
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+                addDebugLog('ERROR: ' + error.message);
+                document.getElementById('results').innerHTML = 
+                    '<div class="no-results">Search failed. Check the debug log for details.</div>';
+            } finally {
+                searchBtn.disabled = false;
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('searchBtn').addEventListener('click', performSearch);
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        
+        // Initial log message
+        addDebugLog('Ready! Testing hybrid approach...');
+        addDebugLog('Combines Strvm simplicity with API quota management');
+        addDebugLog('');
+        addDebugLog('Strategy 1: Simple query search (like Strvm)');
+        addDebugLog('Strategy 2: Track name fallback');
+        addDebugLog('Max 2 API calls per search (vs your old 6)');
+        addDebugLog('');
+        addDebugLog('Try searching for:');
+        addDebugLog('  - "dos vicios"');
+        addDebugLog('  - "solo me dejaste"');
+        addDebugLog('  - "las 4 de"');
+    </script>
+</body>
+</html>
+

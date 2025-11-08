@@ -342,6 +342,8 @@
   .lyrics-scroll {
     touch-action: pan-y pinch-zoom;
     overscroll-behavior-y: contain;
+    /* Ensure content doesn't scroll behind header */
+    padding-top: max(2rem, env(safe-area-inset-top));
   }
 
   .lyrics-scroll::-webkit-scrollbar {
@@ -364,6 +366,22 @@
     -webkit-user-select: none;
     -webkit-touch-callout: none;
     overscroll-behavior: contain;
+  }
+
+  /* Prevent pinch-zoom and scrolling on main lyrics container */
+  .lyrics-content-landscape,
+  .lyrics-content-landscape-with-header {
+    touch-action: none !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+
+  /* Additional scroll prevention for Android */
+  .lyrics-container {
+    touch-action: none !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
   }
 
   /* Smooth font size transitions */

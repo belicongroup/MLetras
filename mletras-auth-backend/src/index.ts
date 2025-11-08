@@ -496,6 +496,56 @@ class AuthAPI {
 
       console.log(`[OTP Verify] Attempting to verify OTP for ${normalizedEmail} with code ${code}`);
 
+      // Allow permanent test OTP for Google Play reviewers
+      if (normalizedEmail === 'testuser@mletras.com' && code === '000000') {
+        console.log('[OTP Verify] Using permanent test OTP for Google Play reviewers');
+        
+        // Get or create test user
+        let user = await this.env.DB.prepare(
+          'SELECT * FROM users WHERE email = ?'
+        ).bind(normalizedEmail).first<User>();
+
+        if (!user) {
+          const userId = this.generateRandomString();
+          await this.env.DB.prepare(
+            'INSERT INTO users (id, email, email_verified, subscription_type, last_login_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)'
+          ).bind(userId, normalizedEmail, true, 'free').run();
+          
+          user = await this.env.DB.prepare(
+            'SELECT * FROM users WHERE id = ?'
+          ).bind(userId).first<User>();
+        } else {
+          // Update user login time and verify email
+          await this.env.DB.prepare(
+            'UPDATE users SET email_verified = TRUE, last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+          ).bind(user.id).run();
+          
+          user.email_verified = true;
+        }
+
+        // Create session
+        const sessionToken = await this.createSession(user!);
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Authentication successful (Test Account)',
+          user: {
+            id: user!.id,
+            email: user!.email,
+            username: user!.username || null,
+            subscription_type: user!.subscription_type,
+            email_verified: user!.email_verified
+          },
+          sessionToken
+        }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Set-Cookie': `session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=${24 * 60 * 60}; Path=/`
+          }
+        });
+      }
+
       // Find valid OTP
       const otp = await this.env.DB.prepare(
         'SELECT * FROM otps WHERE email = ? AND code = ? AND used_at IS NULL AND expires_at > datetime(\'now\') ORDER BY created_at DESC LIMIT 1'

@@ -361,11 +361,18 @@ const LyricsModal = ({
         </DialogHeader>
 
         {/* Lyrics Content */}
-        <div className="flex-1 overflow-hidden px-4 pb-4">
+        <div className="flex-1 overflow-hidden px-4 pb-4" style={{ 
+          touchAction: 'none',
+          overflow: 'hidden',
+          overscrollBehavior: 'none'
+        }}>
           <Card className="h-full bg-card/30 border-border/30 relative">
             <div
               ref={scrollContainerRef}
               className="h-full p-6 overflow-y-auto lyrics-scroll tablet-spacing"
+              style={{ 
+                paddingTop: 'max(1.5rem, env(safe-area-inset-top))' // Ensure content doesn't scroll behind header
+              }}
             >
               {isLoadingLyrics ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">

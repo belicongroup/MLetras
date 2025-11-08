@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "MLetras",
+    "slug": "mletras-app",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.mletras.app"
+    }
+  }
+}

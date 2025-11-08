@@ -109,17 +109,10 @@ class MusixmatchApiService {
   private readonly minRequestInterval = 300; // Increased to 300ms between requests
 
   /**
-   * Normalize search query - remove diacritics, lowercase, trim, collapse spaces
+   * Light query cleanup - trims surrounding whitespace only
    */
   private normalizeQuery(query: string): string {
-    return query
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ') // Collapse multiple spaces
-      .normalize('NFD') // Decompose combined characters
-      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-      .replace(/ñ/g, 'n') // Spanish ñ
-      .replace(/ü/g, 'u'); // Spanish ü
+    return query.trim();
   }
 
   /**
@@ -201,85 +194,40 @@ class MusixmatchApiService {
 
   async searchSongs(
     query: string,
-    pageSize: number = 5,
+    pageSize: number = 10,
     page: number = 1,
   ): Promise<Song[]> {
-    if (!query.trim()) return [];
-
-    // Normalize the query
-    const normalizedQuery = this.normalizeQuery(query);
+    const simpleQuery = this.normalizeQuery(query);
+    if (!simpleQuery) return [];
 
     try {
-      // Strategy 1: Simple query search (trust Musixmatch's internal ranking)
-      // This is the most effective approach - let Musixmatch handle the parsing
-      const simpleSearchData: MusixmatchSearchResponse = await this.makeRequest(
+      const searchData: MusixmatchSearchResponse = await this.makeRequest(
         "/track.search",
         {
-          q: normalizedQuery,
+          q: simpleQuery,
           page_size: pageSize.toString(),
           page: page.toString(),
           f_has_lyrics: "1",
         },
       );
 
-      if (simpleSearchData.message.body.track_list && simpleSearchData.message.body.track_list.length > 0) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`✅ Simple query search found ${simpleSearchData.message.body.track_list.length} results`);
-        }
-        return simpleSearchData.message.body.track_list.map((item) => ({
-          id: item.track.track_id.toString(),
-          title: item.track.track_name,
-          artist: item.track.artist_name,
-          album: item.track.album_name,
-          imageUrl:
-            item.track.album_coverart_500x500 ||
-            item.track.album_coverart_350x350 ||
-            item.track.album_coverart_100x100,
-          url: item.track.track_share_url,
-          trackLength: item.track.track_length,
-          hasLyrics: item.track.has_lyrics === 1,
-        }));
+      if (!searchData.message.body.track_list || searchData.message.body.track_list.length === 0) {
+        return [];
       }
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Simple search found no results, trying track name fallback...');
-      }
-
-      // Strategy 2: Track name fallback (for edge cases)
-      const trackSearchData: MusixmatchSearchResponse = await this.makeRequest(
-        "/track.search",
-        {
-          q_track: normalizedQuery,
-          page_size: pageSize.toString(),
-          page: page.toString(),
-          f_has_lyrics: "1",
-        },
-      );
-
-      if (trackSearchData.message.body.track_list && trackSearchData.message.body.track_list.length > 0) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`✅ Track name fallback found ${trackSearchData.message.body.track_list.length} results`);
-        }
-        return trackSearchData.message.body.track_list.map((item) => ({
-          id: item.track.track_id.toString(),
-          title: item.track.track_name,
-          artist: item.track.artist_name,
-          album: item.track.album_name,
-          imageUrl:
-            item.track.album_coverart_500x500 ||
-            item.track.album_coverart_350x350 ||
-            item.track.album_coverart_100x100,
-          url: item.track.track_share_url,
-          trackLength: item.track.track_length,
-          hasLyrics: item.track.has_lyrics === 1,
-        }));
-      }
-
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('❌ Both strategies failed, no results found');
-      }
-
-      return [];
+      return searchData.message.body.track_list.map((item) => ({
+        id: item.track.track_id.toString(),
+        title: item.track.track_name,
+        artist: item.track.artist_name,
+        album: item.track.album_name,
+        imageUrl:
+          item.track.album_coverart_500x500 ||
+          item.track.album_coverart_350x350 ||
+          item.track.album_coverart_100x100,
+        url: item.track.track_share_url,
+        trackLength: item.track.track_length,
+        hasLyrics: item.track.has_lyrics === 1,
+      }));
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Musixmatch search error:", error);
