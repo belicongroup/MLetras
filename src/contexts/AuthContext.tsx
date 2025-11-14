@@ -33,34 +33,10 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  // Development mode - bypass authentication for local development
-  const isDevMode = process.env.NODE_ENV === 'development' && 
-    typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-  const [authState, setAuthState] = useState<AuthState>(() => {
-    if (isDevMode) {
-      // Mock user for development
-      return {
-        user: {
-          id: 'dev-user-123',
-          email: 'dev@mletras.com',
-          username: 'Developer',
-          subscription_type: 'pro',
-          email_verified: true,
-          created_at: new Date().toISOString(),
-          last_login_at: new Date().toISOString(),
-        },
-        isLoading: false,
-        isAuthenticated: true,
-      };
-    }
-    
-    return {
-      user: null,
-      isLoading: true,
-      isAuthenticated: false,
-    };
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
   });
 
   // API base URL for the authentication system
@@ -198,30 +174,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Verify OTP code
    */
   const verifyOTP = async (email: string, code: string) => {
-    // DEV BYPASS: Auto-login with Pro access for specific email
-    const bypassEmail = 'dev@mletras.pro';
-    if (email.toLowerCase() === bypassEmail && code === '000000') {
-      const mockUser = {
-        id: 'dev-pro-user-123',
-        email: bypassEmail,
-        username: 'ProDev',
-        subscription_type: 'pro' as const,
-        email_verified: true,
-        created_at: new Date().toISOString(),
-        last_login_at: new Date().toISOString(),
-      };
-      
-      localStorage.setItem('sessionToken', 'dev-bypass-token-' + Date.now());
-      setAuthState({
-        user: mockUser,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-      
-      console.log('🚀 DEV BYPASS: Logged in as Pro user');
-      return { success: true, user: mockUser, message: 'Dev bypass login successful' };
-    }
-
     const response = await makeRequest('/auth/verify', {
       method: 'POST',
       body: JSON.stringify({ email, code }),
@@ -290,14 +242,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return response;
   };
 
-  // Load user on mount (skip in development mode)
+  // Load user on mount
   useEffect(() => {
-    if (isDevMode) {
-      console.log('🚀 Development Mode: Authentication bypassed - logged in as "Developer"');
-    } else {
-      refreshUser();
-    }
-  }, [isDevMode]);
+    refreshUser();
+  }, []);
 
   const value: AuthContextType = {
     ...authState,

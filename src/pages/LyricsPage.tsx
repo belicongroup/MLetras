@@ -312,7 +312,9 @@ const LyricsPage = () => {
 
     // Prevent click if menu items are still disabled
     if (menuItemsDisabled) {
-      console.log('Menu items still disabled - prevented click');
+      if (process.env.NODE_ENV !== "production") {
+        console.log("Menu items still disabled - prevented click");
+      }
       return;
     }
 

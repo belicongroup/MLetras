@@ -888,6 +888,7 @@ class AuthAPI {
   private async handleAPIRoutes(request: Request, origin?: string): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+    const method = request.method;
     
     // Check for Authorization header (Bearer token)
     const authHeader = request.headers.get('Authorization');
@@ -957,10 +958,19 @@ class AuthAPI {
    */
   private async handleUserDataRoutes(request: Request, session: SessionData, origin?: string): Promise<Response> {
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Normalize path - remove trailing slash if present
+    let path = url.pathname;
+    if (path.endsWith('/') && path.length > 1) {
+      path = path.slice(0, -1);
+    }
     const method = request.method;
 
     try {
+      // Account deletion route - check early to avoid conflicts with other routes
+      if (path === '/api/user/account' && method === 'DELETE') {
+        return this.deleteUserAccount(session, origin);
+      }
+
       // Folder routes
       if (path === '/api/user/folders' && method === 'GET') {
         return this.getUserFolders(session, origin);
@@ -986,6 +996,10 @@ class AuthAPI {
       if (path === '/api/user/bookmarks' && method === 'POST') {
         const body = await request.json();
         return this.createUserBookmark(session, body, origin);
+      }
+      if (path.startsWith('/api/user/bookmarks/track/') && method === 'DELETE') {
+        const trackId = path.split('/')[5];
+        return this.deleteUserBookmarksByTrack(session, decodeURIComponent(trackId || ''), origin);
       }
       if (path.startsWith('/api/user/bookmarks/') && method === 'PUT') {
         const bookmarkId = path.split('/')[4];
@@ -1022,6 +1036,12 @@ class AuthAPI {
       }
       if (path === '/api/user/profile' && method === 'GET') {
         return this.getUserProfile(session, origin);
+      }
+
+      // Subscription routes
+      if (path === '/api/user/subscription' && method === 'POST') {
+        const body = await request.json();
+        return this.updateSubscriptionStatus(session, body, origin);
       }
 
       // Test endpoint (temporary)
@@ -1403,6 +1423,46 @@ class AuthAPI {
   /**
    * Delete bookmark
    */
+  private async deleteUserBookmarksByTrack(session: SessionData, trackId: string, origin?: string): Promise<Response> {
+    try {
+      if (!trackId) {
+        const response = new Response(JSON.stringify({ error: 'Track ID is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const result = await this.env.DB.prepare(
+        `DELETE FROM user_bookmarks 
+         WHERE user_id = ? 
+           AND (track_id = ? OR track_id = CAST(? AS TEXT) OR track_id = CAST(? AS INTEGER)) 
+           AND (folder_id IS NULL OR folder_id = '')`
+      ).bind(session.userId, trackId, trackId, trackId).run();
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Bookmarks deleted successfully by track ID',
+        deleted: result.changes || 0
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Delete bookmarks by track error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to delete bookmarks by track' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Delete bookmark
+   */
   private async deleteUserBookmark(session: SessionData, bookmarkId: string, origin?: string): Promise<Response> {
     try {
       const result = await this.env.DB.prepare(
@@ -1732,6 +1792,93 @@ class AuthAPI {
     } catch (error) {
       console.error('Get profile error:', error);
       const response = new Response(JSON.stringify({ error: 'Failed to get profile' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  private async updateSubscriptionStatus(session: SessionData, body: any, origin?: string): Promise<Response> {
+    try {
+      const { subscription_type, transaction_id } = body;
+      
+      if (!subscription_type || !['free', 'pro'].includes(subscription_type)) {
+        const response = new Response(JSON.stringify({ error: 'Invalid subscription type' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Update user subscription status
+      await this.env.DB.prepare(
+        'UPDATE users SET subscription_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).bind(subscription_type, session.userId).run();
+
+      // Optionally store transaction ID in metadata for tracking
+      if (transaction_id) {
+        const user = await this.env.DB.prepare('SELECT metadata FROM users WHERE id = ?').bind(session.userId).first() as any;
+        const metadata = user?.metadata ? JSON.parse(user.metadata) : {};
+        metadata.last_transaction_id = transaction_id;
+        metadata.subscription_updated_at = new Date().toISOString();
+        
+        await this.env.DB.prepare(
+          'UPDATE users SET metadata = ? WHERE id = ?'
+        ).bind(JSON.stringify(metadata), session.userId).run();
+      }
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Subscription status updated successfully',
+        subscription_type: subscription_type
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Update subscription error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to update subscription status' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Delete user account and all associated data
+   */
+  private async deleteUserAccount(session: SessionData, origin?: string): Promise<Response> {
+    try {
+      // Delete user from database
+      // Due to CASCADE DELETE constraints, this will automatically delete:
+      // - user_folders
+      // - user_bookmarks
+      // - user_notes
+      // - otps
+      // - usage_logs
+      await this.env.DB.prepare(
+        'DELETE FROM users WHERE id = ?'
+      ).bind(session.userId).run();
+
+      // Delete all sessions for this user
+      await this.env.SESSIONS.delete(`session:${session.userId}`);
+
+      const response = new Response(JSON.stringify({
+        success: true,
+        message: 'Account deleted successfully'
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      console.error('Delete account error:', error);
+      const response = new Response(JSON.stringify({ error: 'Failed to delete account' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });

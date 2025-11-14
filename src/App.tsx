@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import LyricsPage from "./pages/LyricsPage";
 import NoteDetailPage from "./pages/NoteDetailPage";
+import SearchDebugPage from "@/components/SearchDebugPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,10 @@ const queryClient = new QueryClient({
 
 const AppContent = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const enableSearchDebug =
+    typeof import.meta !== "undefined" &&
+    (import.meta.env?.VITE_ENABLE_SEARCH_DEBUG === "true" ||
+      import.meta.env?.VITE_ENABLE_SEARCH_DEBUG === true);
 
   if (isLoading) {
     return (
@@ -70,6 +75,9 @@ const AppContent = () => {
         <Route path="/" element={<Index />} />
         <Route path="/lyrics" element={<LyricsPage />} />
         <Route path="/note-detail" element={<NoteDetailPage />} />
+        {enableSearchDebug && (
+          <Route path="/debug/search" element={<SearchDebugPage />} />
+        )}
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -145,9 +145,54 @@ class SyncLayerService {
       case 'update':
         await userDataApi.updateBookmark(operation.data.id, operation.data.folder_id);
         break;
-      case 'delete':
-        await userDataApi.deleteBookmark(operation.data.id);
+      case 'delete': {
+        const candidateIds: Set<string> = new Set();
+        if (operation.data.id) {
+          candidateIds.add(String(operation.data.id));
+        }
+        if (operation.data.bookmarkId) {
+          candidateIds.add(String(operation.data.bookmarkId));
+        }
+
+        let deletedAny = false;
+
+        const trackId =
+          operation.data.track_id !== undefined && operation.data.track_id !== null
+            ? String(operation.data.track_id)
+            : null;
+
+        if (trackId) {
+          try {
+            const response = await userDataApi.deleteBookmarksByTrack(trackId);
+            if (response.success) {
+              deletedAny = true;
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn(
+                `Failed to delete bookmarks by track ${trackId}, will fall back to individual IDs`,
+                error,
+              );
+            }
+          }
+        }
+
+        for (const candidate of candidateIds) {
+          try {
+            await userDataApi.deleteBookmark(candidate);
+            deletedAny = true;
+          } catch (error) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn(`Failed to delete bookmark id ${candidate}, will retry`, error);
+            }
+          }
+        }
+
+        if (!deletedAny) {
+          throw new Error('Unable to delete bookmark - no matching id found');
+        }
         break;
+      }
     }
   }
 

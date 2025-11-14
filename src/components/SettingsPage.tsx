@@ -8,6 +8,8 @@ import {
   Play,
   Crown,
   Lock,
+  ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -17,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -25,15 +26,148 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { translations } from "@/lib/translations";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { getPlatform } from "@/lib/capacitor";
+import { userDataApi } from "@/services/userDataApi";
+import { searchHistory } from "@/services/searchHistory";
+import { toast } from "sonner";
 
 const SettingsPage = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, setTheme } = useTheme();
   const { settings, setSettings } = useSettings();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [showClearDataDialog, setShowClearDataDialog] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isClearingData, setIsClearingData] = useState(false);
   const t = translations[settings.language];
+
+  const handleManageSubscription = () => {
+    const platform = getPlatform();
+    if (platform === 'ios') {
+      // Open iOS subscription management page
+      window.open('https://apps.apple.com/account/subscriptions', '_blank');
+    } else {
+      // For Android or web, provide instructions
+      alert('Please manage your subscription through your device\'s app store settings.');
+    }
+  };
+
+  const handleClearAllData = async () => {
+    setIsClearingData(true);
+    try {
+      // If authenticated, delete all backend data first
+      if (isAuthenticated) {
+        try {
+          // Get all folders, bookmarks, and notes
+          const foldersResponse = await userDataApi.getFolders();
+          const bookmarksResponse = await userDataApi.getBookmarks();
+          const notesResponse = await userDataApi.getNotes();
+
+          // Delete all bookmarks first (including those in folders)
+          const deleteBookmarkPromises = bookmarksResponse.bookmarks.map(bookmark => 
+            userDataApi.deleteBookmark(bookmark.id)
+          );
+          await Promise.all(deleteBookmarkPromises);
+
+          // Delete all folders (bookmarks are already deleted above)
+          const deleteFolderPromises = foldersResponse.folders.map(folder => 
+            userDataApi.deleteFolder(folder.id)
+          );
+          await Promise.all(deleteFolderPromises);
+
+          // Delete all notes
+          const deleteNotePromises = notesResponse.notes.map(note => 
+            userDataApi.deleteNote(note.id)
+          );
+          await Promise.all(deleteNotePromises);
+        } catch (error: any) {
+          console.error('Failed to delete backend data:', error);
+          // Continue with local data clearing even if backend deletion fails
+        }
+      }
+
+      // Clear search history
+      searchHistory.clearHistory();
+      
+      // Clear all localStorage items except authentication
+      const keysToRemove = [
+        'mletras-folders',
+        'userNotes',
+        'userNotes_lastSync',
+        'likedNotes',
+        'likedSongs',
+        'likedSongs_lastSync',
+        'mletras-settings',
+        'mletras-theme',
+        'searchHistory',
+      ];
+
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+      });
+
+      // Reset settings to default
+      setSettings({
+        autoScrollSpeed: 'off',
+        boldText: false,
+        language: 'en',
+      });
+
+      // Reset theme to light
+      setTheme('light');
+
+      // Dispatch events to notify other components
+      window.dispatchEvent(new Event('mletras-data-cleared'));
+      window.dispatchEvent(new Event('mletras-notes-updated'));
+
+      toast.success('All data cleared successfully');
+      setShowClearDataDialog(false);
+    } catch (error: any) {
+      console.error('Failed to clear data:', error);
+      toast.error('Failed to clear data. Please try again.');
+    } finally {
+      setIsClearingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true);
+    try {
+      const result = await userDataApi.deleteAccount();
+      
+      if (result.success) {
+        toast.success('Account deleted successfully');
+        // Clear local storage
+        localStorage.removeItem('sessionToken');
+        localStorage.removeItem('cached_user');
+        // Logout user
+        await logout();
+        // Close dialog
+        setShowDeleteAccountDialog(false);
+      } else {
+        throw new Error(result.message || 'Failed to delete account');
+      }
+    } catch (error: any) {
+      console.error('Failed to delete account:', error);
+      const errorMessage = error?.message || error?.toString() || 'Failed to delete account. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   return (
     <div className="p-4 space-y-6">
@@ -82,15 +216,25 @@ const SettingsPage = () => {
             </div>
             
             {user?.subscription_type === 'free' && (
-              <Alert className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setShowUpgradeModal(true)}>
-                <Crown className="h-4 w-4" />
-                <AlertDescription>
-                  <span className="font-medium">Upgrade to Pro</span> for unlimited folders, notes, dark mode, and auto-scroll features.
-                  <Button variant="link" className="h-auto p-0 ml-2 text-xs" onClick={() => setShowUpgradeModal(true)}>
-                    Learn more →
-                  </Button>
-                </AlertDescription>
-              </Alert>
+              <Button
+                onClick={() => setShowUpgradeModal(true)}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg transition-all"
+              >
+                <Crown className="h-4 w-4 mr-2" />
+                Upgrade to MLetras Pro
+              </Button>
+            )}
+
+            {user?.subscription_type === 'pro' && (
+              <Button
+                onClick={handleManageSubscription}
+                variant="outline"
+                className="w-full mt-2"
+                size="sm"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Manage Subscription
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -241,14 +385,51 @@ const SettingsPage = () => {
               <p className="text-sm text-muted-foreground mb-3">
                 Remove all saved lyrics, folders, and preferences
               </p>
-              <Button variant="destructive" size="sm" className="w-full">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="w-full"
+                onClick={() => setShowClearDataDialog(true)}
+                disabled={isClearingData}
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Clear All Data
+                {isClearingData ? 'Clearing...' : 'Clear All Data'}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Account Deletion */}
+      {isAuthenticated && (
+        <Card className="glass border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Account Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div>
+                <p className="font-medium mb-1 text-destructive">Delete Account</p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => setShowDeleteAccountDialog(true)}
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Delete Account
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* App Information */}
       <Card className="glass border-border/50">
@@ -261,7 +442,7 @@ const SettingsPage = () => {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="font-medium">Version</p>
-            <p className="text-sm text-muted-foreground">1.0.0</p>
+            <p className="text-sm text-muted-foreground">1.0.5</p>
           </div>
 
           <Separator />
@@ -291,7 +472,7 @@ const SettingsPage = () => {
         <p className="text-sm text-muted-foreground">
           made by belicongroup
         </p>
-        <p className="text-xs text-muted-foreground mt-1">MLETRAS © 2024</p>
+        <p className="text-xs text-muted-foreground mt-1">MLETRAS © 2025</p>
       </div>
 
       {/* Upgrade Modal */}
@@ -299,6 +480,95 @@ const SettingsPage = () => {
         isOpen={showUpgradeModal} 
         onClose={() => setShowUpgradeModal(false)} 
       />
+
+      {/* Clear All Data Confirmation Dialog */}
+      <AlertDialog open={showClearDataDialog} onOpenChange={setShowClearDataDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-5 h-5" />
+              Clear All Data?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to clear all your data? This action cannot be undone.
+              </p>
+              <p className="font-medium">
+                This will permanently delete:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                {isAuthenticated && (
+                  <>
+                    <li>All folders and bookmarks from your account</li>
+                    <li>All notes from your account</li>
+                  </>
+                )}
+                <li>All search history</li>
+                <li>All saved preferences and settings</li>
+                <li>All locally stored data</li>
+              </ul>
+              {isAuthenticated && (
+                <p className="text-muted-foreground text-sm mt-2">
+                  Your account will remain active, but all your data will be removed.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClearingData}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearAllData}
+              disabled={isClearingData}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isClearingData ? 'Clearing...' : 'Clear All Data'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Account Confirmation Dialog */}
+      <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Account?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Are you sure you want to delete your account? This action cannot be undone.
+              </p>
+              <p className="font-medium">
+                This will permanently delete:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>Your account and profile information</li>
+                <li>All folders and bookmarks</li>
+                <li>All notes</li>
+                <li>Your subscription data</li>
+              </ul>
+              <p className="text-destructive font-medium mt-2">
+                You will be logged out immediately after deletion.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAccount}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

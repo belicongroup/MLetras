@@ -59,20 +59,59 @@ class UserDataApi {
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...this.getAuthHeaders(),
-        ...options.headers,
-      },
-    });
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          ...this.getAuthHeaders(),
+          ...options.headers,
+        },
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Request failed');
+      if (!response.ok) {
+        let errorMessage = `Request failed with status ${response.status}`;
+        let errorData: any = null;
+        
+        // Clone response to read body without consuming it
+        const clonedResponse = response.clone();
+        
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } else {
+            const text = await clonedResponse.text();
+            if (text) errorMessage = text;
+          }
+        } catch (e) {
+          // If we can't parse the response, try to get text from cloned response
+          try {
+            const text = await clonedResponse.text();
+            if (text && text.length < 500) { // Only use if reasonable length
+              errorMessage = text;
+            }
+          } catch (textError) {
+            // Use default status-based message
+            console.error('Error parsing error response:', e, textError);
+          }
+        }
+        
+        const error = new Error(errorMessage);
+        (error as any).status = response.status;
+        (error as any).data = errorData;
+        throw error;
+      }
+
+      return response.json();
+    } catch (error: any) {
+      // Re-throw if it's already an Error with a message
+      if (error instanceof Error && error.message) {
+        throw error;
+      }
+      // Otherwise wrap it
+      throw new Error(error?.message || 'Network error occurred');
     }
-
-    return response.json();
   }
 
   // Folder Management
@@ -130,6 +169,12 @@ class UserDataApi {
     });
   }
 
+  async deleteBookmarksByTrack(trackId: string): Promise<{ success: boolean; message: string; deleted?: number }> {
+    return this.makeRequest(`/api/user/bookmarks/track/${encodeURIComponent(trackId)}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Notes Management
   async getNotes(): Promise<{ success: boolean; notes: Note[] }> {
     return this.makeRequest('/api/user/notes');
@@ -170,6 +215,24 @@ class UserDataApi {
     return this.makeRequest('/api/user/username', {
       method: 'POST',
       body: JSON.stringify({ username }),
+    });
+  }
+
+  // Subscription Management
+  async updateSubscriptionStatus(isPro: boolean, transactionId?: string): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest('/api/user/subscription', {
+      method: 'POST',
+      body: JSON.stringify({ 
+        subscription_type: isPro ? 'pro' : 'free',
+        transaction_id: transactionId
+      }),
+    });
+  }
+
+  // Account Management
+  async deleteAccount(): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest('/api/user/account', {
+      method: 'DELETE',
     });
   }
 }

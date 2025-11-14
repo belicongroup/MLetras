@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
 import { useNavigate } from "react-router-dom";
 import { Search, Loader2, Music2, Heart, Clock, X } from "lucide-react";
 import { translations } from "@/lib/translations";
@@ -131,58 +132,58 @@ const SearchPage = () => {
   const { isLiked, toggleLike } = useLikedSongs();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Handle scroll to dismiss keyboard
-  useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout | null = null;
-    
-    const handleScroll = () => {
-      // Clear any existing timeout
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-      
-      // Debounce the blur to avoid too many calls
-      scrollTimeout = setTimeout(() => {
-        // Blur the search input when user scrolls
-        if (searchInputRef.current && document.activeElement === searchInputRef.current) {
-          searchInputRef.current.blur();
-        }
-      }, 50);
-    };
+  const allowBlurRef = useRef(false);
+  const isProgrammaticFocus = useRef(false);
+  const enableSearchDebug =
+    typeof import.meta !== "undefined" &&
+    (import.meta.env?.VITE_ENABLE_SEARCH_DEBUG === "true" ||
+      import.meta.env?.VITE_ENABLE_SEARCH_DEBUG === true);
 
-    const handleTouchStart = (e: TouchEvent) => {
-      // Only dismiss keyboard if user is touching outside the search input
-      if (searchInputRef.current && 
-          document.activeElement === searchInputRef.current &&
-          e.target !== searchInputRef.current) {
-        searchInputRef.current.blur();
+  const emitDebugLog = useCallback(
+    (message: string) => {
+      if (!enableSearchDebug) {
+        return;
       }
-    };
 
-    // Listen for scroll on both window and parent container
-    const container = containerRef.current?.parentElement;
-    
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    
-    if (container) {
-      container.addEventListener('scroll', handleScroll, { passive: true });
-      container.addEventListener('touchstart', handleTouchStart, { passive: true });
+      const detail = `[SearchDebug] ${message}`;
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("search-debug-log", {
+            detail,
+          }),
+        );
+      }
+
+      console.debug(detail);
+    },
+    [enableSearchDebug],
+  );
+  const isIOSApp = useMemo(() => {
+    if (typeof window === "undefined") {
+      return false;
     }
-    
-    return () => {
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('touchstart', handleTouchStart);
-      if (container) {
-        container.removeEventListener('scroll', handleScroll);
-        container.removeEventListener('touchstart', handleTouchStart);
-      }
-    };
+
+    let platform = "web";
+
+    try {
+      platform = Capacitor.getPlatform();
+    } catch (error) {
+      // Capacitor not available (web build)
+    }
+
+    if (platform === "ios") {
+      return true;
+    }
+
+    if (platform === "web") {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent);
+    }
+
+    return false;
   }, []);
+  
+  // Handle outside taps to dismiss keyboard (no auto-blur on scroll)
+  // Do not force blur on outside taps; rely on explicit user actions instead.
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -227,6 +228,8 @@ const SearchPage = () => {
   };
 
   const handleSongSelect = async (song: Song) => {
+    allowBlurRef.current = true;
+    emitDebugLog(`song selected (${song.title}) – allowing blur`);
     // Add to search history
     await searchHistory.addToHistory({
       id: song.id,
@@ -272,6 +275,10 @@ const SearchPage = () => {
   const handleHistoryItemSelect = async (
     historyItem: SearchHistoryItem & { hasLyrics: boolean },
   ) => {
+    allowBlurRef.current = true;
+    emitDebugLog(
+      `history item selected (${historyItem.title}) – allowing blur`,
+    );
     // Add to search history (update timestamp)
     await searchHistory.addToHistory({
       id: historyItem.id,
@@ -368,13 +375,69 @@ const SearchPage = () => {
   // Trigger debounced search when query changes
   useEffect(() => {
     if (searchQuery.trim()) {
+      emitDebugLog(`query changed "${searchQuery}" – run debounced search`);
       debouncedSearch(searchQuery);
     } else {
+      emitDebugLog("query cleared – showing history");
       setSearchResults([]);
       setShowHistory(true);
       setHasSearched(false);
     }
-  }, [searchQuery, debouncedSearch]);
+  }, [searchQuery, debouncedSearch, emitDebugLog]);
+
+  useEffect(() => {
+    if (!enableSearchDebug) {
+      return;
+    }
+
+    const handleDocumentFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement | null;
+      emitDebugLog(
+        `document focusin target=${target?.tagName ?? "null"} class=${target?.className ?? ""}`,
+      );
+    };
+
+    const handleDocumentFocusOut = (event: FocusEvent) => {
+      const target = event.target as HTMLElement | null;
+      emitDebugLog(
+        `document focusout target=${target?.tagName ?? "null"} relatedTarget=${(event.relatedTarget as HTMLElement | null)?.tagName ?? "null"}`,
+      );
+    };
+
+    const handleDocumentPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      emitDebugLog(
+        `document pointerdown target=${target?.tagName ?? "null"} class=${target?.className ?? ""}`,
+      );
+    };
+
+    const handleDocumentTouchStart = (event: TouchEvent) => {
+      const target = event.target as HTMLElement | null;
+      emitDebugLog(
+        `document touchstart target=${target?.tagName ?? "null"} class=${target?.className ?? ""}`,
+      );
+    };
+
+    document.addEventListener("focusin", handleDocumentFocusIn);
+    document.addEventListener("focusout", handleDocumentFocusOut);
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    document.addEventListener("touchstart", handleDocumentTouchStart, true);
+
+    return () => {
+      document.removeEventListener("focusin", handleDocumentFocusIn);
+      document.removeEventListener("focusout", handleDocumentFocusOut);
+      document.removeEventListener(
+        "pointerdown",
+        handleDocumentPointerDown,
+        true,
+      );
+      document.removeEventListener(
+        "touchstart",
+        handleDocumentTouchStart,
+        true,
+      );
+    };
+  }, [enableSearchDebug, emitDebugLog]);
 
   // Debounced search automatically triggers as user types
 
@@ -412,8 +475,48 @@ const SearchPage = () => {
           placeholder="Search by song title, artist, or lyrics"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          data-search-debug-input={enableSearchDebug ? "true" : undefined}
+          onPointerDown={(event) => {
+            if (enableSearchDebug) {
+              emitDebugLog(
+                `input pointerdown button=${event.button} pointerType=${event.pointerType}`,
+              );
+            }
+          }}
+          onTouchStart={(event) => {
+            if (enableSearchDebug) {
+              emitDebugLog(
+                `input touchstart touches=${event.touches.length}`,
+              );
+            }
+          }}
+          onFocus={() => {
+            emitDebugLog("input focus");
+            if (isProgrammaticFocus.current) {
+              isProgrammaticFocus.current = false;
+              return;
+            }
+            allowBlurRef.current = false;
+          }}
+          onBlur={() => {
+            emitDebugLog(
+              `input blur (allowBlur=${allowBlurRef.current}, isIOS=${isIOSApp}, activeElement=${document.activeElement?.tagName})`,
+            );
+            if (isIOSApp && !allowBlurRef.current) {
+              requestAnimationFrame(() => {
+                isProgrammaticFocus.current = true;
+                searchInputRef.current?.focus();
+                emitDebugLog("refocusing input after unexpected blur");
+              });
+            } else {
+              allowBlurRef.current = false;
+              emitDebugLog("blur permitted – state reset");
+            }
+          }}
           onKeyPress={(e) => {
             if (e.key === 'Enter') {
+              allowBlurRef.current = true;
+              emitDebugLog("Enter key pressed – allowing blur");
               handleSearch(searchQuery);
               searchInputRef.current?.blur();
             }

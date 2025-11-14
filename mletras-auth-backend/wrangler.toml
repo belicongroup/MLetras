@@ -23,7 +23,7 @@ id = "3936670d62734e6e9cab014bd0d50653"
 [vars]
 ENVIRONMENT = "production"
 MUSIXMATCH_API_KEY = "4d54e92614bedfaaffcab9fdbf56cdf3"
-ALLOWED_ORIGINS = "https://mletras.com,https://mletras.vercel.app,https://localhost,http://localhost,http://localhost:8080,http://localhost:8081,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:8080,http://127.0.0.1:8081,http://127.0.0.1:3000,http://10.0.2.2:8080,http://10.0.2.2:3000"
+ALLOWED_ORIGINS = "https://mletras.com,https://mletras.vercel.app,https://localhost,http://localhost,http://localhost:8080,http://localhost:8081,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:8080,http://127.0.0.1:8081,http://127.0.0.1:3000,http://10.0.2.2:8080,http://10.0.2.2:3000,capacitor://localhost,ionic://localhost"
 FREE_DAILY_LIMIT = "100"
 FREE_BURST_LIMIT = "5"
 PRO_DAILY_LIMIT = "1000"
@@ -43,7 +43,7 @@ routes = [
 # Development environment
 [env.development]
 name = "mletras-auth-api-dev"
-vars = { ENVIRONMENT = "development", MUSIXMATCH_API_KEY = "4d54e92614bedfaaffcab9fdbf56cdf3", ALLOWED_ORIGINS = "https://mletras.com,https://mletras.vercel.app,https://localhost,http://localhost,http://localhost:8080,http://localhost:8081,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:8080,http://127.0.0.1:8081,http://127.0.0.1:3000,http://10.0.2.2:8080,http://10.0.2.2:3000", FREE_DAILY_LIMIT = "100", FREE_BURST_LIMIT = "5", PRO_DAILY_LIMIT = "1000", PRO_BURST_LIMIT = "20", BURST_WINDOW_SECONDS = "60" }
+vars = { ENVIRONMENT = "development", MUSIXMATCH_API_KEY = "4d54e92614bedfaaffcab9fdbf56cdf3", ALLOWED_ORIGINS = "https://mletras.com,https://mletras.vercel.app,https://localhost,http://localhost,http://localhost:8080,http://localhost:8081,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:8080,http://127.0.0.1:8081,http://127.0.0.1:3000,http://10.0.2.2:8080,http://10.0.2.2:3000,capacitor://localhost,ionic://localhost", FREE_DAILY_LIMIT = "100", FREE_BURST_LIMIT = "5", PRO_DAILY_LIMIT = "1000", PRO_BURST_LIMIT = "20", BURST_WINDOW_SECONDS = "60" }
 
 [[env.development.d1_databases]]
 binding = "DB"
@@ -57,7 +57,7 @@ id = "3936670d62734e6e9cab014bd0d50653"
 # Production environment  
 [env.production]
 name = "mletras-auth-api"
-vars = { ENVIRONMENT = "production", MUSIXMATCH_API_KEY = "4d54e92614bedfaaffcab9fdbf56cdf3", ALLOWED_ORIGINS = "https://mletras.com,https://mletras.vercel.app,https://localhost,http://localhost,http://localhost:8080,http://localhost:8081,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:8080,http://127.0.0.1:8081,http://127.0.0.1:3000,http://10.0.2.2:8080,http://10.0.2.2:3000", FREE_DAILY_LIMIT = "100", FREE_BURST_LIMIT = "5", PRO_DAILY_LIMIT = "1000", PRO_BURST_LIMIT = "20", BURST_WINDOW_SECONDS = "60" }
+vars = { ENVIRONMENT = "production", MUSIXMATCH_API_KEY = "4d54e92614bedfaaffcab9fdbf56cdf3", ALLOWED_ORIGINS = "https://mletras.com,https://mletras.vercel.app,https://localhost,http://localhost,http://localhost:8080,http://localhost:8081,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:8080,http://127.0.0.1:8081,http://127.0.0.1:3000,http://10.0.2.2:8080,http://10.0.2.2:3000,capacitor://localhost,ionic://localhost", FREE_DAILY_LIMIT = "100", FREE_BURST_LIMIT = "5", PRO_DAILY_LIMIT = "1000", PRO_BURST_LIMIT = "20", BURST_WINDOW_SECONDS = "60" }
 
 [[env.production.d1_databases]]
 binding = "DB"

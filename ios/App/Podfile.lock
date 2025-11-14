@@ -1,0 +1,34 @@
+PODS:
+  - AdplorgCapacitorInAppPurchase (2.0.64):
+    - Capacitor
+  - Capacitor (7.4.4):
+    - CapacitorCordova
+  - CapacitorCordova (7.4.4)
+  - CapacitorScreenOrientation (7.0.2):
+    - Capacitor
+
+DEPENDENCIES:
+  - "AdplorgCapacitorInAppPurchase (from `../../node_modules/@adplorg/capacitor-in-app-purchase`)"
+  - "Capacitor (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorScreenOrientation (from `../../node_modules/@capacitor/screen-orientation`)"
+
+EXTERNAL SOURCES:
+  AdplorgCapacitorInAppPurchase:
+    :path: "../../node_modules/@adplorg/capacitor-in-app-purchase"
+  Capacitor:
+    :path: "../../node_modules/@capacitor/ios"
+  CapacitorCordova:
+    :path: "../../node_modules/@capacitor/ios"
+  CapacitorScreenOrientation:
+    :path: "../../node_modules/@capacitor/screen-orientation"
+
+SPEC CHECKSUMS:
+  AdplorgCapacitorInAppPurchase: f66951412b6738ff699dad6d193f92c86e8c7aa0
+  Capacitor: 358dd1c3fdd71d969547b17e159fd8a7736cb45f
+  CapacitorCordova: bf648a636f3c153f652d312ae145fb508b6ffced
+  CapacitorScreenOrientation: e0d5b9ef293b269b8f93373355d5b276f50fabea
+
+PODFILE CHECKSUM: f80e6470f707ef50ac20b548efce70302981613c
+
+COCOAPODS: 1.16.2

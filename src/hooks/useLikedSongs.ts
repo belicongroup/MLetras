@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useReducer } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { userDataApi } from "@/services/userDataApi";
+import type { Bookmark } from "@/services/userDataApi";
 import { syncLayer } from "@/services/syncLayer";
 
 interface Song {
@@ -9,6 +10,7 @@ interface Song {
   lyrics?: string;
   imageUrl?: string;
   url?: string;
+  bookmarkId?: string;
 }
 
 const LIKED_SONGS_KEY = "likedSongs";
@@ -17,6 +19,111 @@ const LAST_SYNC_KEY = "likedSongs_lastSync";
 export const useLikedSongs = () => {
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const fetchServerBookmarks = useCallback(async (): Promise<Bookmark[] | null> => {
+    try {
+      const response = await userDataApi.getBookmarks();
+      if (!response.success || !response.bookmarks) {
+        return null;
+      }
+      return response.bookmarks;
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to fetch server bookmarks:", error);
+      }
+      return null;
+    }
+  }, []);
+
+  const fetchServerLikedSongs = useCallback(async (): Promise<Song[] | null> => {
+    const bookmarks = await fetchServerBookmarks();
+    if (!bookmarks) {
+      return null;
+    }
+
+    // Only treat bookmarks without a folder as "liked songs"
+    const serverSongs: Song[] = bookmarks
+      .filter((bookmark) => !bookmark.folder_id && bookmark.track_id !== null)
+      .map((bookmark) => ({
+        id: String(bookmark.track_id),
+        title: bookmark.song_title,
+        artist: bookmark.artist_name,
+        bookmarkId: bookmark.id,
+      }));
+
+    const deduped = serverSongs.filter(
+      (song, index, self) =>
+        index === self.findIndex((candidate) => candidate.id === song.id),
+    );
+
+    return deduped;
+  }, [fetchServerBookmarks]);
+
+  const updateStateFromServer = useCallback(
+    (serverSongs: Song[] | null) => {
+      if (!serverSongs) {
+        return;
+      }
+
+      setLikedSongs(serverSongs);
+      localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(serverSongs));
+      localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+    },
+    [],
+  );
+
+  const deleteServerLikesForTrack = useCallback(
+    async (songId: string): Promise<boolean> => {
+      try {
+        const response = await userDataApi.deleteBookmarksByTrack(songId);
+        if (response.success) {
+          return true;
+        }
+        return false;
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(
+            `Failed to delete bookmarks by track via API for ${songId}`,
+            error,
+          );
+        }
+        return false;
+      }
+    },
+    [],
+  );
+
+  const ensureServerLikeExists = useCallback(
+    async (song: Song): Promise<boolean> => {
+      const bookmarks = await fetchServerBookmarks();
+      if (!bookmarks) {
+        return false;
+      }
+
+      const existing = bookmarks.find(
+        (bookmark) =>
+          !bookmark.folder_id &&
+          bookmark.track_id !== null &&
+          String(bookmark.track_id) === song.id,
+      );
+
+      if (existing) {
+        setLikedSongs((prevSongs) => {
+          const updated = prevSongs.map((likedSong) =>
+            likedSong.id === song.id
+              ? { ...likedSong, bookmarkId: existing.id }
+              : likedSong,
+          );
+          localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updated));
+          return updated;
+        });
+        return true;
+      }
+
+      return false;
+    },
+    [fetchServerBookmarks],
+  );
 
   // Load and sync liked songs from both localStorage and server
   useEffect(() => {
@@ -38,30 +145,12 @@ export const useLikedSongs = () => {
         // Step 2: Fetch from server in background
         try {
           const sessionToken = localStorage.getItem('sessionToken');
-          if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
-            const response = await userDataApi.getBookmarks();
-            if (response.success && response.bookmarks) {
-              // Convert server bookmarks to Song format - only include bookmarks with track_id (real songs, not notes)
-              const serverSongs: Song[] = response.bookmarks
-                .filter(bookmark => bookmark.track_id) // Only include bookmarks with track_id (excludes notes)
-                .map(bookmark => ({
-                  id: bookmark.track_id,  // Use track_id for Musixmatch API
-                  title: bookmark.song_title,
-                  artist: bookmark.artist_name,
-                }));
-
-              // Merge: Server data is source of truth, remove duplicates
-              const mergedSongs = serverSongs.filter((song, index, self) => 
-                index === self.findIndex(s => s.id === song.id)
-              );
-              
-              // Save merged data to localStorage
-              localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(mergedSongs));
-              localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
-              setLikedSongs(mergedSongs);
-              
-              if (process.env.NODE_ENV !== 'production') {
-                console.log('✅ Bookmarks synced from server');
+          if (sessionToken) {
+            const remote = await fetchServerLikedSongs();
+            if (remote) {
+              updateStateFromServer(remote);
+              if (process.env.NODE_ENV !== "production") {
+                console.log("✅ Bookmarks synced from server");
               }
             }
           }
@@ -81,57 +170,151 @@ export const useLikedSongs = () => {
     };
 
     loadAndSyncLikedSongs();
-  }, []);
+  }, [fetchServerLikedSongs, updateStateFromServer]);
 
-  const toggleLike = useCallback(async (song: Song) => {
-    const isLiked = likedSongs.some((s) => s.id === song.id);
-
-    // console.log('🔵 toggleLike called:', { songId: song.id, songTitle: song.title, isLiked });
-
-    if (isLiked) {
-      // Unlike song - update localStorage immediately (instant UX)
-      const updatedSongs = likedSongs.filter((s) => s.id !== song.id);
-      // Use functional update to ensure we get the latest state
-      setLikedSongs(prevSongs => prevSongs.filter((s) => s.id !== song.id));
-      localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
-      
-      // Queue server sync (batched, rate-limited)
-      syncLayer.queueSync({
-        type: 'bookmark',
-        action: 'delete',
-        data: { id: song.id }
-      });
-    } else {
-      // Like song - only store basic metadata, no lyrics per Musixmatch terms
-      const songMetadata = {
-        id: song.id,
-        title: song.title,
-        artist: song.artist,
-        imageUrl: song.imageUrl,
-        url: song.url,
-        // Note: No lyrics stored per Musixmatch terms of service
-      };
-      const newLikedSongs = [...likedSongs, songMetadata];
-      // Remove duplicates based on song ID
-      const deduplicatedSongs = newLikedSongs.filter((song, index, self) => 
-        index === self.findIndex(s => s.id === song.id)
-      );
-      setLikedSongs(deduplicatedSongs);
-      localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(deduplicatedSongs));
-      
-      // Queue server sync (batched, rate-limited)
-      syncLayer.queueSync({
-        type: 'bookmark',
-        action: 'create',
-        data: { 
-          song_title: song.title,
-          artist_name: song.artist,
-          folder_id: undefined,
-          track_id: song.id  // Pass Musixmatch track ID
-        }
-      });
+  const syncStateFromServer = useCallback(async () => {
+    const remote = await fetchServerLikedSongs();
+    if (remote) {
+      updateStateFromServer(remote);
     }
-  }, [likedSongs]); // Add dependency array for useCallback
+  }, [fetchServerLikedSongs, updateStateFromServer]);
+
+  const enhancedToggleLike = useCallback(
+    async (song: Song) => {
+      const isLiked = likedSongs.some((s) => s.id === song.id);
+      const sessionToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("sessionToken")
+          : null;
+      const hasServerSession = !!sessionToken;
+
+      if (isLiked) {
+        const updatedSongs = likedSongs.filter((s) => s.id !== song.id);
+
+        setLikedSongs((prevSongs) =>
+          prevSongs.filter((entry) => entry.id !== song.id),
+        );
+        localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updatedSongs));
+
+        let serverSynced = false;
+
+        if (hasServerSession) {
+          try {
+            const deleted = await deleteServerLikesForTrack(song.id);
+            if (!deleted) {
+              throw new Error("Failed to delete all server bookmarks");
+            }
+            serverSynced = true;
+            await syncStateFromServer();
+          } catch (error) {
+            serverSynced = false;
+            if (process.env.NODE_ENV !== "production") {
+              console.warn(
+                "Immediate bookmark delete failed, falling back to sync layer",
+                error,
+              );
+            }
+          }
+        }
+
+        if (!serverSynced) {
+          syncLayer.queueSync({
+            type: "bookmark",
+            action: "delete",
+            data: {
+              id: song.bookmarkId || song.id,
+              bookmarkId: song.bookmarkId || null,
+              track_id: song.id,
+            },
+          });
+          await syncLayer.forceSyncNow();
+          await syncStateFromServer();
+        }
+      } else {
+        const songMetadata: Song = {
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          imageUrl: song.imageUrl,
+          url: song.url,
+          bookmarkId: song.bookmarkId,
+        };
+
+        const newLikedSongs = [...likedSongs, songMetadata];
+        const deduplicatedSongs = newLikedSongs.filter(
+          (candidate, index, self) =>
+            index === self.findIndex((entry) => entry.id === candidate.id),
+        );
+
+        setLikedSongs(deduplicatedSongs);
+        localStorage.setItem(
+          LIKED_SONGS_KEY,
+          JSON.stringify(deduplicatedSongs),
+        );
+
+        let serverSynced = false;
+
+        if (hasServerSession) {
+          try {
+            const exists = await ensureServerLikeExists(song);
+
+            if (exists) {
+              serverSynced = true;
+            } else {
+              const response = await userDataApi.createBookmark(
+                song.title,
+                song.artist,
+                undefined,
+                song.id,
+              );
+
+              if (response.success && response.bookmark) {
+                serverSynced = true;
+                await syncStateFromServer();
+              } else {
+                throw new Error("Failed to create bookmark on server");
+              }
+            }
+          } catch (error) {
+            serverSynced = false;
+            if (process.env.NODE_ENV !== "production") {
+              console.warn(
+                "Immediate bookmark create failed, falling back to sync layer",
+                error,
+              );
+            }
+          }
+        }
+
+        if (!serverSynced) {
+          const alreadyExists = await ensureServerLikeExists(song);
+
+          if (!alreadyExists) {
+            syncLayer.queueSync({
+              type: "bookmark",
+              action: "create",
+              data: {
+                song_title: song.title,
+                artist_name: song.artist,
+                folder_id: undefined,
+                track_id: song.id,
+              },
+            });
+            await syncLayer.forceSyncNow();
+            await syncStateFromServer();
+          } else {
+            await syncStateFromServer();
+          }
+        }
+      }
+    },
+    [
+      likedSongs,
+      deleteServerLikesForTrack,
+      syncStateFromServer,
+      ensureServerLikeExists,
+    ],
+  );
 
   const isLiked = (songId: string) => {
     return likedSongs.some((s) => s.id === songId);
@@ -143,10 +326,10 @@ export const useLikedSongs = () => {
     // Note: Cannot return cached lyrics per Musixmatch terms of service
     // Return basic song metadata only
     try {
-      const likedSong = likedSongs.find(song => song.id === songId);
+      const likedSong = likedSongs.find((song) => song.id === songId);
       return likedSong || null;
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         console.error("Error getting liked song:", error);
       }
       return null;
@@ -155,7 +338,7 @@ export const useLikedSongs = () => {
 
   return {
     likedSongs,
-    toggleLike,
+    toggleLike: enhancedToggleLike,
     isLiked,
     getLikedSongWithLyrics,
     isLoading,

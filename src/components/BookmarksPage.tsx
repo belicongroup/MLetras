@@ -30,7 +30,8 @@ import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useAllFavorites } from "@/hooks/useAllFavorites";
 import { useNotes } from "@/hooks/useNotes";
 import { useAuth } from "@/contexts/AuthContext";
-import { userDataApi, Folder, Bookmark } from "@/services/userDataApi";
+import { userDataApi } from "@/services/userDataApi";
+import type { Folder as ApiFolder, Bookmark } from "@/services/userDataApi";
 import { useNavigate } from "react-router-dom";
 import { musixmatchApi, Song } from "@/services/musixmatchApi";
 import { translations } from "@/lib/translations";
@@ -51,12 +52,16 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
-interface Folder {
+type FolderItem = Song & {
+  type?: "note";
+};
+
+interface ClientFolder {
   id: string;
   name: string;
   songCount: number;
   color: string;
-  songs: Song[];
+  songs: FolderItem[];
 }
 
 // Sortable Folder Item Component
@@ -68,7 +73,7 @@ const SortableFolderItem = ({
   songText,
   songsText,
 }: {
-  folder: Folder;
+  folder: ClientFolder;
   onDelete: (id: string) => void;
   onClick: () => void;
   deleteText: string;
@@ -179,7 +184,7 @@ const BookmarksPage = () => {
   const { allFavorites, toggleNoteLike } = useAllFavorites(likedSongs);
   const { notes } = useNotes();
   const [showLikedSongs, setShowLikedSongs] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<ClientFolder | null>(null);
   const [showAddSongDialog, setShowAddSongDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Song[]>([]);
@@ -187,7 +192,7 @@ const BookmarksPage = () => {
   const [hasSearched, setHasSearched] = useState(false);
 
   // User data state
-  const [userFolders, setUserFolders] = useState<Folder[]>([]);
+  const [userFolders, setUserFolders] = useState<ApiFolder[]>([]);
   const [userBookmarks, setUserBookmarks] = useState<Bookmark[]>([]);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
@@ -217,7 +222,7 @@ const BookmarksPage = () => {
   };
 
   // Load folders from localStorage on component mount
-  const [folders, setFolders] = useState<Folder[]>(() => {
+  const [folders, setFolders] = useState<ClientFolder[]>(() => {
     const savedFolders = localStorage.getItem("mletras-folders");
     if (savedFolders) {
       try {
@@ -338,7 +343,7 @@ const BookmarksPage = () => {
     if (!newFolderName.trim()) return;
 
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    const newFolder: Folder = {
+    const newFolder: ClientFolder = {
       id: Date.now().toString(),
       name: newFolderName.trim(),
       songCount: 0,
@@ -447,7 +452,7 @@ const BookmarksPage = () => {
     setHasSearched(false);
   };
 
-  const handleAddSongToFolder = async (song: Song) => {
+  const handleAddSongToFolder = async (song: FolderItem) => {
     if (!selectedFolder) return;
 
     // Check if song is already in folder
@@ -481,7 +486,9 @@ const BookmarksPage = () => {
               : null,
           );
           
-          console.log('✅ Song added to server folder:', song.title);
+          if (process.env.NODE_ENV !== "production") {
+            console.log("✅ Song added to server folder:", song.title);
+          }
         }
       } catch (error) {
         console.error('Failed to add song to server folder:', error);
@@ -510,8 +517,9 @@ const BookmarksPage = () => {
             }
           : null,
       );
-      
-      console.log('✅ Song added to local folder:', song.title);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("✅ Song added to local folder:", song.title);
+      }
     }
 
     // Automatically add song to liked songs if not already liked
@@ -526,10 +534,10 @@ const BookmarksPage = () => {
     if (!selectedFolder) return;
 
     // Convert note to song format for folder storage
-    const noteAsSong = {
+    const noteAsSong: FolderItem = {
       id: note.id,
       title: note.title,
-      artist: note.artist,
+      artist: note.artist || "",
       lyrics: note.lyrics,
       type: "note",
     };
@@ -537,12 +545,14 @@ const BookmarksPage = () => {
     // Check if note is already in folder
     if (selectedFolder.songs.some((s) => s.id === note.id)) return;
 
-    console.log('📝 Adding note to folder:', {
-      noteTitle: note.title,
-      folderId: selectedFolder.id,
-      folderName: selectedFolder.name,
-      isAuthenticated
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log("📝 Adding note to folder:", {
+        noteTitle: note.title,
+        folderId: selectedFolder.id,
+        folderName: selectedFolder.name,
+        isAuthenticated,
+      });
+    }
 
     if (isAuthenticated) {
       // Authenticated user - save to server as bookmark
@@ -553,7 +563,9 @@ const BookmarksPage = () => {
           selectedFolder.id,
           undefined // no track_id for notes
         );
-        console.log('✅ Note saved to server as bookmark');
+        if (process.env.NODE_ENV !== "production") {
+          console.log("✅ Note saved to server as bookmark");
+        }
         // Refresh user data to get updated bookmarks
         loadUserData();
       } catch (error) {
@@ -586,7 +598,9 @@ const BookmarksPage = () => {
         : null,
     );
 
-    console.log('✅ Note added to folder:', note.title);
+    if (process.env.NODE_ENV !== "production") {
+      console.log("✅ Note added to folder:", note.title);
+    }
 
     // Keep dialog open for adding more items
   };
@@ -624,7 +638,9 @@ const BookmarksPage = () => {
                 : null,
             );
             
-            console.log('✅ Song removed from server folder:', songId);
+            if (process.env.NODE_ENV !== "production") {
+              console.log("✅ Song removed from server folder:", songId);
+            }
           }
         }
       } catch (error) {
@@ -655,7 +671,9 @@ const BookmarksPage = () => {
           : null,
       );
       
-      console.log('✅ Song removed from local folder:', songId);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("✅ Song removed from local folder:", songId);
+      }
     }
   };
 
@@ -1197,23 +1215,18 @@ const BookmarksPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {userFolders.map((folder, index) => {
                 // Convert user folder to local folder format for compatibility
-                const localFolder: Folder = {
+                const localFolder: ClientFolder = {
                   id: folder.id,
                   name: folder.folder_name,
                   songCount: userBookmarks.filter(b => b.folder_id === folder.id).length,
                   color: getFolderColor(index), // Assign color based on index
-                  songs: userBookmarks.filter(b => b.folder_id === folder.id).map(bookmark => ({
-                    id: bookmark.track_id || bookmark.id,  // Use track_id for Musixmatch API
-                    title: bookmark.song_title,
-                    artist: bookmark.artist_name,
-                    album: "",
-                    duration: 0,
-                    year: 0,
-                    genre: "",
-                    lyrics: "",
-                    albumArt: "",
-                    isLiked: false,
-                  }))
+                  songs: userBookmarks
+                    .filter((b) => b.folder_id === folder.id)
+                    .map<FolderItem>((bookmark) => ({
+                      id: bookmark.track_id || bookmark.id, // Use track_id for Musixmatch API
+                      title: bookmark.song_title,
+                      artist: bookmark.artist_name,
+                    }))
                 };
                 
                 return (

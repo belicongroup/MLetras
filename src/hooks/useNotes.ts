@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { userDataApi } from "@/services/userDataApi";
 import { syncLayer } from "@/services/syncLayer";
 
@@ -14,28 +14,64 @@ export interface UserNote {
 
 const NOTES_KEY = "userNotes";
 const LAST_SYNC_KEY = "userNotes_lastSync";
+const NOTES_UPDATED_EVENT = "mletras-notes-updated";
 
 export const useNotes = () => {
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const loadNotesFromStorage = useCallback((): UserNote[] => {
+    if (typeof window === "undefined") return [];
+    const saved = localStorage.getItem(NOTES_KEY);
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved) as UserNote[];
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Error parsing saved notes:", error);
+      }
+      return [];
+    }
+  }, []);
+
+  const persistNotes = useCallback((updatedNotes: UserNote[]) => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(NOTES_KEY, JSON.stringify(updatedNotes));
+    localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+  }, []);
+
+  const broadcastNotesUpdate = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new Event(NOTES_UPDATED_EVENT));
+  }, []);
+
+  const applyNotesUpdate = useCallback(
+    (updater: (previous: UserNote[]) => UserNote[]) => {
+      setNotes((prev) => {
+        const updated = updater(prev);
+        persistNotes(updated);
+        broadcastNotesUpdate();
+        return updated;
+      });
+    },
+    [persistNotes, broadcastNotesUpdate],
+  );
 
   // Load and sync notes from both localStorage and server
   useEffect(() => {
     const loadAndSyncNotes = async () => {
       try {
         // Step 1: Load from localStorage immediately (instant UX)
-        const saved = localStorage.getItem(NOTES_KEY);
-        let localNotes: UserNote[] = [];
-        if (saved) {
-          localNotes = JSON.parse(saved);
-          setNotes(localNotes);
-          setIsLoading(false);
+        const localNotes = loadNotesFromStorage();
+        if (localNotes.length > 0) {
+          applyNotesUpdate(() => localNotes);
         }
+        setIsLoading(false);
 
         // Step 2: Fetch from server in background
         try {
           const sessionToken = localStorage.getItem('sessionToken');
-          if (sessionToken && !sessionToken.startsWith('dev-bypass')) {
+          if (sessionToken) {
             const response = await userDataApi.getNotes();
             if (response.success && response.notes) {
               // Convert server notes to UserNote format
@@ -52,9 +88,7 @@ export const useNotes = () => {
               const mergedNotes = serverNotes;
               
               // Save merged data to localStorage
-              localStorage.setItem(NOTES_KEY, JSON.stringify(mergedNotes));
-              localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
-              setNotes(mergedNotes);
+              applyNotesUpdate(() => mergedNotes);
               
               if (process.env.NODE_ENV !== 'production') {
                 console.log('✅ Notes synced from server');
@@ -70,14 +104,27 @@ export const useNotes = () => {
         if (process.env.NODE_ENV !== 'production') {
           console.error("Error loading notes:", error);
         }
-        setNotes([]);
+        applyNotesUpdate(() => []);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadAndSyncNotes();
-  }, []);
+  }, [applyNotesUpdate, loadNotesFromStorage]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const storedNotes = loadNotesFromStorage();
+      setNotes(storedNotes);
+    };
+
+    window.addEventListener(NOTES_UPDATED_EVENT, handler as EventListener);
+    return () => {
+      window.removeEventListener(NOTES_UPDATED_EVENT, handler as EventListener);
+    };
+  }, [loadNotesFromStorage]);
 
   const createNote = async (noteData: Omit<UserNote, "id" | "createdAt" | "updatedAt">) => {
     const newNote: UserNote = {
@@ -88,9 +135,7 @@ export const useNotes = () => {
     };
 
     // Update localStorage immediately (instant UX)
-    const newNotes = [newNote, ...notes];
-    setNotes(newNotes);
-    localStorage.setItem(NOTES_KEY, JSON.stringify(newNotes));
+    applyNotesUpdate((prevNotes) => [newNote, ...prevNotes]);
     
     // Queue server sync (batched, rate-limited)
     syncLayer.queueSync({
@@ -109,21 +154,22 @@ export const useNotes = () => {
 
   const updateNote = async (id: string, noteData: Partial<Omit<UserNote, "id" | "createdAt">>) => {
     // Update localStorage immediately (instant UX)
-    const updatedNotes = notes.map((note) =>
-      note.id === id
-        ? {
+    let updatedNote: UserNote | undefined;
+    applyNotesUpdate((prevNotes) =>
+      prevNotes.map((note) => {
+        if (note.id === id) {
+          updatedNote = {
             ...note,
             ...noteData,
             updatedAt: Date.now(),
-          }
-        : note,
+          };
+          return updatedNote;
+        }
+        return note;
+      }),
     );
-
-    setNotes(updatedNotes);
-    localStorage.setItem(NOTES_KEY, JSON.stringify(updatedNotes));
     
     // Queue server sync (batched, rate-limited)
-    const updatedNote = updatedNotes.find((note) => note.id === id);
     if (updatedNote) {
       syncLayer.queueSync({
         type: 'note',
@@ -143,9 +189,7 @@ export const useNotes = () => {
 
   const deleteNote = async (id: string) => {
     // Update localStorage immediately (instant UX)
-    const updatedNotes = notes.filter((note) => note.id !== id);
-    setNotes(updatedNotes);
-    localStorage.setItem(NOTES_KEY, JSON.stringify(updatedNotes));
+    applyNotesUpdate((prevNotes) => prevNotes.filter((note) => note.id !== id));
     
     // Queue server sync (batched, rate-limited)
     syncLayer.queueSync({
@@ -181,25 +225,13 @@ export const useNotes = () => {
     return likedNotes.includes(noteId);
   };
 
-  const refreshNotes = () => {
-    const loadNotes = async () => {
-      try {
-        const saved = localStorage.getItem(NOTES_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setNotes(parsed);
-        } else {
-          setNotes([]);
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error("Error refreshing notes:", error);
-        }
-        setNotes([]);
-      }
+  const refreshNotes = useCallback(() => {
+    const loadNotes = () => {
+      const storedNotes = loadNotesFromStorage();
+      applyNotesUpdate(() => storedNotes);
     };
     loadNotes();
-  };
+  }, [applyNotesUpdate, loadNotesFromStorage]);
 
   return {
     notes,

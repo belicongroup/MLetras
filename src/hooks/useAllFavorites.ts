@@ -12,6 +12,7 @@ export interface FavoriteItem {
   imageUrl?: string;
   url?: string;
   lyrics?: string;
+  bookmarkId?: string;
 }
 
 const LIKED_NOTES_KEY = "likedNotes";
@@ -86,6 +87,7 @@ export const useAllFavorites = (likedSongs?: any[]) => {
         createdAt: Date.now(), // Songs don't have createdAt, using current time
         imageUrl: song.imageUrl,
         url: song.url,
+        bookmarkId: song.bookmarkId,
       })),
       // Add liked notes
       ...notes

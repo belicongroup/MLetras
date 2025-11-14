@@ -56,10 +56,10 @@
     <h1>Privacy Policy for MLetras</h1>
     
     <p><strong>Effective Date:</strong> December 17, 2024<br>
-    <strong>Last Updated:</strong> December 17, 2024</p>
+    <strong>Last Updated:</strong> January 2025</p>
 
     <div class="highlight">
-        <strong>Quick Summary:</strong> MLetras respects your privacy. We only collect search queries and preferences locally on your device. We don't collect personal information, location data, or share your data with third parties except for providing lyrics through MusixMatch API.
+        <strong>Quick Summary:</strong> MLetras respects your privacy. We collect your email address for account creation and authentication. Your folders, bookmarks, and notes are stored securely on our servers. We don't collect location data, contacts, or share your data with third parties except for providing lyrics through MusixMatch API.
     </div>
 
     <h2>Introduction</h2>
@@ -69,36 +69,46 @@
     
     <h3>Information You Provide Directly</h3>
     <ul>
+        <li><strong>Email Address:</strong> Required for account creation and authentication via one-time password (OTP)</li>
+        <li><strong>Username:</strong> Optional display name you choose for your account</li>
         <li><strong>Search Queries:</strong> Song titles and artist names you search for</li>
         <li><strong>User Preferences:</strong> Display settings, language preferences, and app customization choices</li>
         <li><strong>Bookmarked Songs:</strong> Songs you save to your favorites or organize in folders</li>
-        <li><strong>Search History:</strong> Your recent searches for convenience</li>
+        <li><strong>Folders:</strong> Custom folders you create to organize your bookmarks</li>
+        <li><strong>Notes:</strong> Personal notes you create related to songs or artists</li>
+        <li><strong>Search History:</strong> Your recent searches for convenience (stored locally)</li>
     </ul>
 
     <h3>Information We Collect Automatically</h3>
     <ul>
-        <li><strong>Usage Data:</strong> How you interact with the App (features used, time spent)</li>
-        <li><strong>Device Information:</strong> Device type, operating system version, app version</li>
-        <li><strong>Technical Data:</strong> App performance, crash reports, and error logs</li>
+        <li><strong>Account Information:</strong> User ID, subscription status, account creation date, last login time</li>
+        <li><strong>Session Data:</strong> Authentication tokens for maintaining your login session</li>
+        <li><strong>Note:</strong> We do not collect detailed usage analytics, device identifiers, or crash reports. Basic account information is collected solely for app functionality and account management.</li>
     </ul>
 
     <h3>Information We Do NOT Collect</h3>
     <ul>
-        <li><strong>Personal Identifiers:</strong> We do not collect your name, email, phone number, or other personal identifiers</li>
+        <li><strong>Name:</strong> We do not collect your full name or real name</li>
+        <li><strong>Phone Number:</strong> We do not collect your phone number</li>
         <li><strong>Location Data:</strong> We do not access or collect your location information</li>
         <li><strong>Contacts:</strong> We do not access your contacts or address book</li>
         <li><strong>Photos/Media:</strong> We do not access your photos, videos, or other media files</li>
         <li><strong>Microphone/Camera:</strong> We do not access your microphone or camera</li>
+        <li><strong>Payment Information:</strong> All subscription payments are processed by Apple through App Store, we never see your payment details</li>
     </ul>
 
     <h2>How We Use Your Information</h2>
     <p>We use the collected information to:</p>
     <ol>
+        <li><strong>Account Management:</strong> Create and manage your user account, authenticate your identity using email and OTP</li>
         <li><strong>Provide Core Services:</strong> Display song lyrics and search results</li>
+        <li><strong>Sync Your Data:</strong> Synchronize your folders, bookmarks, and notes across devices</li>
+        <li><strong>Subscription Management:</strong> Manage your Pro subscription status and features</li>
         <li><strong>Improve User Experience:</strong> Remember your preferences and search history</li>
-        <li><strong>App Functionality:</strong> Enable bookmarking, folder organization, and settings</li>
+        <li><strong>App Functionality:</strong> Enable bookmarking, folder organization, notes, and settings</li>
         <li><strong>Technical Support:</strong> Diagnose and fix technical issues</li>
         <li><strong>App Improvement:</strong> Analyze usage patterns to improve the App</li>
+        <li><strong>Security:</strong> Protect your account from unauthorized access</li>
     </ol>
 
     <h2>Third-Party Services</h2>
@@ -107,32 +117,52 @@
     <ul>
         <li>We use MusixMatch API to provide song lyrics and metadata</li>
         <li>Your search queries are sent to MusixMatch to retrieve lyrics</li>
-        <li>We do not share your personal information with MusixMatch</li>
-        <li>MusixMatch's privacy policy applies to their services: <a href="https://www.musixmatch.com/privacy">https://www.musixmatch.com/privacy</a></li>
+        <li>We do not share your personal information (email, account data) with MusixMatch</li>
+        <li>Only search queries (song titles and artist names) are sent to MusixMatch</li>
+        <li>MusixMatch's privacy policy applies to their services: <a href="https://www.musixmatch.com/privacy" target="_blank" rel="noopener noreferrer">https://www.musixmatch.com/privacy</a></li>
     </ul>
 
-    <h3>Cloudflare Workers</h3>
+    <h3>Cloudflare Services</h3>
     <ul>
-        <li>We use Cloudflare Workers as a proxy for API requests</li>
-        <li>This helps protect your privacy by keeping API keys server-side</li>
-        <li>Cloudflare's privacy policy applies: <a href="https://www.cloudflare.com/privacypolicy/">https://www.cloudflare.com/privacypolicy/</a></li>
+        <li>We use Cloudflare Workers and Cloudflare D1 database to host our backend services</li>
+        <li>Your account data and user content are stored on Cloudflare's secure infrastructure</li>
+        <li>Cloudflare Workers act as a proxy for API requests, helping protect your privacy by keeping API keys server-side</li>
+        <li>Cloudflare's privacy policy applies: <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">https://www.cloudflare.com/privacypolicy/</a></li>
+    </ul>
+
+    <h3>Apple App Store</h3>
+    <ul>
+        <li>For Pro subscriptions, payments are processed by Apple through the App Store</li>
+        <li>We receive transaction information from Apple but never see your payment details</li>
+        <li>Apple's privacy policy applies to payment processing: <a href="https://www.apple.com/privacy/" target="_blank" rel="noopener noreferrer">https://www.apple.com/privacy/</a></li>
     </ul>
 
     <h2>Data Storage and Security</h2>
     
-    <h3>Local Storage</h3>
+    <h3>Cloud Storage (Backend Servers)</h3>
     <ul>
-        <li><strong>Search History:</strong> Stored locally on your device</li>
-        <li><strong>User Preferences:</strong> Stored locally on your device</li>
-        <li><strong>Bookmarked Songs:</strong> Stored locally on your device</li>
-        <li><strong>No Cloud Storage:</strong> We do not store your data on external servers</li>
+        <li><strong>Account Information:</strong> Your email address, username, subscription status, and account metadata are stored securely on Cloudflare D1 database</li>
+        <li><strong>User Content:</strong> Your folders, bookmarks, and notes are stored on our backend servers to enable synchronization across devices</li>
+        <li><strong>Authentication Data:</strong> Session tokens and OTP codes are stored temporarily for authentication purposes</li>
+        <li><strong>Data Location:</strong> All backend data is stored on Cloudflare's secure infrastructure</li>
+    </ul>
+
+    <h3>Local Storage (Device)</h3>
+    <ul>
+        <li><strong>Search History:</strong> Stored locally on your device for quick access</li>
+        <li><strong>User Preferences:</strong> Display settings and app preferences stored locally</li>
+        <li><strong>Cached Data:</strong> Some data may be cached locally for offline access and performance</li>
+        <li><strong>Session Token:</strong> Stored locally to maintain your login session</li>
     </ul>
 
     <h3>Data Security</h3>
     <ul>
         <li>We implement appropriate security measures to protect your information</li>
-        <li>All data transmission is encrypted using HTTPS</li>
-        <li>We do not store sensitive personal information</li>
+        <li>All data transmission is encrypted using HTTPS/TLS</li>
+        <li>Authentication uses secure one-time password (OTP) system</li>
+        <li>Session tokens are securely generated and expire after 24 hours</li>
+        <li>Backend databases are secured and access-controlled</li>
+        <li>We follow industry-standard security practices</li>
     </ul>
 
     <h2>Data Sharing and Disclosure</h2>
@@ -145,18 +175,25 @@
 
     <h2>Your Rights and Choices</h2>
     
+    <h3>Account Management</h3>
+    <ul>
+        <li><strong>Account Deletion:</strong> You can permanently delete your account and all associated data through the App settings. This will delete your email, username, folders, bookmarks, notes, and subscription data. This action cannot be undone.</li>
+        <li><strong>Data Access:</strong> You can access your account data through the App interface</li>
+        <li><strong>Data Portability:</strong> You can export your data by accessing it through the App</li>
+    </ul>
+
     <h3>Data Control</h3>
     <ul>
-        <li><strong>Clear Data:</strong> You can clear all stored data through the App settings</li>
-        <li><strong>Delete Account:</strong> Since we don't require accounts, simply uninstall the App</li>
-        <li><strong>Access Data:</strong> All your data is stored locally on your device</li>
+        <li><strong>Clear Local Data:</strong> You can clear all locally stored data (search history, preferences) through the App settings without deleting your account</li>
+        <li><strong>Delete Content:</strong> You can delete individual folders, bookmarks, or notes at any time</li>
+        <li><strong>Reset Preferences:</strong> You can reset all app preferences to default settings</li>
     </ul>
 
     <h3>Privacy Settings</h3>
     <ul>
-        <li>You can disable search history in the App settings</li>
-        <li>You can clear bookmarked songs at any time</li>
-        <li>You can reset all preferences to default settings</li>
+        <li>You can manage your account settings through the App</li>
+        <li>You can clear search history at any time</li>
+        <li>You can manage your subscription through the App Store settings</li>
     </ul>
 
     <h2>Children's Privacy</h2>
@@ -175,9 +212,12 @@
 
     <h2>Data Retention</h2>
     <ul>
-        <li><strong>Search History:</strong> Stored locally until you clear it or uninstall the App</li>
+        <li><strong>Account Data:</strong> Your account and associated data (email, folders, bookmarks, notes) are retained until you delete your account</li>
+        <li><strong>Session Tokens:</strong> Authentication tokens expire after 24 hours of inactivity</li>
+        <li><strong>OTP Codes:</strong> One-time password codes expire after 10 minutes and are automatically deleted</li>
+        <li><strong>Search History:</strong> Stored locally on your device until you clear it or uninstall the App</li>
         <li><strong>User Preferences:</strong> Stored locally until you reset them or uninstall the App</li>
-        <li><strong>Bookmarked Songs:</strong> Stored locally until you delete them or uninstall the App</li>
+        <li><strong>Deleted Accounts:</strong> When you delete your account, all associated data is permanently removed from our servers within 30 days</li>
     </ul>
 
     <div class="contact-info">
@@ -187,9 +227,19 @@
         <strong>Website:</strong> https://mletras.com/privacy</p>
     </div>
 
+    <h2>Subscriptions and Payments</h2>
+    <ul>
+        <li><strong>Pro Subscription:</strong> MLetras offers a Pro subscription with additional features</li>
+        <li><strong>Payment Processing:</strong> All subscription payments are processed by Apple through the App Store</li>
+        <li><strong>Subscription Data:</strong> We store your subscription status and transaction IDs (provided by Apple) to manage your Pro features</li>
+        <li><strong>Subscription Management:</strong> You can manage or cancel your subscription through the App Store settings or within the App</li>
+        <li><strong>Restore Purchases:</strong> You can restore previous purchases if you reinstall the App or use it on a new device</li>
+    </ul>
+
     <h2>Compliance</h2>
     <p>This Privacy Policy complies with:</p>
     <ul>
+        <li>Apple App Store requirements</li>
         <li>Google Play Store requirements</li>
         <li>General Data Protection Regulation (GDPR)</li>
         <li>California Consumer Privacy Act (CCPA)</li>
@@ -198,7 +248,7 @@
 
     <div class="footer">
         <p><strong>MLetras Privacy Policy</strong><br>
-        <em>Last Updated: December 17, 2024</em></p>
+        <em>Last Updated: January 2025</em></p>
     </div>
 </body>
 </html>

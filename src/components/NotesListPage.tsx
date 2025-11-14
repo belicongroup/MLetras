@@ -22,11 +22,9 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNotes, UserNote } from "@/hooks/useNotes";
 import { useAuth } from "@/contexts/AuthContext";
-import { userDataApi, Note } from "@/services/userDataApi";
 import { useNavigate } from "react-router-dom";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
-import { formatDistanceToNow } from "date-fns";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
 const NotesListPage = () => {
@@ -34,15 +32,18 @@ const NotesListPage = () => {
   const { settings } = useSettings();
   const { user, isAuthenticated } = useAuth();
   const t = translations[settings.language];
-  const { notes, deleteNote, refreshNotes } = useNotes();
+  const {
+    notes,
+    createNote,
+    updateNote,
+    deleteNote,
+    refreshNotes,
+    isLoading,
+  } = useNotes();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<UserNote | null>(null);
   const [editingNote, setEditingNote] = useState<UserNote | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
-  // User data state
-  const [userNotes, setUserNotes] = useState<Note[]>([]);
-  const [isLoadingUserData, setIsLoadingUserData] = useState(false);
 
   // Free tier limits
   const FREE_NOTES_LIMIT = 3;
@@ -51,26 +52,6 @@ const NotesListPage = () => {
   useEffect(() => {
     refreshNotes();
   }, []);
-
-  // Load user data when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadUserNotes();
-    }
-  }, [isAuthenticated]);
-
-  // Load user notes
-  const loadUserNotes = async () => {
-    setIsLoadingUserData(true);
-    try {
-      const response = await userDataApi.getNotes();
-      setUserNotes(response.notes);
-    } catch (error) {
-      console.error('Failed to load user notes:', error);
-    } finally {
-      setIsLoadingUserData(false);
-    }
-  };
 
   const handleNoteClick = (note: UserNote) => {
     navigate("/note-detail", {
@@ -100,7 +81,7 @@ const NotesListPage = () => {
   const handleCreateNote = () => {
     // Check note limit for free users
     if (isAuthenticated && user?.subscription_type === 'free') {
-      const totalNotes = notes.length + userNotes.length;
+      const totalNotes = notes.length;
       if (totalNotes >= FREE_NOTES_LIMIT) {
         setShowUpgradeModal(true);
         return;
@@ -161,42 +142,29 @@ const NotesListPage = () => {
       </div>
 
       {/* Notes List */}
-      {isLoadingUserData ? (
+      {isLoading ? (
         <div className="text-center py-8">
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
           <p className="text-muted-foreground">Loading your notes...</p>
         </div>
-      ) : userNotes.length > 0 ? (
+      ) : notes.length > 0 ? (
         <div className="space-y-3">
-          {userNotes.map((note) => (
+          {notes.map((note) => (
             <Card
               key={note.id}
               className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer"
               onClick={() => {
-                // Convert user note to local note format for compatibility
-                const localNote: UserNote = {
-                  id: note.id,
-                  title: note.note_title,
-                  lyrics: note.note_content,
-                  artist: note.artist_name || '',
-                  song: note.song_name || '',
-                  createdAt: note.created_at,
-                  updatedAt: note.updated_at,
-                };
-                handleNoteClick(localNote);
+                handleNoteClick(note);
               }}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <h4 className="font-semibold text-foreground mb-1">
-                      {note.note_title}
+                      {note.title}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      {note.artist_name && note.song_name 
-                        ? `${note.artist_name} - ${note.song_name}`
-                        : note.artist_name || note.song_name || 'General Note'
-                      }
+                      {note.artist || 'General Note'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 ml-3">
@@ -242,7 +210,7 @@ const NotesListPage = () => {
       )}
 
       {/* Floating Action Button */}
-      {userNotes.length > 0 && (
+      {notes.length > 0 && (
         <div className="fixed bottom-28 right-4 z-40 safe-bottom">
           <Button
             onClick={handleCreateNote}
@@ -269,6 +237,8 @@ const NotesListPage = () => {
           </DialogHeader>
           <NoteEditorModal
             note={editingNote}
+            onCreate={createNote}
+            onUpdate={updateNote}
             onSave={() => {
               setShowCreateDialog(false);
               refreshNotes();
@@ -310,17 +280,20 @@ const NotesListPage = () => {
 // Note Editor Modal Component
 const NoteEditorModal = ({
   note,
+  onCreate,
+  onUpdate,
   onSave,
   onCancel,
 }: {
   note: UserNote | null;
+  onCreate: (note: { title: string; artist: string; lyrics: string }) => Promise<UserNote | undefined>;
+  onUpdate: (id: string, note: Partial<Omit<UserNote, "id" | "createdAt">>) => Promise<UserNote | undefined>;
   onSave: () => void;
   onCancel: () => void;
 }) => {
   const { settings } = useSettings();
   const t = translations[settings.language];
-  const { createNote, updateNote } = useNotes();
-  
+
   const [artistName, setArtistName] = useState(note?.artist || "");
   const [songName, setSongName] = useState(note?.title || "");
   const [noteLyrics, setNoteLyrics] = useState(note?.lyrics || "");
@@ -345,13 +318,13 @@ const NoteEditorModal = ({
     setIsSaving(true);
     try {
       if (note) {
-        await updateNote(note.id, {
+        await onUpdate(note.id, {
           title: songName.trim(),
           artist: artistName.trim(),
           lyrics: noteLyrics,
         });
       } else {
-        await createNote({
+        await onCreate({
           title: songName.trim(),
           artist: artistName.trim(),
           lyrics: noteLyrics,
