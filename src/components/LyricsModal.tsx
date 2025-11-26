@@ -410,8 +410,8 @@ const LyricsModal = ({
                     >
                       <img
                         src={theme === 'dark' 
-                          ? '/musixmatch-attribution/Musixmatch-logo-brands-Black.png'
-                          : '/musixmatch-attribution/Musixmatch-logo-brands-White.png'
+                          ? '/musixmatch-attribution/Musixmatch-logo-brands-White.png'
+                          : '/musixmatch-attribution/Musixmatch-logo-brands-Black.png'
                         }
                         alt="Lyrics powered by Musixmatch"
                         className="h-6 sm:h-7 mx-auto"
