@@ -1,6 +1,6 @@
 {
   "name": "mletras-app",
-  "version": "1.0.0",
+  "version": "1.0.7",
   "description": "MLetras - Lyrics and Music Notes App",
   "type": "module",
   "scripts": {

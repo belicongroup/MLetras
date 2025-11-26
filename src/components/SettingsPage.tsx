@@ -10,6 +10,7 @@ import {
   Lock,
   ExternalLink,
   AlertTriangle,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -43,7 +44,11 @@ import { userDataApi } from "@/services/userDataApi";
 import { searchHistory } from "@/services/searchHistory";
 import { toast } from "sonner";
 
-const SettingsPage = () => {
+interface SettingsPageProps {
+  onOpenAuth?: () => void;
+}
+
+const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
   const { theme, toggleTheme, setTheme } = useTheme();
   const { settings, setSettings } = useSettings();
   const { user, isAuthenticated, logout } = useAuth();
@@ -181,41 +186,96 @@ const SettingsPage = () => {
         </h2>
       </div>
 
-      {/* Subscription Status */}
-      {isAuthenticated && (
+      {/* Sign Up / Sign In Section - Only show when not authenticated */}
+      {!isAuthenticated && (
         <Card className="glass border-border/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Crown className="w-5 h-5 text-primary" />
-              Subscription Status
+              <User className="w-5 h-5 text-primary" />
+              Sign Up / Sign In
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {user?.username && (
-              <div className="text-center py-2">
-                <p className="text-lg font-medium text-primary">Welcome {user.username}</p>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create an account to sync your bookmarks and notes across all your devices. Your data will be safely stored in the cloud.
+              </p>
+              <Button
+                onClick={() => onOpenAuth?.()}
+                className="w-full bg-gradient-primary hover:bg-gradient-accent text-white font-semibold py-3"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Sign Up / Sign In
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Subscription Status / Upgrade */}
+      <Card className="glass border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Crown className="w-5 h-5 text-primary" />
+            {isAuthenticated ? 'Subscription Status' : 'Upgrade to Pro'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isAuthenticated ? (
+            <>
+              {user?.username && (
+                <div className="text-center py-2">
+                  <p className="text-lg font-medium text-primary">Welcome {user.username}</p>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium capitalize">{user?.subscription_type} Plan</p>
+                  <p className="text-sm text-muted-foreground">
+                    {user?.subscription_type === 'free' 
+                      ? "Limited features, upgrade to Pro for full access"
+                      : "Full access to all features"
+                    }
+                  </p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  user?.subscription_type === 'free' 
+                    ? 'bg-amber-100 text-amber-800' 
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {user?.subscription_type === 'free' ? 'Free' : 'Pro'}
+                </div>
               </div>
-            )}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium capitalize">{user?.subscription_type} Plan</p>
-                <p className="text-sm text-muted-foreground">
-                  {user?.subscription_type === 'free' 
-                    ? "Limited features, upgrade to Pro for full access"
-                    : "Full access to all features"
-                  }
+              
+              {user?.subscription_type === 'free' && (
+                <Button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg transition-all"
+                >
+                  <Crown className="h-4 w-4 mr-2" />
+                  Upgrade to MLetras Pro
+                </Button>
+              )}
+
+              {user?.subscription_type === 'pro' && (
+                <Button
+                  onClick={handleManageSubscription}
+                  variant="outline"
+                  className="w-full mt-2"
+                  size="sm"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Manage Subscription
+                </Button>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="text-center py-2">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Unlock all premium features with MLetras Pro. Purchase without creating an account, or sign in to sync your subscription across devices.
                 </p>
               </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                user?.subscription_type === 'free' 
-                  ? 'bg-amber-100 text-amber-800' 
-                  : 'bg-green-100 text-green-800'
-              }`}>
-                {user?.subscription_type === 'free' ? 'Free' : 'Pro'}
-              </div>
-            </div>
-            
-            {user?.subscription_type === 'free' && (
               <Button
                 onClick={() => setShowUpgradeModal(true)}
                 className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg transition-all"
@@ -223,22 +283,10 @@ const SettingsPage = () => {
                 <Crown className="h-4 w-4 mr-2" />
                 Upgrade to MLetras Pro
               </Button>
-            )}
-
-            {user?.subscription_type === 'pro' && (
-              <Button
-                onClick={handleManageSubscription}
-                variant="outline"
-                className="w-full mt-2"
-                size="sm"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Manage Subscription
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* App Preferences */}
       <Card className="glass border-border/50">
@@ -442,7 +490,7 @@ const SettingsPage = () => {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="font-medium">Version</p>
-            <p className="text-sm text-muted-foreground">1.0.5</p>
+            <p className="text-sm text-muted-foreground">1.0.7</p>
           </div>
 
           <Separator />

@@ -1,8 +1,8 @@
 // API key is handled server-side by Cloudflare Worker proxy
-// Smart Proxy provides server-side KV caching to reduce API calls
+// Using simple proxy (mletras-api-proxy) - NO caching to stay compliant with Musixmatch terms
 // No local caching of lyrics to stay compliant with Musixmatch terms
 
-const MUSIXMATCH_BASE_URL = "https://mletras-smart-proxy.belicongroup.workers.dev";
+const MUSIXMATCH_BASE_URL = "https://mletras-api-proxy.belicongroup.workers.dev";
 
 export interface MusixmatchTrack {
   track_id: number;
@@ -161,10 +161,11 @@ class MusixmatchApiService {
     }
     
     this.lastRequestTime = Date.now();
-    // Use Smart Proxy with KV caching - API key handled server-side
-    const url = new URL(`${MUSIXMATCH_BASE_URL}/${endpoint}`);
+    // Use simple proxy (no caching) - API key handled server-side
+    // Simple proxy uses /musixmatch/ prefix for routing
+    const url = new URL(`${MUSIXMATCH_BASE_URL}/musixmatch${endpoint}`);
 
-    // Add parameters (API key is added by Smart Proxy)
+    // Add parameters (API key is added by simple proxy)
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.append(key, value);
     });
@@ -215,19 +216,21 @@ class MusixmatchApiService {
         return [];
       }
 
-      return searchData.message.body.track_list.map((item) => ({
-        id: item.track.track_id.toString(),
-        title: item.track.track_name,
-        artist: item.track.artist_name,
-        album: item.track.album_name,
-        imageUrl:
-          item.track.album_coverart_500x500 ||
-          item.track.album_coverart_350x350 ||
-          item.track.album_coverart_100x100,
-        url: item.track.track_share_url,
-        trackLength: item.track.track_length,
-        hasLyrics: item.track.has_lyrics === 1,
-      }));
+      return searchData.message.body.track_list
+        .filter((item) => item.track.has_lyrics === 1)
+        .map((item) => ({
+          id: item.track.track_id.toString(),
+          title: item.track.track_name,
+          artist: item.track.artist_name,
+          album: item.track.album_name,
+          imageUrl:
+            item.track.album_coverart_500x500 ||
+            item.track.album_coverart_350x350 ||
+            item.track.album_coverart_100x100,
+          url: item.track.track_share_url,
+          trackLength: item.track.track_length,
+          hasLyrics: true, // Already filtered, so always true
+        }));
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Musixmatch search error:", error);
@@ -237,7 +240,7 @@ class MusixmatchApiService {
   }
 
   async getSongLyrics(trackId: string, song?: Song): Promise<string> {
-    // Fetch from server - Worker checks its KV cache, then Musixmatch API if needed
+    // Fetch from server - Simple proxy calls Musixmatch API directly (no caching)
     // No local caching to stay compliant with Musixmatch terms
     try {
       const data: MusixmatchLyricsResponse = await this.makeRequest(
@@ -262,7 +265,7 @@ class MusixmatchApiService {
         }
       }
 
-      // Server-side caching only (Worker KV) - no local caching
+      // No caching - fetched fresh from Musixmatch API each time
       return lyricsText;
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
@@ -294,19 +297,21 @@ class MusixmatchApiService {
         return [];
       }
 
-      return data.message.body.track_list.map((item) => ({
-        id: item.track.track_id.toString(),
-        title: item.track.track_name,
-        artist: item.track.artist_name,
-        album: item.track.album_name,
-        imageUrl:
-          item.track.album_coverart_500x500 ||
-          item.track.album_coverart_350x350 ||
-          item.track.album_coverart_100x100,
-        url: item.track.track_share_url,
-        trackLength: item.track.track_length,
-        hasLyrics: item.track.has_lyrics === 1,
-      }));
+      return data.message.body.track_list
+        .filter((item) => item.track.has_lyrics === 1)
+        .map((item) => ({
+          id: item.track.track_id.toString(),
+          title: item.track.track_name,
+          artist: item.track.artist_name,
+          album: item.track.album_name,
+          imageUrl:
+            item.track.album_coverart_500x500 ||
+            item.track.album_coverart_350x350 ||
+            item.track.album_coverart_100x100,
+          url: item.track.track_share_url,
+          trackLength: item.track.track_length,
+          hasLyrics: true, // Already filtered, so always true
+        }));
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error("Musixmatch artist search error:", error);
