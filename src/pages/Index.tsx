@@ -5,6 +5,7 @@ import SearchPage from "@/components/SearchPage";
 import BookmarksPage from "@/components/BookmarksPage";
 import SettingsPage from "@/components/SettingsPage";
 import NotesListPage from "@/components/NotesListPage";
+import { AuthModal } from "@/components/AuthModal";
 import { Button } from "@/components/ui/button";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -20,6 +21,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("search");
   const [searchRefreshKey, setSearchRefreshKey] = useState(0);
   const [notesRefreshKey, setNotesRefreshKey] = useState(0);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Handle navigation state to set active tab
   useEffect(() => {
@@ -53,11 +55,11 @@ const Index = () => {
       case "search":
         return <SearchPage key={searchRefreshKey} />;
       case "bookmarks":
-        return <BookmarksPage />;
+        return <BookmarksPage onOpenAuth={() => setShowAuthModal(true)} />;
       case "notes":
-        return <NotesListPage key={notesRefreshKey} />;
+        return <NotesListPage key={notesRefreshKey} onOpenAuth={() => setShowAuthModal(true)} />;
       case "settings":
-        return <SettingsPage />;
+        return <SettingsPage onOpenAuth={() => setShowAuthModal(true)} />;
       default:
         return <SearchPage />;
     }
@@ -65,9 +67,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-
       {/* Main Content */}
       <main className="flex-1 pb-20">{renderContent()}</main>
+
+      {/* Auth Modal - Rendered outside main content flow */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50">
