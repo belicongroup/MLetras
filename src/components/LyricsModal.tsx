@@ -19,6 +19,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { usePinch } from "@use-gesture/react";
 import { translations } from "@/lib/translations";
 import {
@@ -54,6 +55,7 @@ const LyricsModal = ({
 }: LyricsModalProps) => {
   const { settings } = useSettings();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const t = translations[settings.language];
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<
@@ -382,20 +384,41 @@ const LyricsModal = ({
                   <h3 className="font-semibold mb-2">{t.loadingLyrics}</h3>
                 </div>
               ) : song.lyrics ? (
-                <div
-                  ref={lyricsRef}
-                  onClick={() => {
-                    if (autoScrollSpeed !== "off") {
-                      setHasUserInteracted(true);
-                    }
-                  }}
-                  className={`whitespace-pre-line leading-relaxed transition-smooth text-center lyrics-touch-area lyrics-text cursor-pointer ${
-                    isBoldText ? "font-semibold" : "font-normal"
-                  }`}
-                  style={{ fontSize: `${fontSize}px` }}
-                >
-                  {song.lyrics}
-                </div>
+                <>
+                  <div
+                    ref={lyricsRef}
+                    onClick={() => {
+                      if (autoScrollSpeed !== "off") {
+                        setHasUserInteracted(true);
+                      }
+                    }}
+                    className={`whitespace-pre-line leading-relaxed transition-smooth text-center lyrics-touch-area lyrics-text cursor-pointer ${
+                      isBoldText ? "font-semibold" : "font-normal"
+                    }`}
+                    style={{ fontSize: `${fontSize}px` }}
+                  >
+                    {song.lyrics}
+                  </div>
+                  {/* Musixmatch Attribution - Required by API Terms */}
+                  <div className="mt-6 mb-4 text-center">
+                    <a
+                      href="https://www.musixmatch.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block transition-opacity hover:opacity-80"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      <img
+                        src={theme === 'dark' 
+                          ? '/musixmatch-attribution/Musixmatch-logo-brands-Black.png'
+                          : '/musixmatch-attribution/Musixmatch-logo-brands-White.png'
+                        }
+                        alt="Lyrics powered by Musixmatch"
+                        className="h-6 sm:h-7 mx-auto"
+                      />
+                    </a>
+                  </div>
+                </>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="p-4 bg-muted/30 rounded-2xl mb-4">

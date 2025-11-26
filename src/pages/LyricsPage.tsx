@@ -13,6 +13,7 @@ import { lockScreenOrientation, unlockScreenOrientation, isCapacitorEnvironment 
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { usePinch } from "@use-gesture/react";
 import { translations } from "@/lib/translations";
 import {
@@ -37,6 +38,7 @@ const LyricsPage = () => {
   const { isLiked, toggleLike } = useLikedSongs();
   const { settings } = useSettings();
   const { user, isAuthenticated } = useAuth();
+  const { theme } = useTheme();
   const t = translations[settings.language];
 
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
@@ -664,10 +666,17 @@ const LyricsPage = () => {
                     href="https://www.musixmatch.com"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors inline-block"
+                    className="inline-block transition-opacity hover:opacity-80"
                     style={{ pointerEvents: 'auto' }}
                   >
-                    Lyrics powered by Musixmatch
+                    <img
+                      src={theme === 'dark' 
+                        ? '/musixmatch-attribution/Musixmatch-logo-brands-Black.png'
+                        : '/musixmatch-attribution/Musixmatch-logo-brands-White.png'
+                      }
+                      alt="Lyrics powered by Musixmatch"
+                      className="h-6 sm:h-7 mx-auto"
+                    />
                   </a>
                 </div>
               </>
