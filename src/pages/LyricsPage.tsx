@@ -36,7 +36,7 @@ const LyricsPage = () => {
   const isLoadingLyrics = location.state?.isLoadingLyrics || false;
   const { isLiked, toggleLike } = useLikedSongs();
   const { settings } = useSettings();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const t = translations[settings.language];
 
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
@@ -155,7 +155,10 @@ const LyricsPage = () => {
   }, []);
 
   useEffect(() => {
+    // Only allow auto-scroll for authenticated Pro users
     if (
+      !isAuthenticated ||
+      user?.subscription_type !== 'pro' ||
       autoScrollSpeed === "off" ||
       isScrollPaused ||
       !scrollContainerRef.current ||

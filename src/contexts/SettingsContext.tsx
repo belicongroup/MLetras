@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 interface Settings {
   autoScrollSpeed: "off" | "slow" | "medium" | "fast";
@@ -25,6 +26,7 @@ const defaultSettings: Settings = {
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { isAuthenticated, user } = useAuth();
   const [settings, setSettings] = useState<Settings>(() => {
     // Load settings from localStorage on initialization
     const savedSettings = localStorage.getItem("mletras-settings");
@@ -40,6 +42,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     return defaultSettings;
   });
+
+  // Force auto-scroll to 'off' for non-authenticated users and free users
+  useEffect(() => {
+    if (!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) {
+      if (settings.autoScrollSpeed !== 'off') {
+        setSettings((prev) => ({
+          ...prev,
+          autoScrollSpeed: 'off',
+        }));
+      }
+    }
+  }, [isAuthenticated, user?.subscription_type, settings.autoScrollSpeed]);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {

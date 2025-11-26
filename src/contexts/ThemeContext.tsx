@@ -30,9 +30,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return (savedTheme as Theme) || "light"; // Default to light mode
   });
 
-  // Force light mode for free users
+  // Force light mode for non-authenticated users and free users
   useEffect(() => {
-    if (isAuthenticated && user?.subscription_type === 'free' && theme === 'dark') {
+    if ((!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) && theme === 'dark') {
       setTheme('light');
     }
   }, [isAuthenticated, user?.subscription_type, theme]);
@@ -47,9 +47,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [theme]);
 
   const toggleTheme = () => {
-    // Prevent free users from switching to dark mode
-    if (isAuthenticated && user?.subscription_type === 'free') {
-      return; // Do nothing for free users
+    // Prevent non-authenticated users and free users from switching to dark mode
+    if (!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) {
+      return; // Do nothing for non-authenticated or free users
     }
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };

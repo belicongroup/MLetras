@@ -212,70 +212,41 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
         </Card>
       )}
 
-      {/* Subscription Status / Upgrade */}
-      <Card className="glass border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Crown className="w-5 h-5 text-primary" />
-            {isAuthenticated ? 'Subscription Status' : 'Upgrade to Pro'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isAuthenticated ? (
-            <>
-              {user?.username && (
-                <div className="text-center py-2">
-                  <p className="text-lg font-medium text-primary">Welcome {user.username}</p>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium capitalize">{user?.subscription_type} Plan</p>
-                  <p className="text-sm text-muted-foreground">
-                    {user?.subscription_type === 'free' 
-                      ? "Limited features, upgrade to Pro for full access"
-                      : "Full access to all features"
-                    }
-                  </p>
-                </div>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  user?.subscription_type === 'free' 
-                    ? 'bg-amber-100 text-amber-800' 
-                    : 'bg-green-100 text-green-800'
-                }`}>
-                  {user?.subscription_type === 'free' ? 'Free' : 'Pro'}
-                </div>
-              </div>
-              
-              {user?.subscription_type === 'free' && (
-                <Button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg transition-all"
-                >
-                  <Crown className="h-4 w-4 mr-2" />
-                  Upgrade to MLetras Pro
-                </Button>
-              )}
-
-              {user?.subscription_type === 'pro' && (
-                <Button
-                  onClick={handleManageSubscription}
-                  variant="outline"
-                  className="w-full mt-2"
-                  size="sm"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Manage Subscription
-                </Button>
-              )}
-            </>
-          ) : (
-            <>
+      {/* Subscription Status / Upgrade - Only show when authenticated */}
+      {isAuthenticated && (
+        <Card className="glass border-border/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Crown className="w-5 h-5 text-primary" />
+              Subscription Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {user?.username && (
               <div className="text-center py-2">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Unlock all premium features with MLetras Pro. Purchase without creating an account, or sign in to sync your subscription across devices.
+                <p className="text-lg font-medium text-primary">Welcome {user.username}</p>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium capitalize">{user?.subscription_type} Plan</p>
+                <p className="text-sm text-muted-foreground">
+                  {user?.subscription_type === 'free' 
+                    ? "Limited features, upgrade to Pro for full access"
+                    : "Full access to all features"
+                  }
                 </p>
               </div>
+              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                user?.subscription_type === 'free' 
+                  ? 'bg-amber-100 text-amber-800' 
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {user?.subscription_type === 'free' ? 'Free' : 'Pro'}
+              </div>
+            </div>
+            
+            {user?.subscription_type === 'free' && (
               <Button
                 onClick={() => setShowUpgradeModal(true)}
                 className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg transition-all"
@@ -283,10 +254,22 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
                 <Crown className="h-4 w-4 mr-2" />
                 Upgrade to MLetras Pro
               </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+            )}
+
+            {user?.subscription_type === 'pro' && (
+              <Button
+                onClick={handleManageSubscription}
+                variant="outline"
+                className="w-full mt-2"
+                size="sm"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Manage Subscription
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* App Preferences */}
       <Card className="glass border-border/50">
@@ -301,7 +284,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-medium">{t.autoScrollSpeed}</p>
-                {isAuthenticated && user?.subscription_type === 'free' && (
+                {(!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) && (
                   <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                     <Crown className="w-3 h-3" />
                     Pro
@@ -309,7 +292,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {isAuthenticated && user?.subscription_type === 'free' 
+                {!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')
                   ? "Auto-scroll is available with Pro subscription"
                   : t.autoScrollSpeedDescription
                 }
@@ -323,7 +306,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
                   autoScrollSpeed: value as "off" | "slow" | "medium" | "fast",
                 }));
               }}
-              disabled={isAuthenticated && user?.subscription_type === 'free'}
+              disabled={!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -366,7 +349,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-medium">{t.darkMode}</p>
-                {isAuthenticated && user?.subscription_type === 'free' && (
+                {(!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) && (
                   <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                     <Crown className="w-3 h-3" />
                     Pro
@@ -374,7 +357,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {isAuthenticated && user?.subscription_type === 'free' 
+                {!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')
                   ? "Dark mode is available with Pro subscription"
                   : t.darkModeDescription
                 }
@@ -383,7 +366,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
             <Switch 
               checked={theme === "dark"} 
               onCheckedChange={toggleTheme}
-              disabled={isAuthenticated && user?.subscription_type === 'free'}
+              disabled={!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')}
             />
           </div>
 
