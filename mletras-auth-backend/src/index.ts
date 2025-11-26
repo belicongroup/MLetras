@@ -493,12 +493,13 @@ class AuthAPI {
   private async handleOTPVerification(email: string, code: string): Promise<Response> {
     try {
       const normalizedEmail = email.toLowerCase().trim();
+      const normalizedCode = String(code).trim(); // Ensure code is string and trim whitespace
 
-      console.log(`[OTP Verify] Attempting to verify OTP for ${normalizedEmail} with code ${code}`);
+      console.log(`[OTP Verify] Attempting to verify OTP for "${normalizedEmail}" with code "${normalizedCode}" (original: "${code}", type: ${typeof code})`);
 
       // Allow permanent test OTP for Google Play reviewers
-      if (normalizedEmail === 'testuser@mletras.com' && code === '000000') {
-        console.log('[OTP Verify] Using permanent test OTP for Google Play reviewers');
+      if (normalizedEmail === 'testuser@mletras.com' && normalizedCode === '000000') {
+        console.log('[OTP Verify] ✓ Matched testuser@mletras.com with OTP 000000 - Using permanent test OTP');
         
         // Get or create test user
         let user = await this.env.DB.prepare(
@@ -547,8 +548,8 @@ class AuthAPI {
       }
 
       // Allow permanent test OTP for testuser2@mletras.com (never expires)
-      if (normalizedEmail === 'testuser2@mletras.com' && code === '123456') {
-        console.log('[OTP Verify] Using permanent test OTP for testuser2@mletras.com');
+      if (normalizedEmail === 'testuser2@mletras.com' && normalizedCode === '123456') {
+        console.log('[OTP Verify] ✓ Matched testuser2@mletras.com with OTP 123456 - Using permanent test OTP');
         
         // Get or create test user
         let user = await this.env.DB.prepare(
@@ -599,7 +600,7 @@ class AuthAPI {
       // Find valid OTP
       const otp = await this.env.DB.prepare(
         'SELECT * FROM otps WHERE email = ? AND code = ? AND used_at IS NULL AND expires_at > datetime(\'now\') ORDER BY created_at DESC LIMIT 1'
-      ).bind(normalizedEmail, code).first();
+      ).bind(normalizedEmail, normalizedCode).first();
 
       console.log('[OTP Verify] OTP query result:', otp);
 
