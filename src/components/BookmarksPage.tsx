@@ -12,6 +12,7 @@ import {
   Loader2,
   X,
   User,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -175,7 +176,11 @@ const SortableFolderItem = ({
   );
 };
 
-const BookmarksPage = () => {
+interface BookmarksPageProps {
+  onOpenAuth?: () => void;
+}
+
+const BookmarksPage = ({ onOpenAuth }: BookmarksPageProps = {}) => {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const { user, isAuthenticated } = useAuth();
@@ -1076,23 +1081,37 @@ const BookmarksPage = () => {
     );
   }
 
-  // Show authentication prompt if not logged in
+  // Show locked overlay if not logged in
   if (!isAuthenticated) {
     return (
-      <div className="p-4 space-y-6 tablet-container tablet-spacing">
-        <div className="text-center py-8">
-          <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
-            <User className="w-6 h-6 text-white" />
+      <div className="p-4 space-y-6 tablet-container tablet-spacing relative min-h-[calc(100vh-120px)]">
+        {/* Locked Overlay */}
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="text-center px-6 max-w-md">
+            <div className="inline-flex p-4 bg-muted/50 rounded-2xl mb-6">
+              <Lock className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <h2 className="text-2xl font-semibold mb-3">Sign in to access your bookmarks</h2>
+            <p className="text-muted-foreground mb-6">
+              Create an account to save your favorite songs and organize them into folders. Your bookmarks will be synced across all devices.
+            </p>
+            <Button
+              onClick={() => onOpenAuth?.()}
+              className="bg-gradient-primary hover:bg-gradient-accent text-white px-6 py-3"
+            >
+              Unlock features
+            </Button>
           </div>
-          <h2 className="text-mobile-hero mb-2">Sign In Required</h2>
-          <p className="text-muted-foreground mb-6">
-            Sign in to save your favorite songs and organize them into folders.
-          </p>
-          <Alert>
-            <AlertDescription>
-              Your bookmarks will be synced across all devices when you sign in.
-            </AlertDescription>
-          </Alert>
+        </div>
+        
+        {/* Hidden content behind overlay */}
+        <div className="opacity-30 pointer-events-none">
+          <div className="text-center py-8">
+            <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
+              <Heart className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-mobile-hero mb-2">Bookmarks</h2>
+          </div>
         </div>
       </div>
     );

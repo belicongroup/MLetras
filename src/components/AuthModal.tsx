@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Shield, User, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, Shield, User, ArrowLeft, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import mletrasLogo from '@/assets/MLetras_logo.png';
 
@@ -306,15 +306,29 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-purple flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-gradient-purple flex items-center justify-center p-4 overflow-y-auto">
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-1/2 -right-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-1/2 -left-1/2 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
+      {/* Close Button (X) - positioned lower for better visibility */}
+      <button
+        onClick={handleClose}
+        className="fixed top-20 right-4 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors backdrop-blur-sm"
+        aria-label="Close"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
       <div className="w-full max-w-md relative z-10">
+
         {/* Logo Section */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="logo-glow mb-6 flex justify-center">
@@ -371,6 +385,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             )}
 
             {renderStep()}
+            
+            {/* Cancel Button - Don't show on success step */}
+            {step !== 'success' && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleClose}
+                className="w-full mt-4 text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </Button>
+            )}
           </CardContent>
         </Card>
 

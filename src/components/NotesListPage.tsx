@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { StickyNote, Plus, Trash2, Edit3, User, Loader2 } from "lucide-react";
+import { StickyNote, Plus, Trash2, Edit3, User, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -27,7 +27,11 @@ import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
-const NotesListPage = () => {
+interface NotesListPageProps {
+  onOpenAuth?: () => void;
+}
+
+const NotesListPage = ({ onOpenAuth }: NotesListPageProps = {}) => {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const { user, isAuthenticated } = useAuth();
@@ -92,23 +96,37 @@ const NotesListPage = () => {
     setShowCreateDialog(true);
   };
 
-  // Show authentication prompt if not logged in
+  // Show locked overlay if not logged in
   if (!isAuthenticated) {
     return (
-      <div className="p-4 space-y-6 tablet-container tablet-spacing">
-        <div className="text-center py-8">
-          <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
-            <User className="w-6 h-6 text-white" />
+      <div className="p-4 space-y-6 tablet-container tablet-spacing relative min-h-[calc(100vh-120px)]">
+        {/* Locked Overlay */}
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="text-center px-6 max-w-md">
+            <div className="inline-flex p-4 bg-muted/50 rounded-2xl mb-6">
+              <Lock className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <h2 className="text-2xl font-semibold mb-3">Sign in to access your notes</h2>
+            <p className="text-muted-foreground mb-6">
+              Create an account to save your notes and sync them across all devices. Your notes will be safely stored in the cloud and accessible from anywhere.
+            </p>
+            <Button
+              onClick={() => onOpenAuth?.()}
+              className="bg-gradient-primary hover:bg-gradient-accent text-white px-6 py-3"
+            >
+              Unlock features
+            </Button>
           </div>
-          <h2 className="text-mobile-hero mb-2">Sign In Required</h2>
-          <p className="text-muted-foreground mb-6">
-            Sign in to save your notes and sync them across all devices.
-          </p>
-          <Alert>
-            <AlertDescription>
-              Your notes will be safely stored in the cloud and accessible from anywhere.
-            </AlertDescription>
-          </Alert>
+        </div>
+        
+        {/* Hidden content behind overlay */}
+        <div className="opacity-30 pointer-events-none">
+          <div className="text-center py-8">
+            <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
+              <StickyNote className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-mobile-hero mb-2">My Notes</h2>
+          </div>
         </div>
       </div>
     );

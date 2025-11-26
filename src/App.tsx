@@ -65,10 +65,7 @@ const AppContent = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return <AuthModal isOpen={true} onClose={() => {}} />;
-  }
-
+  // Allow app to work without authentication - login is now optional
   return (
     <BrowserRouter>
       <Routes>
