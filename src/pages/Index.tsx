@@ -23,6 +23,11 @@ const Index = () => {
   const [notesRefreshKey, setNotesRefreshKey] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Debug: Log that auth modal should NOT auto-show
+  useEffect(() => {
+    console.log('[Index] Auth modal state:', showAuthModal, '- Should be false on load');
+  }, [showAuthModal]);
+
   // Handle navigation state to set active tab
   useEffect(() => {
     if (location.state?.activeTab) {
