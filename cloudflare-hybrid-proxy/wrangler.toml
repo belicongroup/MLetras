@@ -1,0 +1,48 @@
+name = "mletras-hybrid-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# KV Namespace for caching Musixmatch API responses
+[[kv_namespaces]]
+binding = "MUSIXMATCH_CACHE"
+id = "be9ee410602c45b296f71febd64bb7cb"
+preview_id = "05d5e8d4a6224844992e35527faa1a63"
+
+# D1 Database for checking user cache allowlist
+[[d1_databases]]
+binding = "DB"
+database_name = "mletras-auth-db"
+database_id = "5a258f07-dc5a-4f3b-b92d-8616babb8ec8"
+
+# Environment variables (secrets)
+# MUSIXMATCH_API_KEY should be set via: wrangler secret put MUSIXMATCH_API_KEY
+# AUTH_API_URL (optional) should be set via: wrangler secret put AUTH_API_URL
+# JWT_SECRET (optional) should be set via: wrangler secret put JWT_SECRET
+
+# Development settings
+[env.development]
+name = "mletras-hybrid-proxy-dev"
+
+[[env.development.kv_namespaces]]
+binding = "MUSIXMATCH_CACHE"
+id = "05d5e8d4a6224844992e35527faa1a63"  # Use preview namespace for dev
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "mletras-auth-db"
+database_id = "5a258f07-dc5a-4f3b-b92d-8616babb8ec8"
+
+# Production settings
+[env.production]
+name = "mletras-hybrid-proxy"
+
+[[env.production.kv_namespaces]]
+binding = "MUSIXMATCH_CACHE"
+id = "be9ee410602c45b296f71febd64bb7cb"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "mletras-auth-db"
+database_id = "5a258f07-dc5a-4f3b-b92d-8616babb8ec8"
+
