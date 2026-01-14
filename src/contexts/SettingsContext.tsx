@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useAuth } from "./AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 
 interface Settings {
   autoScrollSpeed: "off" | "slow" | "medium" | "fast";
@@ -26,7 +26,7 @@ const defaultSettings: Settings = {
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isPro } = useProStatus();
   const [settings, setSettings] = useState<Settings>(() => {
     // Load settings from localStorage on initialization
     const savedSettings = localStorage.getItem("mletras-settings");
@@ -43,17 +43,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
     return defaultSettings;
   });
 
-  // Force auto-scroll to 'off' for non-authenticated users and free users
+  // useProStatus hook will automatically update when subscription changes
+
+  // Force auto-scroll to 'off' for non-Pro users
   useEffect(() => {
-    if (!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) {
-      if (settings.autoScrollSpeed !== 'off') {
-        setSettings((prev) => ({
-          ...prev,
-          autoScrollSpeed: 'off',
-        }));
-      }
+    if (!isPro && settings.autoScrollSpeed !== 'off') {
+      setSettings((prev) => ({
+        ...prev,
+        autoScrollSpeed: 'off',
+      }));
     }
-  }, [isAuthenticated, user?.subscription_type, settings.autoScrollSpeed]);
+  }, [isPro, settings.autoScrollSpeed]);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {

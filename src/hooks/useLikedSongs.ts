@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { userDataApi } from "@/services/userDataApi";
 import type { Bookmark } from "@/services/userDataApi";
 import { syncLayer } from "@/services/syncLayer";
+import { syncDebug } from "@/lib/syncDebug";
 
 interface Song {
   id: string;
@@ -15,8 +16,16 @@ interface Song {
 
 const LIKED_SONGS_KEY = "likedSongs";
 const LAST_SYNC_KEY = "likedSongs_lastSync";
+const FREE_SONGS_LIMIT = 5;
 
-export const useLikedSongs = () => {
+interface UseLikedSongsOptions {
+  isPro?: boolean;
+  onLimitReached?: () => void;
+  getTotalSongCount?: () => number; // Function to get total songs (liked + folders)
+}
+
+export const useLikedSongs = (options?: UseLikedSongsOptions) => {
+  const { isPro = false, onLimitReached, getTotalSongCount } = options || {};
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -125,6 +134,66 @@ export const useLikedSongs = () => {
     [fetchServerBookmarks],
   );
 
+  // Migrate local liked songs to server (for first-time login)
+  const migrateLocalLikedSongsToServer = useCallback(async (localSongs: Song[]): Promise<void> => {
+    if (localSongs.length === 0) return;
+    
+    try {
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) return;
+
+      // Check if server has any liked songs
+      const serverSongs = await fetchServerLikedSongs();
+      
+      // If server is empty but local has data, migrate local to server
+      if ((!serverSongs || serverSongs.length === 0) && localSongs.length > 0) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`🔄 Migrating ${localSongs.length} local liked songs to server...`);
+        }
+        
+        // Migrate each local song to server
+        for (const song of localSongs) {
+          try {
+            // Check if already exists on server
+            const exists = await ensureServerLikeExists(song);
+            if (!exists) {
+              // Create bookmark on server
+              const response = await userDataApi.createBookmark(
+                song.title,
+                song.artist,
+                undefined, // no folder_id for liked songs
+                song.id
+              );
+              
+              if (response.success && response.bookmark) {
+                // Update local song with bookmarkId
+                setLikedSongs((prevSongs) => {
+                  const updated = prevSongs.map((s) =>
+                    s.id === song.id ? { ...s, bookmarkId: response.bookmark.id } : s
+                  );
+                  localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(updated));
+                  return updated;
+                });
+              }
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn(`Failed to migrate song ${song.title} to server:`, error);
+            }
+          }
+        }
+        
+        if (process.env.NODE_ENV !== "production") {
+          console.log("✅ Local liked songs migrated to server");
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to migrate local liked songs to server:", error);
+      }
+    }
+  }, [fetchServerLikedSongs, ensureServerLikeExists]);
+
   // Load and sync liked songs from both localStorage and server
   useEffect(() => {
     const loadAndSyncLikedSongs = async () => {
@@ -147,10 +216,50 @@ export const useLikedSongs = () => {
           const sessionToken = localStorage.getItem('sessionToken');
           if (sessionToken) {
             const remote = await fetchServerLikedSongs();
-            if (remote) {
-              updateStateFromServer(remote);
-              if (process.env.NODE_ENV !== "production") {
-                console.log("✅ Bookmarks synced from server");
+            if (remote && remote.length > 0) {
+              // Merge server songs with local songs (keep both, deduplicate by track ID)
+              const serverSongsMap = new Map<string, Song>();
+              remote.forEach(song => {
+                serverSongsMap.set(song.id, song);
+              });
+              
+              // Keep local songs that don't exist on server (by track ID)
+              const localOnlySongs = localSongs.filter(localSong => {
+                return !serverSongsMap.has(localSong.id);
+              });
+              
+              // Merge: server songs (source of truth) + local-only songs
+              const mergedSongs = [...remote, ...localOnlySongs];
+              
+              setLikedSongs(mergedSongs);
+              localStorage.setItem(LIKED_SONGS_KEY, JSON.stringify(mergedSongs));
+              localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+              
+              // Migrate local-only songs to server in background
+              if (localOnlySongs.length > 0) {
+                migrateLocalLikedSongsToServer(localOnlySongs).catch(err => {
+                  if (process.env.NODE_ENV !== "production") {
+                    console.warn("Failed to migrate local-only liked songs:", err);
+                  }
+                });
+              }
+              
+              syncDebug.log(`Liked songs merged successfully`, {
+                operation: 'useLikedSongs.mergeSongs',
+                data: {
+                  serverSongsCount: remote.length,
+                  localOnlySongsCount: localOnlySongs.length,
+                  totalSongsCount: mergedSongs.length,
+                },
+                status: 'success',
+              });
+            } else if (remote && remote.length === 0 && localSongs.length > 0) {
+              // Server is empty but local has data - migrate local to server
+              await migrateLocalLikedSongsToServer(localSongs);
+              // After migration, fetch again to get updated data with bookmarkIds
+              const updatedRemote = await fetchServerLikedSongs();
+              if (updatedRemote && updatedRemote.length > 0) {
+                updateStateFromServer(updatedRemote);
               }
             }
           }
@@ -170,7 +279,7 @@ export const useLikedSongs = () => {
     };
 
     loadAndSyncLikedSongs();
-  }, [fetchServerLikedSongs, updateStateFromServer]);
+  }, [fetchServerLikedSongs, updateStateFromServer, migrateLocalLikedSongsToServer]);
 
   const syncStateFromServer = useCallback(async () => {
     const remote = await fetchServerLikedSongs();
@@ -187,6 +296,17 @@ export const useLikedSongs = () => {
           ? localStorage.getItem("sessionToken")
           : null;
       const hasServerSession = !!sessionToken;
+
+      // Check limit before adding a new song (only for non-Pro users)
+      if (!isLiked && !isPro) {
+        const totalSongCount = getTotalSongCount ? getTotalSongCount() : likedSongs.length;
+        if (totalSongCount >= FREE_SONGS_LIMIT) {
+          if (onLimitReached) {
+            onLimitReached();
+          }
+          return;
+        }
+      }
 
       if (isLiked) {
         const updatedSongs = likedSongs.filter((s) => s.id !== song.id);

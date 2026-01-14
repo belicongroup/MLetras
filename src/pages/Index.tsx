@@ -1,32 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { Search, Heart, BookOpen, Settings, Music, StickyNote } from "lucide-react";
 import SearchPage from "@/components/SearchPage";
-import BookmarksPage from "@/components/BookmarksPage";
-import SettingsPage from "@/components/SettingsPage";
-import NotesListPage from "@/components/NotesListPage";
-import { AuthModal } from "@/components/AuthModal";
+// Lazy load heavy components to improve startup time
+const BookmarksPage = lazy(() => import("@/components/BookmarksPage"));
+const SettingsPage = lazy(() => import("@/components/SettingsPage"));
+const NotesListPage = lazy(() => import("@/components/NotesListPage"));
+const AuthModal = lazy(() => import("@/components/AuthModal").then(m => ({ default: m.AuthModal })));
+const UpgradeModal = lazy(() => import("@/components/UpgradeModal").then(m => ({ default: m.UpgradeModal })));
 import { Button } from "@/components/ui/button";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 
 type Tab = "search" | "bookmarks" | "notes" | "settings";
 
 const Index = () => {
   const { settings } = useSettings();
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { isPro, isLoading: isProLoading } = useProStatus();
   const t = translations[settings.language];
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("search");
   const [searchRefreshKey, setSearchRefreshKey] = useState(0);
   const [notesRefreshKey, setNotesRefreshKey] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Debug: Log that auth modal should NOT auto-show
-  useEffect(() => {
-    console.log('[Index] Auth modal state:', showAuthModal, '- Should be false on load');
-  }, [showAuthModal]);
 
   // Handle navigation state to set active tab
   useEffect(() => {
@@ -34,6 +35,40 @@ const Index = () => {
       setActiveTab(location.state.activeTab);
     }
   }, [location.state]);
+
+  // Listen for open-auth-modal event (from UpgradeModal post-purchase sign-in prompt)
+  useEffect(() => {
+    const handleOpenAuthModal = () => {
+      setShowAuthModal(true);
+    };
+    
+    window.addEventListener('open-auth-modal', handleOpenAuthModal);
+    
+    return () => {
+      window.removeEventListener('open-auth-modal', handleOpenAuthModal);
+    };
+  }, []);
+
+  // Show UpgradeModal on app launch if user is not on pro version (only once per session)
+  // Don't wait for ProStatus loading - show immediately based on cached state
+  useEffect(() => {
+    // Only show on initial mount, not when navigating back
+    const hasShownModal = sessionStorage.getItem('upgradeModalShown');
+    // Don't wait for isProLoading - use cached Pro status immediately
+    if (!isPro && !hasShownModal && typeof window !== 'undefined') {
+      // Use a flag to track if this is the initial mount
+      const isInitialMount = !sessionStorage.getItem('appHasMounted');
+      if (isInitialMount) {
+        // Delay modal slightly to let UI render first (500ms)
+        const timeoutId = setTimeout(() => {
+          setShowUpgradeModal(true);
+          sessionStorage.setItem('upgradeModalShown', 'true');
+          sessionStorage.setItem('appHasMounted', 'true');
+        }, 500);
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [isPro]); // Removed isProLoading dependency
 
   const handleSearchTabClick = () => {
     if (activeTab === "search") {
@@ -60,11 +95,23 @@ const Index = () => {
       case "search":
         return <SearchPage key={searchRefreshKey} />;
       case "bookmarks":
-        return <BookmarksPage onOpenAuth={() => setShowAuthModal(true)} />;
+        return (
+          <Suspense fallback={<div className="p-4 text-center text-muted-foreground">Loading bookmarks...</div>}>
+            <BookmarksPage onOpenAuth={() => setShowAuthModal(true)} />
+          </Suspense>
+        );
       case "notes":
-        return <NotesListPage key={notesRefreshKey} onOpenAuth={() => setShowAuthModal(true)} />;
+        return (
+          <Suspense fallback={<div className="p-4 text-center text-muted-foreground">Loading notes...</div>}>
+            <NotesListPage key={notesRefreshKey} onOpenAuth={() => setShowAuthModal(true)} />
+          </Suspense>
+        );
       case "settings":
-        return <SettingsPage onOpenAuth={() => setShowAuthModal(true)} />;
+        return (
+          <Suspense fallback={<div className="p-4 text-center text-muted-foreground">Loading settings...</div>}>
+            <SettingsPage onOpenAuth={() => setShowAuthModal(true)} />
+          </Suspense>
+        );
       default:
         return <SearchPage />;
     }
@@ -76,7 +123,14 @@ const Index = () => {
       <main className="flex-1 pb-20">{renderContent()}</main>
 
       {/* Auth Modal - Rendered outside main content flow */}
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      <Suspense fallback={null}>
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      </Suspense>
+
+      {/* Upgrade Modal - Shown on app launch for non-pro users */}
+      <Suspense fallback={null}>
+        <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      </Suspense>
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 glass border-t border-border/50 z-50">

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "./AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 
 type Theme = "light" | "dark";
 
@@ -24,18 +24,20 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { isPro } = useProStatus();
   const [theme, setTheme] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem("mletras-theme");
     return (savedTheme as Theme) || "light"; // Default to light mode
   });
 
-  // Force light mode for non-authenticated users and free users
+  // useProStatus hook will automatically update when subscription changes
+
+  // Force light mode for non-Pro users
   useEffect(() => {
-    if ((!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) && theme === 'dark') {
+    if (!isPro && theme === 'dark') {
       setTheme('light');
     }
-  }, [isAuthenticated, user?.subscription_type, theme]);
+  }, [isPro, theme]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -47,9 +49,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [theme]);
 
   const toggleTheme = () => {
-    // Prevent non-authenticated users and free users from switching to dark mode
-    if (!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) {
-      return; // Do nothing for non-authenticated or free users
+    // Prevent non-Pro users from switching to dark mode
+    if (!isPro) {
+      return; // Do nothing for non-Pro users
     }
     setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
   };

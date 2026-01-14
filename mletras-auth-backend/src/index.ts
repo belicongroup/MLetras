@@ -19,6 +19,11 @@ interface Env {
   PRO_BURST_LIMIT: string;
   BURST_WINDOW_SECONDS: string;
   ENVIRONMENT: string;
+  APPLE_ISSUER_ID: string;
+  APPLE_KEY_ID: string;
+  APPLE_PRIVATE_KEY_P8: string;
+  APPLE_ENV: string;
+  VERIFY_ENDPOINT_TOKEN: string;
 }
 
 interface User {
@@ -678,6 +683,530 @@ class AuthAPI {
   }
 
   /**
+   * Handle Apple authentication
+   */
+  private async handleAppleAuth(identityToken: string, authorizationCode?: string, email?: string, userIdentifier?: string): Promise<Response> {
+    try {
+      if (!identityToken) {
+        return new Response(JSON.stringify({ error: 'Identity token is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // In production, you should verify the identityToken with Apple's public keys
+      // For now, we'll use the userIdentifier or email to identify the user
+      // The userIdentifier is a stable identifier from Apple that persists across sign-ins
+      
+      let normalizedEmail: string | null = null;
+      if (email) {
+        normalizedEmail = email.toLowerCase().trim();
+      }
+
+      // Try to find user by email first (if provided), or by userIdentifier in metadata
+      let user: User | null = null;
+      
+      if (normalizedEmail) {
+        const userResult = await this.env.DB.prepare(
+          'SELECT * FROM users WHERE email = ?'
+        ).bind(normalizedEmail).first<any>();
+        
+        if (userResult) {
+          // Convert SQLite boolean (0/1) to JavaScript boolean
+          user = {
+            ...userResult,
+            email_verified: userResult.email_verified === 1 || userResult.email_verified === true,
+            is_active: userResult.is_active === 1 || userResult.is_active === true || userResult.is_active === undefined
+          } as User;
+          console.log('Found existing user by email:', { id: user.id, email: user.email });
+        }
+      }
+      
+      // If not found by email and we have userIdentifier, try to find by userIdentifier
+      if (!user && userIdentifier) {
+        console.log('Looking up user by userIdentifier:', userIdentifier);
+        
+        // First, try to find by email pattern (for users created with userIdentifier pattern)
+        const patternEmail = `apple_${userIdentifier}@apple.local`;
+        const userByPattern = await this.env.DB.prepare(
+          'SELECT * FROM users WHERE email = ?'
+        ).bind(patternEmail).first<any>();
+        
+        if (userByPattern) {
+          user = {
+            ...userByPattern,
+            email_verified: userByPattern.email_verified === 1 || userByPattern.email_verified === true,
+            is_active: userByPattern.is_active === 1 || userByPattern.is_active === true || userByPattern.is_active === undefined
+          } as User;
+          console.log('Found existing user by userIdentifier email pattern:', { id: user.id, email: user.email });
+        } else {
+          // Try searching in metadata JSON for userIdentifier
+          // We need to search all users and check their metadata
+          // This is less efficient but necessary for users created with real email on first login
+          const allUsers = await this.env.DB.prepare(
+            'SELECT * FROM users WHERE metadata IS NOT NULL AND metadata != ?'
+          ).bind('{}').all();
+          
+          if (allUsers.results && allUsers.results.length > 0) {
+            for (const userRow of allUsers.results) {
+              try {
+                const metadata = typeof userRow.metadata === 'string' 
+                  ? JSON.parse(userRow.metadata) 
+                  : (userRow.metadata || {});
+                
+                if (metadata.apple_user_identifier === userIdentifier) {
+                  const userResult = userRow as any;
+                  user = {
+                    ...userResult,
+                    email_verified: userResult.email_verified === 1 || userResult.email_verified === true,
+                    is_active: userResult.is_active === 1 || userResult.is_active === true || userResult.is_active === undefined
+                  } as User;
+                  console.log('Found existing user by userIdentifier in metadata:', { id: user.id, email: user.email });
+                  break;
+                }
+              } catch (e) {
+                // Skip invalid metadata
+                continue;
+              }
+            }
+          }
+        }
+      }
+
+      // If user not found, try to create a new one
+      if (!user) {
+        const userId = this.generateRandomString();
+        // Use consistent email pattern based on userIdentifier if available
+        // This ensures we can find the user on subsequent logins even without email
+        const userEmail = normalizedEmail || `apple_${userIdentifier || this.generateRandomString()}@apple.local`;
+        
+        // Prepare metadata with userIdentifier for future lookups
+        const metadata = userIdentifier ? JSON.stringify({ apple_user_identifier: userIdentifier }) : '{}';
+        
+        try {
+          // Try to insert the user with metadata
+          await this.env.DB.prepare(
+            'INSERT INTO users (id, email, email_verified, subscription_type, last_login_at, metadata) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)'
+          ).bind(userId, userEmail, true, 'free', metadata).run();
+          
+          // Fetch the newly created user
+          const newUserResult = await this.env.DB.prepare(
+            'SELECT * FROM users WHERE id = ?'
+          ).bind(userId).first<any>();
+          
+          if (newUserResult) {
+            user = {
+              ...newUserResult,
+              email_verified: newUserResult.email_verified === 1 || newUserResult.email_verified === true,
+              is_active: newUserResult.is_active === 1 || newUserResult.is_active === true || newUserResult.is_active === undefined
+            } as User;
+            console.log('Created new user:', { id: user.id, email: user.email });
+          }
+        } catch (insertError: any) {
+          // If insert fails due to UNIQUE constraint, user already exists
+          // This can happen in race conditions or if email was created between check and insert
+          if (insertError?.message?.includes('UNIQUE constraint') || 
+              insertError?.message?.includes('SQLITE_CONSTRAINT')) {
+            // User already exists, fetch it
+            if (normalizedEmail) {
+              const existingUserResult = await this.env.DB.prepare(
+                'SELECT * FROM users WHERE email = ?'
+              ).bind(normalizedEmail).first<any>();
+              
+              if (existingUserResult) {
+                user = {
+                  ...existingUserResult,
+                  email_verified: existingUserResult.email_verified === 1 || existingUserResult.email_verified === true,
+                  is_active: existingUserResult.is_active === 1 || existingUserResult.is_active === true || existingUserResult.is_active === undefined
+                } as User;
+                console.log('Found existing user after constraint error:', { id: user.id, email: user.email });
+              }
+            }
+            
+            // If still not found, something went wrong
+            if (!user) {
+              throw new Error('User creation failed and user not found');
+            }
+          } else {
+            // Re-throw if it's a different error
+            throw insertError;
+          }
+        }
+      }
+      
+      // Ensure we have a user at this point
+      if (!user) {
+        console.error('No user found or created after all attempts');
+        return new Response(JSON.stringify({ 
+          error: 'Failed to create or find user',
+          details: 'User lookup and creation failed'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log('User found/created:', { id: user.id, email: user.email });
+
+      // Update user login time and metadata (whether existing or newly created)
+      try {
+        // Update metadata to include userIdentifier if not already present
+        let metadataUpdate = user.metadata || '{}';
+        if (userIdentifier) {
+          try {
+            const currentMetadata = typeof user.metadata === 'string' ? JSON.parse(user.metadata) : (user.metadata || {});
+            if (!currentMetadata.apple_user_identifier) {
+              currentMetadata.apple_user_identifier = userIdentifier;
+              metadataUpdate = JSON.stringify(currentMetadata);
+            }
+          } catch (e) {
+            // If metadata is invalid, create new one
+            metadataUpdate = JSON.stringify({ apple_user_identifier: userIdentifier });
+          }
+        }
+        
+        const updateResult = await this.env.DB.prepare(
+          'UPDATE users SET email_verified = 1, last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP, metadata = ? WHERE id = ?'
+        ).bind(metadataUpdate, user.id).run();
+        
+        console.log('User update result:', { changes: updateResult.changes, success: updateResult.success });
+        
+        // Refresh user data to get updated timestamp
+        const refreshedUser = await this.env.DB.prepare(
+          'SELECT * FROM users WHERE id = ?'
+        ).bind(user.id).first<any>();
+        
+        if (refreshedUser) {
+          user = refreshedUser as User;
+          // Convert SQLite boolean (0/1) to JavaScript boolean
+          user.email_verified = refreshedUser.email_verified === 1 || refreshedUser.email_verified === true;
+        } else {
+          console.warn('User not found after update, using original user data');
+          // Ensure email_verified is a boolean
+          user.email_verified = (user.email_verified === 1 || user.email_verified === true);
+        }
+      } catch (updateError: any) {
+        console.error('Failed to update user login time:', updateError);
+        console.error('Update error details:', {
+          message: updateError?.message,
+          name: updateError?.name,
+          stack: updateError?.stack
+        });
+        // Continue anyway - user exists and we can still create a session
+        // Ensure email_verified is a boolean
+        user.email_verified = (user.email_verified === 1 || user.email_verified === true);
+      }
+
+      // Ensure user object is valid before creating session
+      if (!user.id || !user.email) {
+        console.error('Invalid user object:', user);
+        return new Response(JSON.stringify({ 
+          error: 'Invalid user data',
+          details: 'User object is missing required fields'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Create session
+      let sessionToken: string;
+      try {
+        sessionToken = await this.createSession(user);
+        console.log('Session created successfully for user:', user.id);
+      } catch (sessionError: any) {
+        console.error('Failed to create session:', sessionError);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to create session',
+          details: sessionError?.message || 'Session creation failed'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Ensure email_verified is a boolean for the response
+      const emailVerified = user.email_verified === 1 || user.email_verified === true || user.email_verified === '1';
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Apple authentication successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username || null,
+          subscription_type: user.subscription_type,
+          email_verified: emailVerified
+        },
+        sessionToken
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': `session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=${24 * 60 * 60}; Path=/`
+        }
+      });
+
+    } catch (error) {
+      console.error('Apple authentication error:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  /**
+   * Handle Google authentication
+   */
+  private async handleGoogleAuth(idToken: string, accessToken?: string, email?: string): Promise<Response> {
+    try {
+      if (!idToken) {
+        return new Response(JSON.stringify({ error: 'ID token is required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // In production, you should verify the idToken with Google's public keys
+      // For now, we'll decode the JWT to get user info
+      // The idToken is a JWT that contains user information
+      let decodedToken: any;
+      let userEmail: string | null = null;
+      let googleUserId: string | null = null;
+
+      try {
+        // Decode the JWT (without verification for now - in production, verify with Google's public keys)
+        const parts = idToken.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+          decodedToken = payload;
+          userEmail = payload.email || email || null;
+          googleUserId = payload.sub || null;
+        }
+      } catch (decodeError) {
+        console.error('Failed to decode Google token:', decodeError);
+        // Continue with provided email if available
+        userEmail = email || null;
+      }
+
+      // Normalize email
+      let normalizedEmail: string | null = null;
+      if (userEmail) {
+        normalizedEmail = userEmail.toLowerCase().trim();
+      }
+
+      // Try to find user by email
+      let user: User | null = null;
+      
+      if (normalizedEmail) {
+        const userResult = await this.env.DB.prepare(
+          'SELECT * FROM users WHERE email = ?'
+        ).bind(normalizedEmail).first<any>();
+        
+        if (userResult) {
+          user = {
+            ...userResult,
+            email_verified: userResult.email_verified === 1 || userResult.email_verified === true,
+            is_active: userResult.is_active === 1 || userResult.is_active === true || userResult.is_active === undefined
+          } as User;
+          console.log('Found existing user by email:', { id: user.id, email: user.email });
+        }
+      }
+
+      // If user not found, try to find by Google user ID in metadata
+      if (!user && googleUserId) {
+        const allUsers = await this.env.DB.prepare(
+          'SELECT * FROM users WHERE metadata IS NOT NULL AND metadata != ?'
+        ).bind('{}').all();
+        
+        if (allUsers.results && allUsers.results.length > 0) {
+          for (const userRow of allUsers.results) {
+            try {
+              const metadata = typeof userRow.metadata === 'string' 
+                ? JSON.parse(userRow.metadata) 
+                : (userRow.metadata || {});
+              
+              if (metadata.google_user_id === googleUserId) {
+                const userResult = userRow as any;
+                user = {
+                  ...userResult,
+                  email_verified: userResult.email_verified === 1 || userResult.email_verified === true,
+                  is_active: userResult.is_active === 1 || userResult.is_active === true || userResult.is_active === undefined
+                } as User;
+                console.log('Found existing user by Google user ID in metadata:', { id: user.id, email: user.email });
+                break;
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+        }
+      }
+
+      // If user not found, create a new one
+      if (!user) {
+        const userId = this.generateRandomString();
+        const userEmail = normalizedEmail || `google_${googleUserId || this.generateRandomString()}@google.local`;
+        
+        // Prepare metadata with Google user ID for future lookups
+        const metadata = googleUserId ? JSON.stringify({ google_user_id: googleUserId }) : '{}';
+        
+        try {
+          await this.env.DB.prepare(
+            'INSERT INTO users (id, email, email_verified, subscription_type, last_login_at, metadata) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)'
+          ).bind(userId, userEmail, true, 'free', metadata).run();
+          
+          const newUserResult = await this.env.DB.prepare(
+            'SELECT * FROM users WHERE id = ?'
+          ).bind(userId).first<any>();
+          
+          if (newUserResult) {
+            user = {
+              ...newUserResult,
+              email_verified: newUserResult.email_verified === 1 || newUserResult.email_verified === true,
+              is_active: newUserResult.is_active === 1 || newUserResult.is_active === true || newUserResult.is_active === undefined
+            } as User;
+            console.log('Created new user:', { id: user.id, email: user.email });
+          }
+        } catch (insertError: any) {
+          if (insertError?.message?.includes('UNIQUE constraint') || 
+              insertError?.message?.includes('SQLITE_CONSTRAINT')) {
+            if (normalizedEmail) {
+              const existingUserResult = await this.env.DB.prepare(
+                'SELECT * FROM users WHERE email = ?'
+              ).bind(normalizedEmail).first<any>();
+              
+              if (existingUserResult) {
+                user = {
+                  ...existingUserResult,
+                  email_verified: existingUserResult.email_verified === 1 || existingUserResult.email_verified === true,
+                  is_active: existingUserResult.is_active === 1 || existingUserResult.is_active === true || existingUserResult.is_active === undefined
+                } as User;
+                console.log('Found existing user after constraint error:', { id: user.id, email: user.email });
+              }
+            }
+            
+            if (!user) {
+              throw new Error('User creation failed and user not found');
+            }
+          } else {
+            throw insertError;
+          }
+        }
+      }
+      
+      if (!user) {
+        console.error('No user found or created after all attempts');
+        return new Response(JSON.stringify({ 
+          error: 'Failed to create or find user',
+          details: 'User lookup and creation failed'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      console.log('User found/created:', { id: user.id, email: user.email });
+
+      // Update user login time and metadata
+      try {
+        let metadataUpdate = user.metadata || '{}';
+        if (googleUserId) {
+          try {
+            const currentMetadata = typeof user.metadata === 'string' ? JSON.parse(user.metadata) : (user.metadata || {});
+            if (!currentMetadata.google_user_id) {
+              currentMetadata.google_user_id = googleUserId;
+              metadataUpdate = JSON.stringify(currentMetadata);
+            }
+          } catch (e) {
+            metadataUpdate = JSON.stringify({ google_user_id: googleUserId });
+          }
+        }
+        
+        await this.env.DB.prepare(
+          'UPDATE users SET email_verified = 1, last_login_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP, metadata = ? WHERE id = ?'
+        ).bind(metadataUpdate, user.id).run();
+        
+        const refreshedUser = await this.env.DB.prepare(
+          'SELECT * FROM users WHERE id = ?'
+        ).bind(user.id).first<any>();
+        
+        if (refreshedUser) {
+          user = refreshedUser as User;
+          user.email_verified = refreshedUser.email_verified === 1 || refreshedUser.email_verified === true;
+        } else {
+          user.email_verified = (user.email_verified === 1 || user.email_verified === true);
+        }
+      } catch (updateError: any) {
+        console.error('Failed to update user login time:', updateError);
+        user.email_verified = (user.email_verified === 1 || user.email_verified === true);
+      }
+
+      if (!user.id || !user.email) {
+        console.error('Invalid user object:', user);
+        return new Response(JSON.stringify({ 
+          error: 'Invalid user data',
+          details: 'User object is missing required fields'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Create session
+      let sessionToken: string;
+      try {
+        sessionToken = await this.createSession(user);
+        console.log('Session created successfully for user:', user.id);
+      } catch (sessionError: any) {
+        console.error('Failed to create session:', sessionError);
+        return new Response(JSON.stringify({ 
+          error: 'Failed to create session',
+          details: sessionError?.message || 'Session creation failed'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const emailVerified = user.email_verified === 1 || user.email_verified === true || user.email_verified === '1';
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Google authentication successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username || null,
+          subscription_type: user.subscription_type,
+          email_verified: emailVerified
+        },
+        sessionToken
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Set-Cookie': `session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=${24 * 60 * 60}; Path=/`
+        }
+      });
+
+    } catch (error) {
+      console.error('Google authentication error:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+
+  /**
    * Check rate limits and record usage
    */
   private async checkRateLimit(userId: string, userType: string, endpoint: string): Promise<{ allowed: boolean; error?: string; retryAfter?: number }> {
@@ -824,7 +1353,9 @@ class AuthAPI {
       // Route handling
       const path = url.pathname;
 
-      if (path.startsWith('/auth/')) {
+      if (path === '/verify-transaction' && request.method === 'POST') {
+        return this.handleVerifyTransaction(request, origin);
+      } else if (path.startsWith('/auth/')) {
         return this.handleAuthRoutes(request, origin);
       } else if (path.startsWith('/api/')) {
         return this.handleAPIRoutes(request, origin);
@@ -872,6 +1403,18 @@ class AuthAPI {
     if (path === '/auth/verify' && request.method === 'POST') {
       const body = await request.json();
       const response = await this.handleOTPVerification(body.email, body.code);
+      return this.setCorsHeaders(response, origin);
+    }
+
+    if (path === '/auth/apple' && request.method === 'POST') {
+      const body = await request.json();
+      const response = await this.handleAppleAuth(body.identityToken, body.authorizationCode, body.email, body.userIdentifier);
+      return this.setCorsHeaders(response, origin);
+    }
+
+    if (path === '/auth/google' && request.method === 'POST') {
+      const body = await request.json();
+      const response = await this.handleGoogleAuth(body.idToken, body.accessToken, body.email);
       return this.setCorsHeaders(response, origin);
     }
 
@@ -1168,11 +1711,24 @@ class AuthAPI {
   }
 
   /**
-   * Create new folder (with 3-folder limit for free users)
+   * Create new folder
+   * Folder limits are enforced by the frontend (StoreKit is source of truth)
    */
   private async createUserFolder(session: SessionData, body: any, origin?: string): Promise<Response> {
     try {
-      const { folder_name } = body;
+      const { folder_name, is_pro } = body;
+      
+      // Debug logging
+      console.log('🔍 [DEBUG] Backend createUserFolder:', {
+        userId: session.userId,
+        folder_name,
+        is_pro,
+        is_proType: typeof is_pro,
+        is_proTruthy: !!is_pro,
+        is_proStrictTrue: is_pro === true,
+        bodyKeys: Object.keys(body),
+        fullBody: JSON.stringify(body)
+      });
       
       if (!folder_name || typeof folder_name !== 'string' || folder_name.trim().length === 0) {
         const response = new Response(JSON.stringify({ error: 'Folder name is required' }), {
@@ -1182,25 +1738,9 @@ class AuthAPI {
         return this.setCorsHeaders(response, origin);
       }
 
-      // Check folder count limit for free users
-      if (session.subscription_type === 'free') {
-        const folderCount = await this.env.DB.prepare(
-          'SELECT COUNT(*) as count FROM user_folders WHERE user_id = ?'
-        ).bind(session.userId).first();
-
-        if (folderCount && folderCount.count >= 3) {
-          const response = new Response(JSON.stringify({ 
-            error: 'Folder limit reached',
-            message: 'Free users can create up to 3 folders. Upgrade to Pro for unlimited folders.',
-            limit: 3,
-            current: folderCount.count
-          }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-          });
-          return this.setCorsHeaders(response, origin);
-        }
-      }
+      // No backend limit enforcement - frontend handles limits based on StoreKit Pro status
+      // StoreKit is the source of truth for subscription status
+      console.log('🔍 [DEBUG] Backend: Proceeding with folder creation (no limit check)');
 
       const folderId = this.generateRandomString();
       await this.env.DB.prepare(
@@ -1578,7 +2118,8 @@ class AuthAPI {
   }
 
   /**
-   * Create new note (with 10-note limit for free users)
+   * Create new note
+   * Note limits are enforced by the frontend (StoreKit is source of truth)
    */
   private async createUserNote(session: SessionData, body: any, origin?: string): Promise<Response> {
     try {
@@ -1592,25 +2133,8 @@ class AuthAPI {
         return this.setCorsHeaders(response, origin);
       }
 
-      // Check note count limit for free users
-      if (session.subscription_type === 'free') {
-        const noteCount = await this.env.DB.prepare(
-          'SELECT COUNT(*) as count FROM user_notes WHERE user_id = ?'
-        ).bind(session.userId).first();
-
-        if (noteCount && noteCount.count >= 10) {
-          const response = new Response(JSON.stringify({ 
-            error: 'Note limit reached',
-            message: 'Free users can create up to 10 notes. Upgrade to Pro for unlimited notes.',
-            limit: 10,
-            current: noteCount.count
-          }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-          });
-          return this.setCorsHeaders(response, origin);
-        }
-      }
+      // No backend limit enforcement - frontend handles limits based on StoreKit Pro status
+      // StoreKit is the source of truth for subscription status
 
       const noteId = this.generateRandomString();
       await this.env.DB.prepare(
@@ -1820,7 +2344,7 @@ class AuthAPI {
   private async getUserProfile(session: SessionData, origin?: string): Promise<Response> {
     try {
       const user = await this.env.DB.prepare(
-        'SELECT id, email, username, subscription_type, email_verified, created_at, last_login_at FROM users WHERE id = ?'
+        'SELECT id, email, username, subscription_type, email_verified, created_at, last_login_at, metadata FROM users WHERE id = ?'
       ).bind(session.userId).first();
 
       if (!user) {
@@ -1896,6 +2420,237 @@ class AuthAPI {
         headers: { 'Content-Type': 'application/json' }
       });
       return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Verify Apple transaction using App Store Server API
+   */
+  private async handleVerifyTransaction(request: Request, origin?: string): Promise<Response> {
+    try {
+      // Check authentication
+      const authHeader = request.headers.get('Authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        const response = new Response(JSON.stringify({ 
+          ok: false,
+          status: 401,
+          error: 'Unauthorized' 
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const token = authHeader.replace('Bearer ', '').trim();
+      if (token !== this.env.VERIFY_ENDPOINT_TOKEN) {
+        const response = new Response(JSON.stringify({ 
+          ok: false,
+          status: 401,
+          error: 'Unauthorized' 
+        }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      const body = await request.json();
+      const { transactionId } = body;
+
+      if (!transactionId || typeof transactionId !== 'string') {
+        const response = new Response(JSON.stringify({ 
+          ok: false,
+          status: 400,
+          error: 'Invalid transactionId' 
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Check required secrets
+      if (!this.env.APPLE_ISSUER_ID || !this.env.APPLE_KEY_ID || !this.env.APPLE_PRIVATE_KEY_P8) {
+        const response = new Response(JSON.stringify({ 
+          ok: false,
+          status: 500,
+          error: 'Apple credentials not configured' 
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Generate JWT
+      const jwt = await this.generateAppleJWT();
+      if (!jwt) {
+        const response = new Response(JSON.stringify({ 
+          ok: false,
+          status: 500,
+          error: 'Failed to generate JWT' 
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        return this.setCorsHeaders(response, origin);
+      }
+
+      // Check if transaction should use cache
+      const shouldUseCache = await this.shouldCacheGuestTransaction(transactionId);
+      
+      // Check KV cache first if use_cache is enabled
+      let appleData: any = null;
+      let appleResponse: Response | null = null;
+      
+      if (shouldUseCache) {
+        const cacheKey = `apple_transaction:${transactionId}`;
+        const cached = await this.env.SESSIONS.get(cacheKey, { type: 'json' });
+        
+        if (cached) {
+          // Return cached response
+          const response = new Response(JSON.stringify({
+            ok: cached.ok,
+            status: cached.status,
+            apple: cached.apple,
+            cached: true
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+          return this.setCorsHeaders(response, origin);
+        }
+      }
+
+      // Determine API base URL
+      const apiBase = this.env.APPLE_ENV === 'sandbox' 
+        ? 'https://api.storekit-sandbox.itunes.apple.com'
+        : 'https://api.storekit.itunes.apple.com';
+
+      // Call Apple API
+      const appleUrl = `${apiBase}/inApps/v1/transactions/${transactionId}`;
+      appleResponse = await fetch(appleUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      appleData = await appleResponse.json();
+
+      // Cache response if use_cache is enabled and response is successful
+      if (shouldUseCache && appleResponse.ok) {
+        const cacheKey = `apple_transaction:${transactionId}`;
+        await this.env.SESSIONS.put(cacheKey, JSON.stringify({
+          ok: appleResponse.ok,
+          status: appleResponse.status,
+          apple: appleData
+        }), { expirationTtl: 3600 }); // Cache for 1 hour
+      }
+
+      // Log transaction verification (passive, non-blocking - doesn't affect response)
+      this.logGuestTransaction(transactionId, appleResponse.ok, appleData, shouldUseCache).catch(err => {
+        // Silently fail logging - never block the verification response
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Failed to log guest transaction:', err);
+        }
+      });
+
+      const response = new Response(JSON.stringify({
+        ok: appleResponse.ok,
+        status: appleResponse.status,
+        apple: appleData
+      }), {
+        status: appleResponse.ok ? 200 : appleResponse.status,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      return this.setCorsHeaders(response, origin);
+    } catch (error) {
+      const response = new Response(JSON.stringify({ 
+        ok: false,
+        status: 500,
+        error: 'Internal server error' 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return this.setCorsHeaders(response, origin);
+    }
+  }
+
+  /**
+   * Check if guest transaction should use cache
+   */
+  private async shouldCacheGuestTransaction(transactionId: string): Promise<boolean> {
+    try {
+      const result = await this.env.DB.prepare(
+        'SELECT use_cache FROM guest_transactions WHERE transaction_id = ?'
+      ).bind(transactionId).first<{ use_cache: number | null }>();
+      
+      return result?.use_cache === 1;
+    } catch (error) {
+      // On error, default to no cache
+      return false;
+    }
+  }
+
+  /**
+   * Log guest transaction verification (passive, non-blocking)
+   * Only stores transaction ID and verification result - no personal information
+   */
+  private async logGuestTransaction(transactionId: string, isActive: boolean, appleResponse: any, useCache: boolean = false): Promise<void> {
+    try {
+      const status = isActive ? 'active' : 'inactive';
+      
+      // Upsert transaction record (no personal information)
+      await this.env.DB.prepare(
+        `INSERT INTO guest_transactions (transaction_id, status, apple_response, use_cache, verified_at)
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(transaction_id) DO UPDATE SET
+           status = ?,
+           apple_response = ?,
+           use_cache = ?,
+           verified_at = CURRENT_TIMESTAMP`
+      ).bind(
+        transactionId,
+        status,
+        JSON.stringify(appleResponse),
+        useCache ? 1 : 0,
+        status,
+        JSON.stringify(appleResponse),
+        useCache ? 1 : 0
+      ).run();
+    } catch (error) {
+      // Silently fail - logging should never affect verification
+      throw error;
+    }
+  }
+
+  /**
+   * Generate ES256 JWT for Apple App Store Server API
+   */
+  private async generateAppleJWT(): Promise<string | null> {
+    try {
+      const jose = await import('jose');
+      
+      const now = Math.floor(Date.now() / 1000);
+      const expiration = now + (20 * 60); // 20 minutes
+
+      const privateKey = await jose.importPKCS8(this.env.APPLE_PRIVATE_KEY_P8, 'ES256');
+
+      const jwt = await new jose.SignJWT({})
+        .setProtectedHeader({ alg: 'ES256', kid: this.env.APPLE_KEY_ID })
+        .setIssuedAt(now)
+        .setIssuer(this.env.APPLE_ISSUER_ID)
+        .setExpirationTime(expiration)
+        .sign(privateKey);
+
+      return jwt;
+    } catch (error) {
+      return null;
     }
   }
 

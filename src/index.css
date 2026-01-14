@@ -195,6 +195,22 @@
     @apply bg-background text-foreground;
     font-family:
       -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  /* Hide scrollbars on main content area while keeping scroll functionality */
+  html {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  html::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
   }
 }
 
@@ -344,9 +360,12 @@
     overscroll-behavior-y: contain;
     /* Ensure content doesn't scroll behind header */
     padding-top: max(2rem, env(safe-area-inset-top));
+    scrollbar-width: thin; /* Firefox - show scrollbar */
+    -ms-overflow-style: scrollbar; /* IE and Edge - show scrollbar */
   }
 
   .lyrics-scroll::-webkit-scrollbar {
+    display: block; /* Chrome, Safari, Opera - show scrollbar */
     width: 4px;
   }
 

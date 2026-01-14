@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>MLetras</title>
     <meta
@@ -28,6 +28,11 @@
     <!-- Status Bar Theme -->
     <meta name="theme-color" content="#0ea5e9" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    
+    <!-- Performance optimizations for iOS -->
+    <meta http-equiv="x-dns-prefetch-control" content="on" />
+    <link rel="dns-prefetch" href="https://mletras.vercel.app" />
+    <link rel="dns-prefetch" href="https://mletras-auth-api-dev.belicongroup.workers.dev" />
   </head>
 
   <body>

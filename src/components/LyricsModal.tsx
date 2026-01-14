@@ -19,6 +19,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePinch } from "@use-gesture/react";
 import { translations } from "@/lib/translations";
@@ -28,6 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 interface Song {
   id: string;
@@ -54,7 +56,8 @@ const LyricsModal = ({
   isLoadingLyrics,
 }: LyricsModalProps) => {
   const { settings } = useSettings();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { isPro } = useProStatus();
   const { theme } = useTheme();
   const t = translations[settings.language];
   const [isBoldText, setIsBoldText] = useState(settings.boldText);
@@ -68,8 +71,11 @@ const LyricsModal = ({
     return 18; // Phones
   });
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
+  const baseFontSizeRef = useRef<number>(fontSize);
+  const isPinchingRef = useRef(false);
 
   const scrollSpeeds = {
     off: 0,
@@ -79,7 +85,9 @@ const LyricsModal = ({
   };
 
   useEffect(() => {
+    // Only allow auto-scroll for Pro users (works for both guests and authenticated users)
     if (
+      !isPro ||
       autoScrollSpeed === "off" ||
       !scrollContainerRef.current ||
       !hasUserInteracted
@@ -123,11 +131,24 @@ const LyricsModal = ({
     setAutoScrollSpeed(settings.autoScrollSpeed);
   }, [settings.autoScrollSpeed]);
 
+  // Update base font size when initial font size is set
+  useEffect(() => {
+    if (!isPinchingRef.current) {
+      baseFontSizeRef.current = fontSize;
+    }
+  }, [fontSize]);
+
   const toggleAutoScroll = (e: React.MouseEvent<HTMLButtonElement>) => {
     // Remove focus after click to prevent purple overlay
     setTimeout(() => {
       e.currentTarget.blur();
     }, 10);
+
+    // For Free/Guest users, open upgrade modal instead
+    if (!isPro) {
+      setShowUpgradeModal(true);
+      return;
+    }
 
     const speeds: Array<"off" | "slow" | "medium" | "fast"> = [
       "off",
@@ -176,17 +197,38 @@ const LyricsModal = ({
 
   // Pinch gesture handler for font size control
   usePinch(
-    ({ offset: [scaleOffset] }) => {
+    ({ offset: [scaleOffset], first, last }) => {
+      if (first) {
+        // On first touch, set the base font size to current
+        baseFontSizeRef.current = fontSize;
+        isPinchingRef.current = true;
+        // Disable CSS transitions during pinch for immediate feedback
+        if (lyricsRef.current) {
+          lyricsRef.current.style.transition = 'none';
+        }
+      }
+      
       // Calculate new font size based on pinch scale
-      // Base font size is 18px, scale range from 0.5 to 3.0
-      const newFontSize = Math.max(12, Math.min(48, 18 * scaleOffset));
+      // Use the base font size, scale range from 0.5 to 3.0
+      const baseSize = baseFontSizeRef.current;
+      const newFontSize = Math.max(12, Math.min(48, baseSize * scaleOffset));
       setFontSize(newFontSize);
+      
+      if (last) {
+        isPinchingRef.current = false;
+        // Re-enable CSS transitions after pinch ends
+        if (lyricsRef.current) {
+          lyricsRef.current.style.transition = '';
+        }
+      }
     },
     {
       target: lyricsRef,
       eventOptions: { passive: false },
       scaleBounds: { min: 0.5, max: 3.0 },
       rubberband: true,
+      pointer: { touch: true },
+      threshold: 0,
     },
   );
 
@@ -234,36 +276,40 @@ const LyricsModal = ({
 
             {/* Centered buttons */}
             <div className="flex items-center justify-center gap-3">
-              {/* Auto-scroller button - only show for Pro users */}
-              {user?.subscription_type === 'pro' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleAutoScroll}
-                  onBlur={(e) => e.target.blur()}
-                  onFocus={(e) => e.target.blur()}
-                  className={`transition-smooth btn-no-focus ${
-                    autoScrollSpeed === "off"
-                      ? "text-muted-foreground hover:text-foreground"
-                      : autoScrollSpeed === "slow"
+              {/* Auto-scroller button - visible for all users */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAutoScroll}
+                onBlur={(e) => e.target.blur()}
+                onFocus={(e) => e.target.blur()}
+                className={`transition-smooth btn-no-focus relative ${
+                  autoScrollSpeed === "off"
+                    ? "text-muted-foreground hover:text-foreground"
+                    : autoScrollSpeed === "slow"
+                      ? hasUserInteracted
+                        ? "text-green-500 bg-green-500/10"
+                        : "text-green-500 hover:text-green-600"
+                      : autoScrollSpeed === "medium"
                         ? hasUserInteracted
-                          ? "text-green-500 bg-green-500/10"
-                          : "text-green-500 hover:text-green-600"
-                        : autoScrollSpeed === "medium"
-                          ? hasUserInteracted
-                            ? "text-yellow-500 bg-yellow-500/10"
-                            : "text-yellow-500 hover:text-yellow-600"
-                          : hasUserInteracted
-                            ? "text-red-500 bg-red-500/10"
-                            : "text-red-500 hover:text-red-600"
-                  }`}
-                  title={`${t.autoScroll}: ${autoScrollSpeed}`}
-                >
-                  <Play
-                    className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted ? "animate-pulse" : ""}`}
-                  />
-                </Button>
-              )}
+                          ? "text-yellow-500 bg-yellow-500/10"
+                          : "text-yellow-500 hover:text-yellow-600"
+                        : hasUserInteracted
+                          ? "text-red-500 bg-red-500/10"
+                          : "text-red-500 hover:text-red-600"
+                }`}
+                title={`${t.autoScroll}: ${autoScrollSpeed}`}
+              >
+                <Play
+                  className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted ? "animate-pulse" : ""}`}
+                />
+                {!isPro && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[8px] font-bold px-1 py-0.5 rounded-full leading-none flex items-center justify-center min-w-[16px] h-4">
+                    Pro
+                  </span>
+                )}
+              </Button>
+              {/* Bold button - visible for all users */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -283,6 +329,7 @@ const LyricsModal = ({
               >
                 <Type className="w-4 h-4" />
               </Button>
+              {/* Music Search button - visible for all users */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -339,6 +386,7 @@ const LyricsModal = ({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              {/* Like button - visible for all users */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -434,6 +482,10 @@ const LyricsModal = ({
           </Card>
         </div>
       </DialogContent>
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+      />
     </Dialog>
   );
 };

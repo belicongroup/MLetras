@@ -11,11 +11,15 @@ import {
   ExternalLink,
   AlertTriangle,
   User,
+  Mail,
+  HelpCircle,
+  ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -39,9 +43,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { translations } from "@/lib/translations";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { LoginModal } from "@/components/LoginModal";
 import { getPlatform } from "@/lib/capacitor";
 import { userDataApi } from "@/services/userDataApi";
 import { searchHistory } from "@/services/searchHistory";
+import { subscriptionService } from "@/services/subscriptionService";
+import { musixmatchApi } from "@/services/musixmatchApi";
 import { toast } from "sonner";
 
 interface SettingsPageProps {
@@ -52,11 +59,16 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
   const { theme, toggleTheme, setTheme } = useTheme();
   const { settings, setSettings } = useSettings();
   const { user, isAuthenticated, logout } = useAuth();
+  const { isPro } = useProStatus();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [showClearDataDialog, setShowClearDataDialog] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showOfflineSyncSuccessDialog, setShowOfflineSyncSuccessDialog] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isClearingData, setIsClearingData] = useState(false);
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
   const t = translations[settings.language];
 
   const handleManageSubscription = () => {
@@ -66,7 +78,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
       window.open('https://apps.apple.com/account/subscriptions', '_blank');
     } else {
       // For Android or web, provide instructions
-      alert('Please manage your subscription through your device\'s app store settings.');
+      alert(t.manageSubscriptionMessage);
     }
   };
 
@@ -99,7 +111,9 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
           );
           await Promise.all(deleteNotePromises);
         } catch (error: any) {
-          console.error('Failed to delete backend data:', error);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Failed to delete backend data:', error);
+          }
           // Continue with local data clearing even if backend deletion fails
         }
       }
@@ -138,13 +152,113 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
       window.dispatchEvent(new Event('mletras-data-cleared'));
       window.dispatchEvent(new Event('mletras-notes-updated'));
 
-      toast.success('All data cleared successfully');
+      toast.success(t.dataClearedSuccess);
       setShowClearDataDialog(false);
     } catch (error: any) {
-      console.error('Failed to clear data:', error);
-      toast.error('Failed to clear data. Please try again.');
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to clear data:', error);
+      }
+      toast.error(t.dataClearFailed);
     } finally {
       setIsClearingData(false);
+    }
+  };
+
+  const handleOfflineSync = async () => {
+    setIsSyncingOffline(true);
+    try {
+      let syncedCount = 0;
+      let errorCount = 0;
+      const trackIdsToSync = new Set<string>();
+
+      // Get server bookmarks (if authenticated)
+      if (isAuthenticated) {
+        try {
+          const bookmarksResponse = await userDataApi.getBookmarks();
+          if (bookmarksResponse.success && bookmarksResponse.bookmarks) {
+            bookmarksResponse.bookmarks.forEach(bookmark => {
+              if (bookmark.track_id) {
+                trackIdsToSync.add(bookmark.track_id);
+              }
+            });
+          }
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Error fetching server bookmarks:', error);
+          }
+        }
+      }
+
+      // Get local liked songs
+      try {
+        const localLikedSongs = localStorage.getItem('likedSongs');
+        if (localLikedSongs) {
+          const songs: Array<{ id: string }> = JSON.parse(localLikedSongs);
+          songs.forEach(song => {
+            if (song.id) {
+              trackIdsToSync.add(song.id);
+            }
+          });
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Error reading local liked songs:', error);
+        }
+      }
+
+      // Get local folders and their songs
+      try {
+        const localFolders = localStorage.getItem('mletras-folders');
+        if (localFolders) {
+          const folders: Array<{ songs: Array<{ id: string }> }> = JSON.parse(localFolders);
+          folders.forEach(folder => {
+            if (folder.songs) {
+              folder.songs.forEach(song => {
+                if (song.id) {
+                  trackIdsToSync.add(song.id);
+                }
+              });
+            }
+          });
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Error reading local folders:', error);
+        }
+      }
+
+      // Sync lyrics for each unique track
+      for (const trackId of trackIdsToSync) {
+        try {
+          const success = await musixmatchApi.syncLyricsForOffline(trackId);
+          if (success) {
+            syncedCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error(`Error syncing lyrics for track ${trackId}:`, error);
+          }
+          errorCount++;
+        }
+      }
+
+      // If we have tracks synced, show success dialog
+      if (syncedCount > 0) {
+        setShowOfflineSyncSuccessDialog(true);
+      } else if (trackIdsToSync.size === 0) {
+        toast.info("No songs with lyrics found to sync.");
+      } else {
+        toast.error(t.offlineSyncFailed);
+      }
+    } catch (error: any) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to sync offline data:', error);
+      }
+      toast.error(t.offlineSyncFailed);
+    } finally {
+      setIsSyncingOffline(false);
     }
   };
 
@@ -154,10 +268,43 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
       const result = await userDataApi.deleteAccount();
       
       if (result.success) {
-        toast.success('Account deleted successfully');
-        // Clear local storage
-        localStorage.removeItem('sessionToken');
-        localStorage.removeItem('cached_user');
+        // Clear search history
+        searchHistory.clearHistory();
+        
+        // Clear all localStorage items
+        const keysToRemove = [
+          'sessionToken',
+          'cached_user',
+          'mletras-folders',
+          'userNotes',
+          'userNotes_lastSync',
+          'likedNotes',
+          'likedSongs',
+          'likedSongs_lastSync',
+          'mletras-settings',
+          'mletras-theme',
+          'searchHistory',
+        ];
+
+        keysToRemove.forEach(key => {
+          localStorage.removeItem(key);
+        });
+
+        // Reset settings to default
+        setSettings({
+          autoScrollSpeed: 'off',
+          boldText: false,
+          language: 'en',
+        });
+
+        // Reset theme to light
+        setTheme('light');
+
+        // Dispatch events to notify other components
+        window.dispatchEvent(new Event('mletras-data-cleared'));
+        window.dispatchEvent(new Event('mletras-notes-updated'));
+
+        toast.success(t.accountDeletedSuccess);
         // Logout user
         await logout();
         // Close dialog
@@ -166,8 +313,10 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
         throw new Error(result.message || 'Failed to delete account');
       }
     } catch (error: any) {
-      console.error('Failed to delete account:', error);
-      const errorMessage = error?.message || error?.toString() || 'Failed to delete account. Please try again.';
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to delete account:', error);
+      }
+      const errorMessage = error?.message || error?.toString() || t.accountDeleteFailed;
       toast.error(errorMessage);
     } finally {
       setIsDeletingAccount(false);
@@ -186,89 +335,21 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
         </h2>
       </div>
 
-      {/* Sign Up / Sign In Section - Only show when not authenticated */}
+      {/* Sign Up Banner - Show to all non-authenticated users */}
       {!isAuthenticated && (
-        <Card className="glass border-border/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
-              Sign Up / Sign In
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Create an account to sync your bookmarks and notes across all your devices. Your data will be safely stored in the cloud.
-              </p>
-              <Button
-                onClick={() => onOpenAuth?.()}
-                className="w-full bg-gradient-primary hover:bg-gradient-accent text-white font-semibold py-3"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Sign Up / Sign In
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Subscription Status / Upgrade - Only show when authenticated */}
-      {isAuthenticated && (
-        <Card className="glass border-border/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Crown className="w-5 h-5 text-primary" />
-              Subscription Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {user?.username && (
-              <div className="text-center py-2">
-                <p className="text-lg font-medium text-primary">Welcome {user.username}</p>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium capitalize">{user?.subscription_type} Plan</p>
-                <p className="text-sm text-muted-foreground">
-                  {user?.subscription_type === 'free' 
-                    ? "Limited features, upgrade to Pro for full access"
-                    : "Full access to all features"
-                  }
-                </p>
-              </div>
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                user?.subscription_type === 'free' 
-                  ? 'bg-amber-100 text-amber-800' 
-                  : 'bg-green-100 text-green-800'
-              }`}>
-                {user?.subscription_type === 'free' ? 'Free' : 'Pro'}
-              </div>
-            </div>
-            
-            {user?.subscription_type === 'free' && (
-              <Button
-                onClick={() => setShowUpgradeModal(true)}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg transition-all"
-              >
-                <Crown className="h-4 w-4 mr-2" />
-                Upgrade to MLetras Pro
-              </Button>
-            )}
-
-            {user?.subscription_type === 'pro' && (
-              <Button
-                onClick={handleManageSubscription}
-                variant="outline"
-                className="w-full mt-2"
-                size="sm"
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Manage Subscription
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 p-2 shadow-lg">
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setShowLoginModal(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 text-xs rounded-lg shadow-md transition-all flex-shrink-0"
+            >
+              {t.signUp}
+            </Button>
+            <p className="text-white text-xs font-medium leading-tight flex-1">
+              Create a free account to sync your favorite songs, folders, notes across devices
+            </p>
+          </div>
+        </div>
       )}
 
       {/* App Preferences */}
@@ -284,16 +365,16 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-medium">{t.autoScrollSpeed}</p>
-                {(!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) && (
+                {!isPro && (
                   <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                     <Crown className="w-3 h-3" />
-                    Pro
+                    {t.pro}
                   </div>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')
-                  ? "Auto-scroll is available with Pro subscription"
+                {!isPro
+                  ? t.proSubscriptionRequired
                   : t.autoScrollSpeedDescription
                 }
               </p>
@@ -306,7 +387,7 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
                   autoScrollSpeed: value as "off" | "slow" | "medium" | "fast",
                 }));
               }}
-              disabled={!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')}
+              disabled={!isPro}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -349,16 +430,16 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-medium">{t.darkMode}</p>
-                {(!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')) && (
+                {!isPro && (
                   <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                     <Crown className="w-3 h-3" />
-                    Pro
+                    {t.pro}
                   </div>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')
-                  ? "Dark mode is available with Pro subscription"
+                {!isPro
+                  ? t.darkModeProRequired
                   : t.darkModeDescription
                 }
               </p>
@@ -366,8 +447,27 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
             <Switch 
               checked={theme === "dark"} 
               onCheckedChange={toggleTheme}
-              disabled={!isAuthenticated || (isAuthenticated && user?.subscription_type === 'free')}
+              disabled={!isPro}
             />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="font-medium">{t.offlineAccess}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t.offlineAccessDescription}
+              </p>
+            </div>
+            <Button
+              onClick={handleOfflineSync}
+              disabled={isSyncingOffline}
+              variant="outline"
+              className="ml-4 flex-shrink-0"
+            >
+              {isSyncingOffline ? t.syncing : t.syncNow}
+            </Button>
           </div>
 
           <Separator />
@@ -392,118 +492,194 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="en">{t.english}</SelectItem>
+                <SelectItem value="es">{t.spanish}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-
-      {/* Data Management */}
+      {/* Account and Subscription */}
       <Card className="glass border-border/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <Trash2 className="w-5 h-5 text-destructive" />
-            Data Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div>
-              <p className="font-medium mb-1">Clear All Data</p>
-              <p className="text-sm text-muted-foreground mb-3">
-                Remove all saved lyrics, folders, and preferences
-              </p>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                className="w-full"
-                onClick={() => setShowClearDataDialog(true)}
-                disabled={isClearingData}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {isClearingData ? 'Clearing...' : 'Clear All Data'}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Account Deletion */}
-      {isAuthenticated && (
-        <Card className="glass border-border/50">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Account Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div>
-                <p className="font-medium mb-1 text-destructive">Delete Account</p>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Permanently delete your account and all associated data. This action cannot be undone.
-                </p>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => setShowDeleteAccountDialog(true)}
-                >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Delete Account
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* App Information */}
-      <Card className="glass border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Info className="w-5 h-5 text-primary" />
-            About MLETRAS
+            <User className="w-5 h-5 text-primary" />
+            {t.accountAndSubscription}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="font-medium">Version</p>
-            <p className="text-sm text-muted-foreground">1.0.7</p>
-          </div>
+          {/* Your Account */}
+          <button
+            onClick={() => {
+              if (isAuthenticated) {
+                // Show logout confirmation dialog
+                setShowLogoutDialog(true);
+              } else {
+                // Show login modal
+                setShowLoginModal(true);
+              }
+            }}
+            className="flex flex-col items-start w-full text-left py-2 gap-1"
+          >
+            <div className="flex items-center justify-between w-full">
+              <p className="font-medium">{t.yourAccount}</p>
+              <span className="text-muted-foreground text-sm flex items-center gap-1 flex-shrink-0 ml-2">
+                {isAuthenticated ? (t.logOut || "Log Out") : t.logIn} 
+                <ChevronRight className="w-4 h-4" />
+              </span>
+            </div>
+            {isAuthenticated && user && (
+              <p className="text-xs text-muted-foreground truncate w-full pr-8" dir="rtl">
+                {user.email || user.id || 'Apple Account'}
+              </p>
+            )}
+          </button>
+
+          {!isPro && (
+            <>
+              <Separator />
+
+              {/* Subscribe to MLetras Pro */}
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="flex items-center justify-between w-full text-left py-2"
+              >
+                <p className="font-medium">{t.subscribeToMLetrasPro}</p>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </>
+          )}
+
+          {/* Manage Subscription - Show to ALL Pro users (including guest users with active subscriptions) */}
+          {isPro && (
+            <>
+              <Separator />
+              <button
+                onClick={handleManageSubscription}
+                className="flex items-center justify-between w-full text-left py-2"
+              >
+                <p className="font-medium">{t.manageSubscription || "Manage Subscription"}</p>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </>
+          )}
 
           <Separator />
 
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start p-0 h-auto"
-            onClick={() => window.open('https://mletras.com/privacy', '_blank')}
+          {/* Restore Purchase */}
+          <button
+            onClick={async () => {
+              try {
+                const result = await subscriptionService.restorePurchases();
+                
+                if (result.restored) {
+                  // Verify subscription from StoreKit
+                  const status = await subscriptionService.checkSubscriptionStatus();
+                  
+                  if (status.isActive) {
+                    toast.success("Purchases restored! 🎉");
+                    window.dispatchEvent(new Event('subscription-updated'));
+                  } else {
+                    toast.info("No active subscription found.");
+                  }
+                } else {
+                  toast.info("No previous purchases found.");
+                }
+              } catch (error: any) {
+                toast.error(error.message || "Failed to restore purchases.");
+              }
+            }}
+            className="flex items-center justify-between w-full text-left py-2"
           >
-            <Shield className="w-4 h-4 mr-2 text-primary" />
-            Privacy Policy
-          </Button>
+            <p className="font-medium">{t.restorePurchase}</p>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </CardContent>
+      </Card>
 
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start p-0 h-auto"
-            onClick={() => window.open('https://mletras.com/terms', '_blank')}
+
+      {/* Privacy */}
+      <Card className="glass border-border/50">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Shield className="w-5 h-5 text-primary" />
+            {t.privacy}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Privacy Policy */}
+          <button
+            onClick={() => window.open('https://mletras.com/privacy', '_blank')}
+            className="flex items-center justify-between w-full text-left py-2"
           >
-            <Info className="w-4 h-4 mr-2 text-primary" />
-            Terms of Service
-          </Button>
+            <span className="font-medium">{t.privacyPolicy}</span>
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </button>
+
+          <Separator />
+
+          {/* Terms of Service */}
+          <button
+            onClick={() => window.open('https://mletras.com/terms', '_blank')}
+            className="flex items-center justify-between w-full text-left py-2"
+          >
+            <span className="font-medium">{t.termsOfService}</span>
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </button>
+
+          <Separator />
+
+          {/* Contact Support */}
+          <button
+            onClick={() => window.open('mailto:support@mletras.com', '_blank')}
+            className="flex items-center justify-between w-full text-left py-2"
+          >
+            <span className="font-medium">{t.contactSupport}</span>
+            <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          </button>
+
+          <Separator />
+
+          {/* Clear All Data */}
+          <button
+            onClick={() => setShowClearDataDialog(true)}
+            className="flex items-center justify-between w-full text-left py-2"
+          >
+            <p className="font-medium">{t.clearAllData}</p>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+
+          {/* Delete Account - Only show if authenticated */}
+          {isAuthenticated && (
+            <>
+              <Separator />
+              <button
+                onClick={() => setShowDeleteAccountDialog(true)}
+                className="flex items-center justify-between w-full text-left py-2"
+              >
+                <p className="font-medium">{t.deleteAccount}</p>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </>
+          )}
+
+          <Separator />
+
+          {/* App Version */}
+          <div className="flex items-center justify-between py-2">
+            <p className="font-medium">{t.appVersion}</p>
+            <p className="text-sm text-muted-foreground">1.1.7</p>
+          </div>
         </CardContent>
       </Card>
 
       {/* Footer */}
       <div className="text-center py-6">
         <p className="text-sm text-muted-foreground">
-          made by belicongroup
+          {t.madeWithLove}
         </p>
-        <p className="text-xs text-muted-foreground mt-1">MLETRAS © 2025</p>
+        <p className="text-xs text-muted-foreground mt-1">{t.copyright}</p>
       </div>
 
       {/* Upgrade Modal */}
@@ -512,49 +688,90 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
         onClose={() => setShowUpgradeModal(false)} 
       />
 
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+      />
+
       {/* Clear All Data Confirmation Dialog */}
       <AlertDialog open={showClearDataDialog} onOpenChange={setShowClearDataDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="w-5 h-5" />
-              Clear All Data?
+            <AlertDialogTitle className="text-center text-xl font-bold">
+              Clear all data
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Are you sure you want to clear all your data? This action cannot be undone.
+            <AlertDialogDescription className="text-center space-y-2 pt-4">
+              <p className="text-muted-foreground">
+                You're about to remove all saved lyrics, folders, and preferences. Are you sure you want to continue?
               </p>
-              <p className="font-medium">
-                This will permanently delete:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                {isAuthenticated && (
-                  <>
-                    <li>All folders and bookmarks from your account</li>
-                    <li>All notes from your account</li>
-                  </>
-                )}
-                <li>All search history</li>
-                <li>All saved preferences and settings</li>
-                <li>All locally stored data</li>
-              </ul>
-              {isAuthenticated && (
-                <p className="text-muted-foreground text-sm mt-2">
-                  Your account will remain active, but all your data will be removed.
-                </p>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isClearingData}>
-              Cancel
+              {t.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleClearAllData}
               disabled={isClearingData}
               className="bg-destructive hover:bg-destructive/90"
             >
-              {isClearingData ? 'Clearing...' : 'Clear All Data'}
+              {isClearingData ? t.clearing : t.clearAllData}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Logout Confirmation Dialog */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent className="bg-background border-border max-w-md p-6">
+          <AlertDialogHeader className="text-center space-y-4 pb-0">
+            <AlertDialogTitle className="text-2xl font-bold text-foreground">
+              Are you sure?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-center px-0 text-sm leading-relaxed">
+              If you log out, your liked songs, folders, and notes will no longer be backed up to the cloud or synced across devices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex flex-col gap-4 mt-6">
+            <AlertDialogAction
+              onClick={async () => {
+                await logout();
+                setShowLogoutDialog(false);
+              }}
+              className="w-full bg-background border-2 border-foreground/20 text-foreground hover:bg-foreground/10 hover:border-foreground/40 rounded-2xl py-3.5 font-medium transition-colors"
+            >
+              Log out on this device
+            </AlertDialogAction>
+            <button
+              onClick={() => setShowLogoutDialog(false)}
+              className="w-full text-foreground hover:text-foreground/80 py-2 font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Offline Sync Success Dialog */}
+      <AlertDialog open={showOfflineSyncSuccessDialog} onOpenChange={setShowOfflineSyncSuccessDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center text-xl font-bold">
+              {t.offlineSyncSuccess}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center space-y-2 pt-4">
+              <p className="text-muted-foreground">
+                {t.offlineSyncSuccessMessage}
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => setShowOfflineSyncSuccessDialog(false)}
+              className="w-full"
+            >
+              {t.close || "Close"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -564,38 +781,25 @@ const SettingsPage = ({ onOpenAuth }: SettingsPageProps = {}) => {
       <AlertDialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
-              Delete Account?
+            <AlertDialogTitle className="text-center text-xl font-bold">
+              Delete your account permanently
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Are you sure you want to delete your account? This action cannot be undone.
-              </p>
-              <p className="font-medium">
-                This will permanently delete:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Your account and profile information</li>
-                <li>All folders and bookmarks</li>
-                <li>All notes</li>
-                <li>Your subscription data</li>
-              </ul>
-              <p className="text-destructive font-medium mt-2">
-                You will be logged out immediately after deletion.
+            <AlertDialogDescription className="text-center space-y-2 pt-4">
+              <p className="text-muted-foreground">
+                You're about to permanently delete your account. This includes any saved liked songs, folders, notes. Are you sure you want to continue?
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeletingAccount}>
-              Cancel
+              {t.cancel}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAccount}
               disabled={isDeletingAccount}
               className="bg-destructive hover:bg-destructive/90"
             >
-              {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+              {isDeletingAccount ? t.deleting : t.deleteAccount}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,0 +1,598 @@
+/* iOS Style Lyrics Viewer - Mimics MLetras iOS App */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Light theme colors (matching MLetras) */
+    --background: hsl(0, 0%, 100%);
+    --foreground: hsl(220, 26%, 8%);
+    --muted: hsl(220, 26%, 96%);
+    --muted-foreground: hsl(215, 20%, 45%);
+    --primary: hsl(259, 94%, 51%);
+    --border: hsl(220, 26%, 90%);
+    --card: hsl(0, 0%, 100%);
+    --card-foreground: hsl(220, 26%, 8%);
+    
+    /* Dark theme colors */
+    --background-dark: hsl(220, 26%, 8%);
+    --foreground-dark: hsl(0, 0%, 98%);
+    --muted-dark: hsl(220, 26%, 15%);
+    --muted-foreground-dark: hsl(215, 20%, 65%);
+    --border-dark: hsl(220, 26%, 25%);
+    --card-dark: hsl(220, 26%, 10%);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Safe area insets for iOS */
+.pt-safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+.safe-left {
+    padding-left: env(safe-area-inset-left);
+}
+
+.safe-right {
+    padding-right: env(safe-area-inset-right);
+}
+
+.safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Header */
+.header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    pointer-events: none;
+}
+
+.back-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    padding: 0.5rem;
+    pointer-events: auto;
+    transition: color 0.2s;
+}
+
+.back-btn:hover {
+    color: var(--foreground);
+}
+
+.back-btn:active {
+    opacity: 0.6;
+}
+
+.song-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--foreground);
+    margin-bottom: 0.25rem;
+}
+
+.song-artist {
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+}
+
+.control-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+}
+
+.control-btn:hover:not(:disabled) {
+    background: var(--muted);
+    color: var(--foreground);
+}
+
+.control-btn:active:not(:disabled) {
+    opacity: 0.7;
+}
+
+.control-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.control-btn.active {
+    color: var(--primary);
+    background: rgba(129, 40, 207, 0.1);
+}
+
+/* Lyrics Content */
+.lyrics-content {
+    position: relative;
+    z-index: 1;
+    touch-action: none;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+.tablet-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+    .tablet-container {
+        max-width: 800px;
+    }
+}
+
+.lyrics-scroll {
+    touch-action: pan-y pinch-zoom;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-top: max(2rem, env(safe-area-inset-top));
+}
+
+.lyrics-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.lyrics-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.lyrics-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+.lyrics-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(259, 94%, 45%);
+}
+
+.lyrics-text {
+    white-space: pre-line;
+    text-align: center;
+    line-height: 1.8;
+    color: var(--foreground);
+    transition: font-size 0.1s ease-out;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.lyrics-text.bold {
+    font-weight: 600;
+}
+
+.tablet-spacing {
+    padding: 2rem;
+}
+
+@media (min-width: 768px) {
+    .tablet-spacing {
+        padding: 2.5rem;
+    }
+    
+    .lyrics-text {
+        font-size: 1.25rem !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .tablet-spacing {
+        padding: 3rem;
+    }
+    
+    .lyrics-text {
+        font-size: 1.5rem !important;
+        line-height: 2;
+    }
+}
+
+/* Progress Overlay - Hidden */
+.progress-overlay {
+    display: none;
+    /* Removed red background overlay per user request */
+}
+
+/* Debug Panel */
+.debug-panel-toggle {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 100;
+    pointer-events: auto;
+}
+
+.debug-toggle-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s;
+}
+
+.debug-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.debug-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--background);
+    border-top: 1px solid var(--border);
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 99;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+}
+
+.debug-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--muted);
+}
+
+.debug-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.debug-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.debug-close-btn:hover {
+    background: var(--border);
+}
+
+.debug-content {
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.debug-item {
+    background: var(--muted);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+.debug-item strong {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+    margin-bottom: 0.5rem;
+}
+
+.debug-value {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: var(--foreground);
+    word-break: break-word;
+    min-height: 1.5rem;
+}
+
+/* Debug Console */
+.debug-console-section {
+    border-top: 1px solid var(--border);
+    padding: 1rem;
+    max-height: 200px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.console-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.console-header h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.btn-small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+.btn-small:hover {
+    opacity: 0.9;
+}
+
+.console-container {
+    max-height: 150px;
+    overflow-y: auto;
+    background: #1e1e1e;
+    border-radius: 0.5rem;
+    border: 1px solid #333;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    padding: 0.5rem;
+}
+
+#consoleLogs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.console-entry {
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #d4d4d4;
+    background: #252526;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.console-entry.console-log {
+    background: #252526;
+    color: #d4d4d4;
+}
+
+.console-entry.console-error {
+    background: #3d1f1f;
+    color: #f48771;
+}
+
+.console-entry.console-warn {
+    background: #3d3d1f;
+    color: #dcdcaa;
+}
+
+.console-time {
+    color: #858585;
+    font-size: 0.7em;
+    margin-right: 8px;
+}
+
+.console-prefix {
+    margin-right: 8px;
+    font-size: 0.9em;
+}
+
+.console-message {
+    color: inherit;
+}
+
+.console-debug-tag {
+    color: #4ec9b0;
+    font-weight: bold;
+}
+
+.console-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.console-container::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.console-container::-webkit-scrollbar-thumb {
+    background: #424242;
+    border-radius: 4px;
+}
+
+.console-container::-webkit-scrollbar-thumb:hover {
+    background: #4e4e4e;
+}
+
+/* Utility classes */
+.h-screen {
+    height: 100vh;
+}
+
+.bg-background {
+    background-color: var(--background);
+}
+
+.overflow-hidden {
+    overflow: hidden;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.fixed {
+    position: fixed;
+}
+
+.top-0 {
+    top: 0;
+}
+
+.left-0 {
+    left: 0;
+}
+
+.right-0 {
+    right: 0;
+}
+
+.z-50 {
+    z-index: 50;
+}
+
+.max-w-4xl {
+    max-width: 56rem;
+}
+
+.mx-auto {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.pb-4 {
+    padding-bottom: 1rem;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.gap-3 {
+    gap: 0.75rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+.w-10 {
+    width: 2.5rem;
+}
+
+.h-full {
+    height: 100%;
+}
+
+.p-8 {
+    padding: 2rem;
+}
+
+.overflow-y-auto {
+    overflow-y: auto;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Dark mode support (can be toggled) */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: var(--background-dark);
+        color: var(--foreground-dark);
+    }
+    
+    .header {
+        background: rgba(30, 30, 35, 0.95);
+        border-bottom-color: var(--border-dark);
+    }
+    
+    .song-title {
+        color: var(--foreground-dark);
+    }
+    
+    .song-artist {
+        color: var(--muted-foreground-dark);
+    }
+    
+    .back-btn {
+        color: var(--muted-foreground-dark);
+    }
+    
+    .back-btn:hover {
+        color: var(--foreground-dark);
+    }
+    
+    .control-btn {
+        color: var(--muted-foreground-dark);
+    }
+    
+    .control-btn:hover:not(:disabled) {
+        background: var(--muted-dark);
+        color: var(--foreground-dark);
+    }
+    
+    .lyrics-text {
+        color: var(--foreground-dark);
+    }
+    
+    .debug-panel {
+        background: var(--background-dark);
+        border-top-color: var(--border-dark);
+    }
+    
+    .debug-header {
+        background: var(--muted-dark);
+        border-bottom-color: var(--border-dark);
+    }
+    
+    .debug-item {
+        background: var(--muted-dark);
+        border-color: var(--border-dark);
+    }
+}
+

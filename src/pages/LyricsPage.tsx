@@ -9,10 +9,11 @@ import {
   Music,
   ExternalLink,
 } from "lucide-react";
-import { lockScreenOrientation, unlockScreenOrientation, isCapacitorEnvironment } from "@/lib/capacitor";
+import { lockScreenOrientation, isCapacitorEnvironment } from "@/lib/capacitor";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePinch } from "@use-gesture/react";
 import { translations } from "@/lib/translations";
@@ -22,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 interface Song {
   id: string;
@@ -35,9 +37,13 @@ const LyricsPage = () => {
   const location = useLocation();
   const songData = location.state?.song as Song;
   const isLoadingLyrics = location.state?.isLoadingLyrics || false;
-  const { isLiked, toggleLike } = useLikedSongs();
   const { settings } = useSettings();
   const { user, isAuthenticated } = useAuth();
+  const { isPro } = useProStatus();
+  const { isLiked, toggleLike } = useLikedSongs({
+    isPro,
+    onLimitReached: () => setShowUpgradeModal(true)
+  });
   const { theme } = useTheme();
   const t = translations[settings.language];
 
@@ -60,10 +66,13 @@ const LyricsPage = () => {
   });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuItemsDisabled, setMenuItemsDisabled] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const menuOpenTimeRef = useRef<number>(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
   const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+  const baseFontSizeRef = useRef<number>(fontSize);
+  const isPinchingRef = useRef(false);
 
   // Utility function to manage timeout cleanup
   const addTimeout = useCallback((callback: () => void, delay: number) => {
@@ -149,18 +158,17 @@ const LyricsPage = () => {
       window.removeEventListener("resize", checkOrientation);
       window.removeEventListener("orientationchange", checkOrientation);
       
-      // Unlock orientation when component unmounts
+      // Lock back to portrait when component unmounts
       if (isCapacitorEnvironment()) {
-        unlockScreenOrientation();
+        lockScreenOrientation('portrait');
       }
     };
   }, []);
 
   useEffect(() => {
-    // Only allow auto-scroll for authenticated Pro users
+    // Only allow auto-scroll for Pro users (works for both guests and authenticated users)
     if (
-      !isAuthenticated ||
-      user?.subscription_type !== 'pro' ||
+      !isPro ||
       autoScrollSpeed === "off" ||
       isScrollPaused ||
       !scrollContainerRef.current ||
@@ -234,19 +242,53 @@ const LyricsPage = () => {
     }
   }, [songData?.id]);
 
+  // Update base font size when initial font size is set or orientation changes
+  useEffect(() => {
+    if (!isPinchingRef.current) {
+      baseFontSizeRef.current = fontSize;
+    }
+  }, [fontSize]);
+
+  // Reset base font size when orientation changes
+  useEffect(() => {
+    baseFontSizeRef.current = fontSize;
+    isPinchingRef.current = false;
+  }, [isLandscape]);
+
   // Pinch gesture handler for font size control
   usePinch(
-    ({ offset: [scaleOffset] }) => {
+    ({ offset: [scaleOffset], first, last }) => {
+      if (first) {
+        // On first touch, set the base font size to current
+        baseFontSizeRef.current = fontSize;
+        isPinchingRef.current = true;
+        // Disable CSS transitions during pinch for immediate feedback
+        if (lyricsRef.current) {
+          lyricsRef.current.style.transition = 'none';
+        }
+      }
+      
       // Calculate new font size based on pinch scale
-      // Base font size is 18px, scale range from 0.5 to 3.0
-      const newFontSize = Math.max(12, Math.min(48, 18 * scaleOffset));
+      // Use the base font size, scale range from 0.5 to 3.0
+      const baseSize = baseFontSizeRef.current;
+      const newFontSize = Math.max(12, Math.min(48, baseSize * scaleOffset));
       setFontSize(newFontSize);
+      
+      if (last) {
+        isPinchingRef.current = false;
+        // Re-enable CSS transitions after pinch ends
+        if (lyricsRef.current) {
+          lyricsRef.current.style.transition = '';
+        }
+      }
     },
     {
       target: scrollContainerRef,
       eventOptions: { passive: false },
       scaleBounds: { min: 0.5, max: 3.0 },
       rubberband: true,
+      pointer: { touch: true },
+      threshold: 0,
     },
   );
 
@@ -255,6 +297,12 @@ const LyricsPage = () => {
     addTimeout(() => {
       e.currentTarget?.blur();
     }, 10);
+
+    // For Free/Guest users, open upgrade modal instead
+    if (!isPro) {
+      setShowUpgradeModal(true);
+      return;
+    }
 
     const speeds: Array<"off" | "slow" | "medium" | "fast"> = [
       "off",
@@ -376,7 +424,23 @@ const LyricsPage = () => {
                   addTimeout(() => {
                     e.currentTarget?.blur();
                   }, 10);
-                  navigate("/");
+                  // Check if there's a returnTo state (from bookmarks/folders)
+                  const returnTo = location.state?.returnTo;
+                  if (returnTo) {
+                    // Navigate back to bookmarks with return state
+                    navigate("/", { 
+                      state: { 
+                        activeTab: "bookmarks",
+                        returnTo: {
+                          showLikedSongs: returnTo.showLikedSongs,
+                          selectedFolderId: returnTo.selectedFolderId,
+                        }
+                      } 
+                    });
+                  } else {
+                    // Default: navigate to home (search tab)
+                    navigate("/");
+                  }
                 }}
                 onBlur={(e) => e.target?.blur()}
                 onFocus={(e) => e.target?.blur()}
@@ -402,37 +466,41 @@ const LyricsPage = () => {
 
             {/* Centered buttons */}
             <div className="flex items-center justify-center gap-3">
-              {/* Auto-scroller button - only show for Pro users */}
-              {user?.subscription_type === 'pro' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleAutoScroll}
-                  onBlur={(e) => e.target?.blur()}
-                  onFocus={(e) => e.target?.blur()}
-                  style={{ pointerEvents: 'auto' }}
-                  className={`transition-smooth btn-no-focus ${
-                    autoScrollSpeed === "off"
-                      ? "text-muted-foreground hover:text-foreground"
-                      : autoScrollSpeed === "slow"
+              {/* Auto-scroller button - visible for all users */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAutoScroll}
+                onBlur={(e) => e.target?.blur()}
+                onFocus={(e) => e.target?.blur()}
+                style={{ pointerEvents: 'auto' }}
+                className={`transition-smooth btn-no-focus relative ${
+                  autoScrollSpeed === "off"
+                    ? "text-muted-foreground hover:text-foreground"
+                    : autoScrollSpeed === "slow"
+                      ? hasUserInteracted && !isScrollPaused
+                        ? "text-green-500 bg-green-500/10"
+                        : "text-green-500 hover:text-green-600"
+                      : autoScrollSpeed === "medium"
                         ? hasUserInteracted && !isScrollPaused
-                          ? "text-green-500 bg-green-500/10"
-                          : "text-green-500 hover:text-green-600"
-                        : autoScrollSpeed === "medium"
-                          ? hasUserInteracted && !isScrollPaused
-                            ? "text-yellow-500 bg-yellow-500/10"
-                            : "text-yellow-500 hover:text-yellow-600"
-                          : hasUserInteracted && !isScrollPaused
-                            ? "text-red-500 bg-red-500/10"
-                            : "text-red-500 hover:text-red-600"
-                  }`}
-                  title={`${t.autoScroll}: ${autoScrollSpeed}`}
-                >
-                  <Play
-                    className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted && !isScrollPaused ? "animate-pulse" : ""}`}
-                  />
-                </Button>
-              )}
+                          ? "text-yellow-500 bg-yellow-500/10"
+                          : "text-yellow-500 hover:text-yellow-600"
+                        : hasUserInteracted && !isScrollPaused
+                          ? "text-red-500 bg-red-500/10"
+                          : "text-red-500 hover:text-red-600"
+                }`}
+                title={`${t.autoScroll}: ${autoScrollSpeed}`}
+              >
+                <Play
+                  className={`w-4 h-4 ${autoScrollSpeed !== "off" && hasUserInteracted && !isScrollPaused ? "animate-pulse" : ""}`}
+                />
+                {!isPro && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[8px] font-bold px-1 py-0.5 rounded-full leading-none flex items-center justify-center min-w-[16px] h-4">
+                    Pro
+                  </span>
+                )}
+              </Button>
+              {/* Bold button - visible for all users */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -453,7 +521,9 @@ const LyricsPage = () => {
               >
                 <Type className="w-4 h-4" />
               </Button>
+              {/* Music Search button - visible for all users */}
               <DropdownMenu onOpenChange={(open) => {
+                // Handle menu normally for all users
                 if (open) {
                   menuOpenTimeRef.current = Date.now();
                   setIsMenuOpen(true);
@@ -587,6 +657,7 @@ const LyricsPage = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              {/* Like button - visible for all users */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -685,15 +756,19 @@ const LyricsPage = () => {
                 <div className="p-4 bg-muted/30 rounded-2xl mb-4">
                   <div className="w-8 h-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-semibold mb-2">Lyrics not available</h3>
+                <h3 className="font-semibold mb-2">{t.lyricsNotAvailable}</h3>
                 <p className="text-sm text-muted-foreground">
-                  We couldn't find the lyrics for this song.
+                  {t.lyricsNotAvailableSubtitle}
                 </p>
               </div>
             )}
           </div>
         </div>
       </div>
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+      />
     </div>
   );
 };

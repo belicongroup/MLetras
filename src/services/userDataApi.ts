@@ -12,12 +12,15 @@ const API_BASE_URL = isLocalWebDev
   ? 'http://10.0.2.2:8787'  // Use local backend for web development only
   : 'https://mletras-auth-api-dev.belicongroup.workers.dev';  // Using dev worker until production is fixed
 
+import { syncDebug } from '../lib/syncDebug';
+
 interface Folder {
   id: string;
   user_id: string;
   folder_name: string;
   created_at: string;
   updated_at: string;
+  is_locked?: boolean;  // Lock status for free tier downgrade
 }
 
 interface Bookmark {
@@ -29,6 +32,7 @@ interface Bookmark {
   track_id?: string;  // Musixmatch track ID for fetching lyrics
   created_at: string;
   folder_name?: string;
+  is_locked?: boolean;  // Lock status for free tier downgrade
 }
 
 interface Note {
@@ -58,6 +62,20 @@ class UserDataApi {
 
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
+    const method = options.method || 'GET';
+    const requestStartTime = Date.now();
+    
+    // Log request
+    let requestBody: any = null;
+    if (options.body) {
+      try {
+        requestBody = JSON.parse(options.body as string);
+      } catch {
+        requestBody = options.body;
+      }
+    }
+    
+    syncDebug.logApiRequest(method, endpoint, requestBody);
     
     try {
       const response = await fetch(url, {
@@ -67,6 +85,8 @@ class UserDataApi {
           ...options.headers,
         },
       });
+
+      const requestDuration = Date.now() - requestStartTime;
 
       if (!response.ok) {
         let errorMessage = `Request failed with status ${response.status}`;
@@ -93,24 +113,56 @@ class UserDataApi {
             }
           } catch (textError) {
             // Use default status-based message
-            console.error('Error parsing error response:', e, textError);
+            if (process.env.NODE_ENV !== 'production') {
+              console.error('Error parsing error response:', e, textError);
+            }
           }
         }
         
         const error = new Error(errorMessage);
         (error as any).status = response.status;
         (error as any).data = errorData;
+        
+        syncDebug.logApiResponse(method, endpoint, response.status, errorData, requestDuration);
         throw error;
       }
 
-      return response.json();
+      const responseData = await response.json();
+      syncDebug.logApiResponse(method, endpoint, response.status, responseData, requestDuration);
+      
+      return responseData;
     } catch (error: any) {
+      const requestDuration = Date.now() - requestStartTime;
+      
+      // Handle network errors with user-friendly messages
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        // Network connectivity issue
+        const networkError = new Error('Unable to connect to the server. Please check your internet connection and try again.');
+        (networkError as any).isNetworkError = true;
+        (networkError as any).status = 0;
+        
+        syncDebug.logApiResponse(method, endpoint, 0, { error: 'Network error', message: networkError.message }, requestDuration);
+        throw networkError;
+      }
+      
+      // Handle timeout errors
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        const timeoutError = new Error('Request timed out. Please check your connection and try again.');
+        (timeoutError as any).isNetworkError = true;
+        (timeoutError as any).status = 0;
+        
+        syncDebug.logApiResponse(method, endpoint, 0, { error: 'Timeout', message: timeoutError.message }, requestDuration);
+        throw timeoutError;
+      }
+      
+      syncDebug.logApiResponse(method, endpoint, error?.status || 0, { error: error?.message || 'Unknown error' }, requestDuration);
+      
       // Re-throw if it's already an Error with a message
       if (error instanceof Error && error.message) {
         throw error;
       }
-      // Otherwise wrap it
-      throw new Error(error?.message || 'Network error occurred');
+      // Otherwise wrap it with a user-friendly message
+      throw new Error(error?.message || 'An error occurred. Please try again.');
     }
   }
 
@@ -119,10 +171,21 @@ class UserDataApi {
     return this.makeRequest('/api/user/folders');
   }
 
-  async createFolder(folderName: string): Promise<{ success: boolean; folder: Folder; message: string }> {
+  async createFolder(folderName: string, isPro?: boolean): Promise<{ success: boolean; folder: Folder; message: string }> {
+    const requestBody = { 
+      folder_name: folderName,
+      is_pro: isPro // Pass StoreKit-verified Pro status (source of truth)
+    };
+    console.log('🔍 [DEBUG] API Request body:', {
+      ...requestBody,
+      isProValue: isPro,
+      isProType: typeof isPro,
+      isProTruthy: !!isPro,
+      isProStrictTrue: isPro === true
+    });
     return this.makeRequest('/api/user/folders', {
       method: 'POST',
-      body: JSON.stringify({ folder_name: folderName }),
+      body: JSON.stringify(requestBody),
     });
   }
 
@@ -180,14 +243,15 @@ class UserDataApi {
     return this.makeRequest('/api/user/notes');
   }
 
-  async createNote(noteTitle: string, noteContent: string, artistName?: string, songName?: string): Promise<{ success: boolean; note: Note; message: string }> {
+  async createNote(noteTitle: string, noteContent: string, artistName?: string, songName?: string, isPro?: boolean): Promise<{ success: boolean; note: Note; message: string }> {
     return this.makeRequest('/api/user/notes', {
       method: 'POST',
       body: JSON.stringify({ 
         note_title: noteTitle, 
         note_content: noteContent,
         artist_name: artistName,
-        song_name: songName
+        song_name: songName,
+        is_pro: isPro // Pass StoreKit-verified Pro status (source of truth)
       }),
     });
   }

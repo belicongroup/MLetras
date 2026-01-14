@@ -1,8 +1,8 @@
 // API key is handled server-side by Cloudflare Worker proxy
-// Using simple proxy (mletras-api-proxy) - NO caching to stay compliant with Musixmatch terms
-// No local caching of lyrics to stay compliant with Musixmatch terms
+// Using Smart Proxy (mletras-smart-proxy) with 7-day caching for lyrics
+// Caching complies with Musixmatch licensing when pixel_tracking_url is called
 
-const MUSIXMATCH_BASE_URL = "https://mletras-api-proxy.belicongroup.workers.dev";
+const MUSIXMATCH_BASE_URL = "https://mletras-smart-proxy.belicongroup.workers.dev";
 
 export interface MusixmatchTrack {
   track_id: number;
@@ -104,9 +104,198 @@ export interface Song {
   hasLyrics?: boolean;
 }
 
+interface CachedLyricsEntry {
+  lyrics: string;
+  pixelTrackingUrl: string | undefined;
+  timestamp: number;
+}
+
 class MusixmatchApiService {
   private lastRequestTime = 0;
-  private readonly minRequestInterval = 300; // Increased to 300ms between requests
+  private readonly minRequestInterval = 100; // Reduced from 300ms to 100ms for faster search (Python library has no rate limit)
+  private readonly LYRICS_CACHE_PREFIX = "mletras_lyrics_";
+  private readonly LYRICS_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+  /**
+   * Get cached lyrics from localStorage
+   */
+  private getCachedLyrics(trackId: string): string | null {
+    if (typeof window === 'undefined') return null;
+
+    try {
+      const cacheKey = `${this.LYRICS_CACHE_PREFIX}${trackId}`;
+      const cached = localStorage.getItem(cacheKey);
+      
+      if (!cached) return null;
+
+      const entry: CachedLyricsEntry = JSON.parse(cached);
+      const now = Date.now();
+      const age = now - entry.timestamp;
+
+      // Check if cache is still valid (within 7 days)
+      if (age > this.LYRICS_CACHE_TTL) {
+        // Cache expired, remove it
+        localStorage.removeItem(cacheKey);
+        return null;
+      }
+
+      return entry.lyrics;
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error reading cached lyrics:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Cache lyrics in localStorage
+   */
+  private cacheLyrics(trackId: string, lyrics: string, pixelTrackingUrl?: string): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const cacheKey = `${this.LYRICS_CACHE_PREFIX}${trackId}`;
+      const entry: CachedLyricsEntry = {
+        lyrics,
+        pixelTrackingUrl,
+        timestamp: Date.now()
+      };
+
+      localStorage.setItem(cacheKey, JSON.stringify(entry));
+
+      // Call pixel tracking URL for licensing compliance (fire and forget)
+      if (pixelTrackingUrl) {
+        this.callPixelTrackingUrl(pixelTrackingUrl);
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error caching lyrics:', error);
+      }
+      // If localStorage is full, try to clean up old entries
+      this.cleanupExpiredCache();
+    }
+  }
+
+  /**
+   * Refresh cache timestamp for existing cached lyrics (extends 7-day TTL)
+   * Public method for offline sync
+   */
+  public refreshCacheTimestamp(trackId: string): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const cacheKey = `${this.LYRICS_CACHE_PREFIX}${trackId}`;
+      const cached = localStorage.getItem(cacheKey);
+      
+      if (cached) {
+        const entry: CachedLyricsEntry = JSON.parse(cached);
+        // Update timestamp to refresh 7-day TTL
+        entry.timestamp = Date.now();
+        localStorage.setItem(cacheKey, JSON.stringify(entry));
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error refreshing cache timestamp:', error);
+      }
+    }
+  }
+
+  /**
+   * Sync lyrics for offline access (fetch and cache if not already cached)
+   * Public method for offline sync
+   */
+  public async syncLyricsForOffline(trackId: string): Promise<boolean> {
+    // Check if already cached
+    const cached = this.getCachedLyrics(trackId);
+    if (cached !== null) {
+      // Refresh timestamp to extend 7-day TTL
+      this.refreshCacheTimestamp(trackId);
+      return true;
+    }
+
+    // Not cached, fetch and cache
+    try {
+      await this.getSongLyrics(trackId);
+      return true;
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error syncing lyrics for offline:', error);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Call pixel tracking URL (fire and forget)
+   * Required for licensing compliance when caching lyrics
+   */
+  private callPixelTrackingUrl(pixelUrl: string): void {
+    if (!pixelUrl || typeof window === 'undefined') return;
+
+    try {
+      // Fire and forget - we don't wait for the response
+      fetch(pixelUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'MLetras/1.0'
+        }
+      }).catch(error => {
+        // Log but don't fail caching if tracking fails
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('Pixel tracking URL call failed (non-critical):', error);
+        }
+      });
+    } catch (error) {
+      // Ignore errors - tracking is non-critical
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Pixel tracking URL error (non-critical):', error);
+      }
+    }
+  }
+
+  /**
+   * Clean up expired cache entries
+   */
+  private cleanupExpiredCache(): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const keysToRemove: string[] = [];
+      const now = Date.now();
+
+      // Iterate through localStorage to find expired lyrics cache entries
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.LYRICS_CACHE_PREFIX)) {
+          try {
+            const cached = localStorage.getItem(key);
+            if (cached) {
+              const entry: CachedLyricsEntry = JSON.parse(cached);
+              const age = now - entry.timestamp;
+              if (age > this.LYRICS_CACHE_TTL) {
+                keysToRemove.push(key);
+              }
+            }
+          } catch (e) {
+            // Invalid entry, mark for removal
+            keysToRemove.push(key);
+          }
+        }
+      }
+
+      // Remove expired entries
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+
+      if (keysToRemove.length > 0 && process.env.NODE_ENV !== 'production') {
+        console.log(`Cleaned up ${keysToRemove.length} expired lyrics cache entries`);
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error cleaning up cache:', error);
+      }
+    }
+  }
 
   /**
    * Light query cleanup - trims surrounding whitespace only
@@ -161,9 +350,9 @@ class MusixmatchApiService {
     }
     
     this.lastRequestTime = Date.now();
-    // Use simple proxy (no caching) - API key handled server-side
-    // Simple proxy uses /musixmatch/ prefix for routing
-    const url = new URL(`${MUSIXMATCH_BASE_URL}/musixmatch${endpoint}`);
+    // Use Smart Proxy with caching - API key handled server-side
+    // Smart proxy uses direct endpoint paths (e.g., /track.search)
+    const url = new URL(`${MUSIXMATCH_BASE_URL}/${endpoint}`);
 
     // Add parameters (API key is added by simple proxy)
     Object.entries(params).forEach(([key, value]) => {
@@ -240,8 +429,14 @@ class MusixmatchApiService {
   }
 
   async getSongLyrics(trackId: string, song?: Song): Promise<string> {
-    // Fetch from server - Simple proxy calls Musixmatch API directly (no caching)
-    // No local caching to stay compliant with Musixmatch terms
+    // Check local cache first
+    const cachedLyrics = this.getCachedLyrics(trackId);
+    if (cachedLyrics !== null) {
+      return cachedLyrics;
+    }
+
+    // Fetch from server - Smart proxy caches lyrics for 7 days
+    // We also cache locally for offline access
     try {
       const data: MusixmatchLyricsResponse = await this.makeRequest(
         "/track.lyrics.get",
@@ -251,9 +446,11 @@ class MusixmatchApiService {
       );
 
       let lyricsText = "Lyrics not available for this song.";
+      let pixelTrackingUrl: string | undefined;
 
       if (data.message.body.lyrics && data.message.body.lyrics.lyrics_body) {
         lyricsText = data.message.body.lyrics.lyrics_body;
+        pixelTrackingUrl = data.message.body.lyrics.pixel_tracking_url;
 
         // Handle Musixmatch's placeholder text
         if (
@@ -265,7 +462,12 @@ class MusixmatchApiService {
         }
       }
 
-      // No caching - fetched fresh from Musixmatch API each time
+      // Cache lyrics locally for 7 days with pixel tracking URL
+      // This provides offline access and faster subsequent loads
+      if (lyricsText !== "Lyrics not available for this song.") {
+        this.cacheLyrics(trackId, lyricsText, pixelTrackingUrl);
+      }
+
       return lyricsText;
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {

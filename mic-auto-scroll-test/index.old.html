@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mic Auto-Scroll Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎤 Mic-Based Auto-Scroll Test</h1>
+            <p class="subtitle">Prototype for automatic lyric scrolling based on microphone input</p>
+        </header>
+
+        <div class="controls">
+            <button id="startMic" class="btn btn-primary">Start Microphone</button>
+            <button id="stopMic" class="btn btn-secondary" disabled>Stop Microphone</button>
+            <div class="status">
+                <span id="micStatus" class="status-indicator">Microphone: Off</span>
+                <span id="recognitionStatus" class="status-indicator">Recognition: Idle</span>
+            </div>
+        </div>
+
+        <div class="lyrics-section">
+            <div class="lyrics-header">
+                <h2>Lyrics</h2>
+                <div class="zoom-controls">
+                    <button id="zoomOut" class="btn btn-zoom">Zoom Out (-)</button>
+                    <span id="zoomLevel" class="zoom-indicator">100%</span>
+                    <button id="zoomIn" class="btn btn-zoom">Zoom In (+)</button>
+                    <button id="zoomReset" class="btn btn-zoom">Reset</button>
+                </div>
+            </div>
+            <div class="lyrics-container-wrapper">
+                <div class="lyrics-container" id="lyricsContainer">
+                    <div class="lyrics-text" id="lyricsText">
+                        Canto del infierno, soy el Roque de Los Ántrax
+Otra vez los cuernos y otra vez por la espalda
+Así es este juego, unas pierdes y otras ganas
+Pero entre los muertos, el Mele aún no me regala
+Y aquí en el infierno lo cargo a cachetadas
+Tengo tiempo eterno para esperar los que faltan
+Y mientras espero, sigo con las cachetadas
+Aquí este perro conmigo no se la acaba
+Comprando oficinas para tener dos, tres puntos
+Las llantas rechinan de un pasa con vidrios duros
+Se me echan encima cuatro cuernos tartamudos
+El Mele les tira, uno con dos tiros tuvo
+Se rifo la vida, la gano por un segundo
+Y bien merecida porque se las miro duro
+Y así en la cocina mataron cuatro por uno
+No traigo a la mía para morirme con gusto
+Y está bien, está mal o más o menos, pariente
+Pero esto es Otro Nivel, viejo
+Catrín pa′ matar, calavera es que traía fierro
+Y hoy me tocó usar el perfume de los muertos
+Voy a aclimatar, de amigos aquí está el Bello
+Como en Culiacán, el Chuve y Pocho se unieron
+Y pa' rematar, Pedrona ahí carga un refuego
+Con Pancho Arsenal que también aquí es el bueno
+Y está bien o mal o estará más o menos
+Pero Satanás no se mete en lo que hacemos
+Y no se me agüiten, Los Ántrax sigan de caza
+Y ahí viene el desquite y el placer lo abraza
+Yo aquí no estoy triste, solo hagan por mi raza
+Compa 57, agradezco la confianza
+Gracias a los plebes que al cajón echaron ramas
+Y a las mujeres que sus lagrimas derraman
+Sé que estoy ausente, hijos, los llevo en el alma
+Y sigo pendiente que dijo el pato a la gansa
+                    </div>
+                    <div class="progress-overlay" id="progressOverlay"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h3>Debug Info</h3>
+            <div class="debug-panel">
+                <div class="debug-item">
+                    <strong>Recognized Text:</strong>
+                    <div id="recognizedText" class="debug-value">-</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Current Line:</strong>
+                    <div id="currentLine" class="debug-value">-</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Match Confidence:</strong>
+                    <div id="matchConfidence" class="debug-value">-</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Audio Level:</strong>
+                    <div id="audioLevel" class="debug-value">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-console-section">
+            <div class="console-header">
+                <h3>Debug Console</h3>
+                <button id="clearConsole" class="btn btn-secondary btn-small">Clear</button>
+            </div>
+            <div class="console-container" id="consoleContainer">
+                <div class="console-log" id="consoleLogs">
+                    <div class="console-entry">Console ready...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

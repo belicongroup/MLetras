@@ -33,3 +33,4 @@ temp_*.txt
 *.sln
 *.sw?
 .wrangler/
+.env

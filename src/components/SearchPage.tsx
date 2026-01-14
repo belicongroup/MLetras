@@ -11,6 +11,7 @@ import { musixmatchApi, Song } from "@/services/musixmatchApi";
 import { useLikedSongs } from "@/hooks/useLikedSongs";
 import { searchHistory, SearchHistoryItem } from "@/services/searchHistory";
 import { usePerformanceOptimizations } from "@/hooks/usePerformanceOptimizations";
+import { useProStatus } from "@/hooks/useProStatus";
 
 // Swipeable History Item Component (memoized for performance)
 const SwipeableHistoryItem = memo(({
@@ -20,6 +21,7 @@ const SwipeableHistoryItem = memo(({
   onDelete,
   isLiked,
   deleteText,
+  isPro,
 }: {
   historyItem: SearchHistoryItem & { hasLyrics: boolean };
   onSelect: () => void;
@@ -27,6 +29,7 @@ const SwipeableHistoryItem = memo(({
   onDelete: () => void;
   isLiked: boolean;
   deleteText: string;
+  isPro: boolean;
 }) => {
   const [showDeleteButton, setShowDeleteButton] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
@@ -73,7 +76,7 @@ const SwipeableHistoryItem = memo(({
         onTouchEnd={handleTouchEnd}
       >
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
             <div className="flex-1 cursor-pointer">
               <h4 className="font-semibold text-foreground mb-1">
                 {historyItem.title}
@@ -82,21 +85,23 @@ const SwipeableHistoryItem = memo(({
                 {historyItem.artist}
               </p>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onLike();
-              }}
-              className={`transition-smooth ${
-                isLiked
-                  ? "text-primary hover:text-primary/80"
-                  : "text-muted-foreground hover:text-primary"
-              }`}
-            >
-              <Heart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
-            </Button>
+            {isPro && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLike();
+                }}
+                className={`transition-smooth ${
+                  isLiked
+                    ? "text-primary hover:text-primary/80"
+                    : "text-muted-foreground hover:text-primary"
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -129,7 +134,17 @@ const SearchPage = () => {
     (SearchHistoryItem & { hasLyrics: boolean })[]
   >([]);
   const [showHistory, setShowHistory] = useState(true);
-  const { isLiked, toggleLike } = useLikedSongs();
+  const { isPro } = useProStatus();
+  const { isLiked, toggleLike } = useLikedSongs({
+    isPro,
+    // SearchPage doesn't have upgrade modal, so we'll just prevent the action
+    onLimitReached: () => {
+      // Could show a toast or console warning
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Song limit reached');
+      }
+    }
+  });
   const searchInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const allowBlurRef = useRef(false);
@@ -154,7 +169,9 @@ const SearchPage = () => {
         );
       }
 
-      console.debug(detail);
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug(detail);
+      }
     },
     [enableSearchDebug],
   );
@@ -207,7 +224,9 @@ const SearchPage = () => {
       const results = await musixmatchApi.searchSongs(query);
       setSearchResults(results);
     } catch (error) {
-      console.error("Search failed:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Search failed:", error);
+      }
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -216,7 +235,7 @@ const SearchPage = () => {
 
   // Debounced search to prevent excessive API calls
   const debouncedSearch = useMemo(
-    () => debounce(handleSearch, 500),
+    () => debounce(handleSearch, 300), // Reduced from 500ms to 300ms for faster real-time search
     [debounce, handleSearch]
   );
 
@@ -261,7 +280,9 @@ const SearchPage = () => {
         },
       });
     } catch (error) {
-      console.error("Failed to fetch lyrics:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Failed to fetch lyrics:", error);
+      }
       navigate("/lyrics", {
         state: {
           song: { ...song, lyrics: "Lyrics not available for this song." },
@@ -330,7 +351,9 @@ const SearchPage = () => {
         },
       });
     } catch (error) {
-      console.error("Failed to fetch lyrics:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Failed to fetch lyrics:", error);
+      }
       navigate("/lyrics", {
         state: {
           song: {
@@ -470,70 +493,125 @@ const SearchPage = () => {
 
       {/* Search Bar */}
       <div className="relative">
-        <Input
-          ref={searchInputRef}
-          placeholder="Search by song title, artist, or lyrics"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          data-search-debug-input={enableSearchDebug ? "true" : undefined}
-          onPointerDown={(event) => {
-            if (enableSearchDebug) {
-              emitDebugLog(
-                `input pointerdown button=${event.button} pointerType=${event.pointerType}`,
-              );
-            }
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            // When form is submitted (e.g., "Done" button on iOS keyboard),
+            // explicitly allow blur to prevent refocus
+            allowBlurRef.current = true;
+            emitDebugLog("form onSubmit (likely Done button) – allowing blur");
+            handleSearch(searchQuery);
+            searchInputRef.current?.blur();
           }}
-          onTouchStart={(event) => {
-            if (enableSearchDebug) {
-              emitDebugLog(
-                `input touchstart touches=${event.touches.length}`,
-              );
-            }
-          }}
-          onFocus={() => {
-            emitDebugLog("input focus");
-            if (isProgrammaticFocus.current) {
-              isProgrammaticFocus.current = false;
-              return;
-            }
-            allowBlurRef.current = false;
-          }}
-          onBlur={() => {
-            emitDebugLog(
-              `input blur (allowBlur=${allowBlurRef.current}, isIOS=${isIOSApp}, activeElement=${document.activeElement?.tagName})`,
-            );
-            if (isIOSApp && !allowBlurRef.current) {
-              requestAnimationFrame(() => {
-                isProgrammaticFocus.current = true;
-                searchInputRef.current?.focus();
-                emitDebugLog("refocusing input after unexpected blur");
-              });
-            } else {
+        >
+          <Input
+            ref={searchInputRef}
+            placeholder="Search by song title, artist, or lyrics"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            data-search-debug-input={enableSearchDebug ? "true" : undefined}
+            onPointerDown={(event) => {
+              if (enableSearchDebug) {
+                emitDebugLog(
+                  `input pointerdown button=${event.button} pointerType=${event.pointerType}`,
+                );
+              }
+            }}
+            onTouchStart={(event) => {
+              if (enableSearchDebug) {
+                emitDebugLog(
+                  `input touchstart touches=${event.touches.length}`,
+                );
+              }
+            }}
+            onFocus={() => {
+              emitDebugLog("input focus");
+              if (isProgrammaticFocus.current) {
+                isProgrammaticFocus.current = false;
+                return;
+              }
               allowBlurRef.current = false;
-              emitDebugLog("blur permitted – state reset");
-            }
-          }}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') {
-              allowBlurRef.current = true;
-              emitDebugLog("Enter key pressed – allowing blur");
-              handleSearch(searchQuery);
-              searchInputRef.current?.blur();
-            }
-          }}
-          className="pr-12 h-12 bg-card/50 border-border/50 focus:border-primary/50 transition-smooth"
-          autoCapitalize="sentences"
-          autoComplete="on"
-          autoCorrect="on"
-          dir="auto"
-          rows={1}
-          spellCheck={true}
-        />
+            }}
+            onBlur={(e) => {
+              const relatedTarget = e.relatedTarget as HTMLElement | null;
+              const activeElement = document.activeElement as HTMLElement | null;
+              const isBlurringToBody = !relatedTarget || 
+                relatedTarget === document.body || 
+                relatedTarget.tagName === 'HTML' ||
+                (!activeElement || activeElement === document.body || activeElement.tagName === 'HTML');
+              
+              emitDebugLog(
+                `input blur (allowBlur=${allowBlurRef.current}, isIOS=${isIOSApp}, relatedTarget=${relatedTarget?.tagName ?? "null"}, activeElement=${activeElement?.tagName ?? "null"}, isBlurringToBody=${isBlurringToBody})`,
+              );
+              
+              // On iOS, if blurring to body/document (intentional dismissal like "Done"),
+              // or if allowBlur is explicitly set, allow the blur
+              if (isIOSApp && !allowBlurRef.current) {
+                // Check if this is an intentional dismissal (blurring to body/document)
+                if (isBlurringToBody) {
+                  // This looks like intentional keyboard dismissal (e.g., "Done" button)
+                  allowBlurRef.current = true;
+                  emitDebugLog("blur to body detected – allowing intentional dismissal");
+                  return; // Allow the blur
+                }
+                // Otherwise, it might be accidental blur, so refocus
+                requestAnimationFrame(() => {
+                  isProgrammaticFocus.current = true;
+                  searchInputRef.current?.focus();
+                  emitDebugLog("refocusing input after unexpected blur");
+                });
+              } else {
+                allowBlurRef.current = false;
+                emitDebugLog("blur permitted – state reset");
+              }
+            }}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                allowBlurRef.current = true;
+                emitDebugLog("Enter key pressed – allowing blur");
+                handleSearch(searchQuery);
+                searchInputRef.current?.blur();
+              }
+            }}
+            className="pr-12 h-12 bg-card/50 border-border/50 focus:border-primary/50 transition-smooth"
+            autoCapitalize="sentences"
+            autoComplete="on"
+            autoCorrect="on"
+            dir="auto"
+            spellCheck={true}
+          />
+        </form>
         <button
-          onClick={() => {
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Set allowBlur BEFORE blur happens to prevent iOS refocus
+            allowBlurRef.current = true;
+            emitDebugLog("done button mousedown – allowing blur");
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Set allowBlur BEFORE blur happens to prevent iOS refocus
+            allowBlurRef.current = true;
+            emitDebugLog("done button touchstart – allowing blur");
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (searchResults.length > 0 || hasSearched) {
               clearSearch();
             }
+            // Dismiss keyboard when button is clicked
+            emitDebugLog("done button clicked – blurring input");
+            // Use requestAnimationFrame to ensure blur happens after click event completes
+            requestAnimationFrame(() => {
+              searchInputRef.current?.blur();
+              // Also blur any active element as a fallback
+              if (document.activeElement && document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+            });
           }}
           disabled={isSearching}
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -572,6 +650,7 @@ const SearchPage = () => {
               onDelete={() => removeFromHistory(historyItem.id)}
               isLiked={isLiked(historyItem.id)}
               deleteText={t.delete}
+              isPro={isPro}
             />
           ))}
         </div>
@@ -599,20 +678,22 @@ const SearchPage = () => {
                       {song.artist}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleLike(song)}
-                    className={`ml-3 transition-smooth ${
-                      isLiked(song.id)
-                        ? "text-primary hover:text-primary/80"
-                        : "text-muted-foreground hover:text-primary"
-                    }`}
-                  >
-                    <Heart
-                      className={`w-5 h-5 ${isLiked(song.id) ? "fill-current" : ""}`}
-                    />
-                  </Button>
+                  {isPro && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleLike(song)}
+                      className={`ml-3 transition-smooth ${
+                        isLiked(song.id)
+                          ? "text-primary hover:text-primary/80"
+                          : "text-muted-foreground hover:text-primary"
+                      }`}
+                    >
+                      <Heart
+                        className={`w-5 h-5 ${isLiked(song.id) ? "fill-current" : ""}`}
+                      />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

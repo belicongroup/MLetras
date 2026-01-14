@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { StickyNote, Plus, Trash2, Edit3, User, Loader2, Lock } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { StickyNote, Plus, Trash2, Edit3, User, Loader2, Lock, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -22,10 +22,17 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNotes, UserNote } from "@/hooks/useNotes";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 import { useNavigate } from "react-router-dom";
 import { translations } from "@/lib/translations";
 import { useSettings } from "@/contexts/SettingsContext";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import {
+  isNoteLocked,
+  updateUnlockedNotes,
+  onNoteOpened,
+  getUnlockedNotes,
+} from "@/services/freeTierLimits";
 
 interface NotesListPageProps {
   onOpenAuth?: () => void;
@@ -35,6 +42,7 @@ const NotesListPage = ({ onOpenAuth }: NotesListPageProps = {}) => {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const { user, isAuthenticated } = useAuth();
+  const { isPro, isLoading: isProLoading } = useProStatus();
   const t = translations[settings.language];
   const {
     notes,
@@ -46,18 +54,50 @@ const NotesListPage = ({ onOpenAuth }: NotesListPageProps = {}) => {
   } = useNotes();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<UserNote | null>(null);
-  const [editingNote, setEditingNote] = useState<UserNote | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [editingNote, setEditingNote] = useState<UserNote | null>(null);
 
   // Free tier limits
   const FREE_NOTES_LIMIT = 3;
+
+  // Compute unlocked notes synchronously during render to ensure correct lock state on first render
+  // This prevents the issue where all notes show as locked when logged out
+  const unlockedNoteIds = useMemo(() => {
+    // Don't compute until Pro status is determined
+    if (isProLoading || notes.length === 0) {
+      // Return empty set while loading - notes will show as unlocked to prevent flash
+      return new Set<string>();
+    }
+    
+    const noteIds = notes.map(n => n.id);
+    // Create a map of note IDs to creation timestamps for fallback
+    const notesWithTimestamps = new Map<string, number>();
+    notes.forEach(note => {
+      notesWithTimestamps.set(note.id, note.createdAt);
+    });
+    const unlocked = updateUnlockedNotes(noteIds, isPro, notesWithTimestamps);
+    return new Set(unlocked);
+  }, [notes, isPro, isProLoading]);
 
   // Refresh notes when component mounts to ensure we have the latest data
   useEffect(() => {
     refreshNotes();
   }, []);
 
+  // Note: unlockedNoteIds is now computed synchronously in useMemo above
+  // This ensures correct lock state on first render without waiting for useEffect
+
   const handleNoteClick = (note: UserNote) => {
+    // Check if note is locked before opening
+    if (isNoteLocked(note.id, isPro)) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    
+    // Record note usage and update unlocked set
+    const allNoteIds = notes.map(n => n.id);
+    onNoteOpened(note.id, allNoteIds, isPro);
+    
     navigate("/note-detail", {
       state: { note },
     });
@@ -83,9 +123,12 @@ const NotesListPage = ({ onOpenAuth }: NotesListPageProps = {}) => {
   };
 
   const handleCreateNote = () => {
-    // Check note limit for free users
-    if (isAuthenticated && user?.subscription_type === 'free') {
+    // Free users can create notes, but if they're already at the limit of usable notes,
+    // show upgrade modal. However, we allow creation - the new note will be locked if over limit.
+    // But if they already have more than the limit, block creating more.
+    if (!isPro) {
       const totalNotes = notes.length;
+      // If they already have more than the limit, block creating more
       if (totalNotes >= FREE_NOTES_LIMIT) {
         setShowUpgradeModal(true);
         return;
@@ -93,40 +136,22 @@ const NotesListPage = ({ onOpenAuth }: NotesListPageProps = {}) => {
     }
     
     setEditingNote(null);
-    setShowCreateDialog(true);
+    // Defer dialog opening to prevent iOS constraint conflicts with keyboard toolbar
+    // This allows the UI to settle before showing the dialog and keyboard
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setShowCreateDialog(true);
+      });
+    });
   };
 
-  // Show locked overlay if not logged in
-  if (!isAuthenticated) {
+  // Show loading state while checking Pro status (prevents flash of upgrade prompt)
+  if (isProLoading) {
     return (
-      <div className="p-4 space-y-6 tablet-container tablet-spacing relative min-h-[calc(100vh-120px)]">
-        {/* Locked Overlay */}
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
-          <div className="text-center px-6 max-w-md">
-            <div className="inline-flex p-4 bg-muted/50 rounded-2xl mb-6">
-              <Lock className="w-12 h-12 text-muted-foreground" />
-            </div>
-            <h2 className="text-2xl font-semibold mb-3">Sign in to access your notes</h2>
-            <p className="text-muted-foreground mb-6">
-              Create an account to save your notes and sync them across all devices. Your notes will be safely stored in the cloud and accessible from anywhere.
-            </p>
-            <Button
-              onClick={() => onOpenAuth?.()}
-              className="bg-gradient-primary hover:bg-gradient-accent text-white px-6 py-3"
-            >
-              Unlock features
-            </Button>
-          </div>
-        </div>
-        
-        {/* Hidden content behind overlay */}
-        <div className="opacity-30 pointer-events-none">
-          <div className="text-center py-8">
-            <div className="inline-flex p-3 bg-gradient-primary rounded-2xl shadow-glow mb-4">
-              <StickyNote className="w-6 h-6 text-white" />
-            </div>
-            <h2 className="text-mobile-hero mb-2">My Notes</h2>
-          </div>
+      <div className="p-4 space-y-6 tablet-container tablet-spacing relative min-h-[calc(100vh-120px)] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -167,55 +192,78 @@ const NotesListPage = ({ onOpenAuth }: NotesListPageProps = {}) => {
         </div>
       ) : notes.length > 0 ? (
         <div className="space-y-3">
-          {notes.map((note) => (
-            <Card
-              key={note.id}
-              className="glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer"
-              onClick={() => {
-                handleNoteClick(note);
-              }}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-foreground mb-1">
-                      {note.title}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {note.artist || 'General Note'}
-                    </p>
+          {notes.map((note) => {
+            // Compute lock state: unlockedNoteIds is computed synchronously in useMemo
+            // If Pro status is loading or unlocked set is empty, show as unlocked to prevent flash
+            // Once Pro status loads, the correct lock state will be computed
+            const noteIsLocked = isProLoading || unlockedNoteIds.size === 0
+              ? false // Don't show as locked while loading to prevent flash
+              : !unlockedNoteIds.has(note.id) && !isPro;
+            return (
+              <Card
+                key={note.id}
+                className={`glass border-border/50 hover:border-primary/30 transition-smooth cursor-pointer ${
+                  noteIsLocked ? 'opacity-60' : ''
+                }`}
+                onClick={() => {
+                  handleNoteClick(note);
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-foreground mb-1">
+                          {note.title}
+                        </h4>
+                        {noteIsLocked && (
+                          <Lock className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {note.artist || t.generalNote}
+                        {noteIsLocked && ' • Locked'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (noteIsLocked) {
+                            setShowUpgradeModal(true);
+                          } else {
+                            handleEditNote(note, e);
+                          }
+                        }}
+                        className="transition-smooth text-muted-foreground hover:text-primary"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteNote(note, e)}
+                        className="transition-smooth text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 ml-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleEditNote(note, e)}
-                      className="transition-smooth text-muted-foreground hover:text-primary"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteNote(note, e)}
-                      className="transition-smooth text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-8">
           <div className="inline-flex p-4 bg-muted/30 rounded-2xl mb-4">
             <StickyNote className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-semibold mb-2">No notes yet</h3>
+          <h3 className="text-lg font-semibold mb-2">{t.noNotesYet}</h3>
           <p className="text-muted-foreground mb-4">
-            Create your first note to get started.
+            {t.createFirstNote}
           </p>
           <Button
             onClick={handleCreateNote}
@@ -317,6 +365,36 @@ const NoteEditorModal = ({
   const [noteLyrics, setNoteLyrics] = useState(note?.lyrics || "");
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<{ artist?: string; song?: string }>({});
+  const artistInputRef = useRef<HTMLInputElement>(null);
+  const dialogMountedRef = useRef(false);
+
+  // Delay auto-focus to prevent iOS keyboard toolbar constraint conflicts
+  // Only auto-focus when creating a new note, not when editing
+  useEffect(() => {
+    // Skip auto-focus when editing an existing note
+    if (note) {
+      return;
+    }
+    
+    if (!dialogMountedRef.current) {
+      dialogMountedRef.current = true;
+      // Use multiple requestAnimationFrame calls to ensure dialog is fully rendered
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Only auto-focus if dialog is visible and input exists
+          if (artistInputRef.current) {
+            // Small additional delay to let iOS layout settle and prevent constraint conflicts
+            setTimeout(() => {
+              artistInputRef.current?.focus();
+            }, 150);
+          }
+        });
+      });
+    }
+    return () => {
+      dialogMountedRef.current = false;
+    };
+  }, [note]);
 
   const handleSave = async () => {
     // Validation
@@ -361,6 +439,7 @@ const NoteEditorModal = ({
       <div className="space-y-2">
         <label className="text-sm font-medium">{t.artistName}</label>
         <input
+          ref={artistInputRef}
           type="text"
           value={artistName}
           onChange={(e) => {
@@ -368,6 +447,7 @@ const NoteEditorModal = ({
             if (errors.artist) setErrors({ ...errors, artist: undefined });
           }}
           placeholder={t.artistName}
+          autoFocus={false}
           className="w-full p-3 rounded-lg bg-card/50 border border-border/50 focus:border-primary focus:outline-none"
         />
         {errors.artist && (
@@ -385,6 +465,7 @@ const NoteEditorModal = ({
             if (errors.song) setErrors({ ...errors, song: undefined });
           }}
           placeholder={t.songName}
+          autoFocus={false}
           className="w-full p-3 rounded-lg bg-card/50 border border-border/50 focus:border-primary focus:outline-none"
         />
         {errors.song && (
@@ -399,7 +480,14 @@ const NoteEditorModal = ({
           onChange={(e) => setNoteLyrics(e.target.value)}
           placeholder={t.noteLyricsPlaceholder}
           rows={8}
-          className="w-full p-3 rounded-lg bg-card/50 border border-border/50 focus:border-primary focus:outline-none resize-none"
+          autoFocus={false}
+          className="w-full p-3 rounded-lg bg-card/50 border border-border/50 focus:border-primary focus:outline-none resize-none font-mono"
+          style={{
+            whiteSpace: 'pre',
+            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+            overflowWrap: 'normal',
+          }}
+          spellCheck={false}
         />
       </div>
 

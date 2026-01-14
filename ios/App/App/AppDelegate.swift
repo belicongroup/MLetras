@@ -7,7 +7,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Optimize app launch performance
+        // Pre-warm Capacitor bridge for faster startup
+        
+        // Explicitly disable UIScene lifecycle to avoid deprecation warnings
+        // Capacitor apps use the traditional UIApplicationDelegate lifecycle
+        if #available(iOS 13.0, *) {
+            // Ensure window is created for iOS 13+ compatibility
+            if window == nil {
+                window = UIWindow(frame: UIScreen.main.bounds)
+            }
+        }
+        
+        // Set preferred language to avoid warnings (use en-US to match expected format)
+        // This is set per-app and won't affect system preferences
+        if let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.set(["en-US"], forKey: "AppleLanguages")
+            UserDefaults.standard.synchronize()
+        }
+        
         return true
     }
 

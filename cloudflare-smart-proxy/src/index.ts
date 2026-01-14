@@ -71,7 +71,7 @@ class SmartProxy {
   /**
    * Set CORS headers
    */
-  private setCorsHeaders(response: Response, origin?: string): Response {
+  private setCorsHeaders(response: Response, origin?: string | null): Response {
     const headers = new Headers(response.headers);
     
     if (origin && this.isAllowedOrigin(origin)) {
@@ -94,7 +94,7 @@ class SmartProxy {
   /**
    * Handle OPTIONS preflight requests
    */
-  private handleOptions(origin?: string): Response {
+  private handleOptions(origin?: string | null): Response {
     const headers = new Headers();
     
     if (origin && this.isAllowedOrigin(origin)) {
@@ -124,9 +124,44 @@ class SmartProxy {
   }
 
   /**
-   * Store data in KV cache
+   * Call pixel tracking URL for lyrics (fire and forget)
+   * This is required for licensing compliance when caching lyrics
    */
-  private async setCachedData(cacheKey: string, data: any, endpoint: string): Promise<void> {
+  private async callPixelTrackingUrl(pixelUrl: string | undefined): Promise<void> {
+    if (!pixelUrl) {
+      return;
+    }
+
+    try {
+      // Fire and forget - we don't wait for the response
+      fetch(pixelUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'MLetras/1.0'
+        }
+      }).catch(error => {
+        // Log but don't fail caching if tracking fails
+        console.error('Pixel tracking URL call failed (non-critical):', error);
+      });
+    } catch (error) {
+      // Ignore errors - tracking is non-critical
+      console.error('Pixel tracking URL error (non-critical):', error);
+    }
+  }
+
+  /**
+   * Store data in KV cache
+   * @param cacheKey - Cache key
+   * @param data - Data to cache
+   * @param endpoint - Endpoint name (e.g., 'track.lyrics.get')
+   * @param ttlSeconds - Time to live in seconds (7 days = 604800 for lyrics, undefined for search)
+   */
+  private async setCachedData(
+    cacheKey: string, 
+    data: any, 
+    endpoint: string,
+    ttlSeconds?: number
+  ): Promise<void> {
     try {
       const cacheEntry: CacheEntry = {
         data,
@@ -134,9 +169,19 @@ class SmartProxy {
         endpoint
       };
       
-      // Cache forever until manually cleared
-      await this.env.MUSIXMATCH_CACHE.put(cacheKey, JSON.stringify(cacheEntry));
-      console.log(`Cached data for key: ${cacheKey}`);
+      // For lyrics endpoint, cache for 7 days (604800 seconds)
+      // For search endpoint, cache indefinitely (no TTL)
+      const options: { expirationTtl?: number } = {};
+      if (ttlSeconds !== undefined) {
+        options.expirationTtl = ttlSeconds;
+      }
+      
+      await this.env.MUSIXMATCH_CACHE.put(
+        cacheKey, 
+        JSON.stringify(cacheEntry),
+        options
+      );
+      console.log(`Cached data for key: ${cacheKey}${ttlSeconds ? ` (TTL: ${ttlSeconds}s)` : ' (no expiration)'}`);
     } catch (error) {
       console.error('Error writing to cache:', error);
     }
@@ -217,8 +262,22 @@ class SmartProxy {
       // Fetch from API
       const apiData = await this.fetchFromAPI(endpoint, params);
       
-      // Store in cache
-      await this.setCachedData(cacheKey, apiData, endpoint);
+      // For lyrics endpoint, cache for 7 days (604800 seconds) and call pixel tracking URL
+      const LYRICS_CACHE_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+      
+      if (endpoint === 'track.lyrics.get') {
+        // Extract pixel_tracking_url from lyrics response
+        const pixelTrackingUrl = apiData?.message?.body?.lyrics?.pixel_tracking_url;
+        
+        // Call pixel tracking URL for licensing compliance (fire and forget)
+        this.callPixelTrackingUrl(pixelTrackingUrl);
+        
+        // Cache lyrics for 7 days
+        await this.setCachedData(cacheKey, apiData, endpoint, LYRICS_CACHE_TTL);
+      } else {
+        // Cache search results indefinitely (no TTL)
+        await this.setCachedData(cacheKey, apiData, endpoint);
+      }
       
       return new Response(JSON.stringify(apiData), {
         headers: {

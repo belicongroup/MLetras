@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { userDataApi } from "@/services/userDataApi";
 import { syncLayer } from "@/services/syncLayer";
+import { syncDebug } from "@/lib/syncDebug";
 
 export interface UserNote {
   id: string;
@@ -57,6 +58,67 @@ export const useNotes = () => {
     [persistNotes, broadcastNotesUpdate],
   );
 
+  // Migrate local notes to server (for first-time login)
+  const migrateLocalNotesToServer = useCallback(async (localNotes: UserNote[]): Promise<void> => {
+    if (localNotes.length === 0) return;
+    
+    try {
+      const sessionToken = localStorage.getItem('sessionToken');
+      if (!sessionToken) return;
+
+      // Check if server has any notes
+      const response = await userDataApi.getNotes();
+      
+      // If server is empty but local has data, migrate local to server
+      if (response.success && (!response.notes || response.notes.length === 0) && localNotes.length > 0) {
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`🔄 Migrating ${localNotes.length} local notes to server...`);
+        }
+        
+        // Migrate each local note to server
+        for (const note of localNotes) {
+          try {
+            // Create note on server
+            const createResponse = await userDataApi.createNote(
+              note.title,
+              note.lyrics,
+              note.artist || undefined,
+              undefined // song_name
+            );
+            
+            if (createResponse.success && createResponse.note) {
+              // Update local note with server ID
+              applyNotesUpdate((prevNotes) => {
+                return prevNotes.map((n) =>
+                  n.id === note.id
+                    ? {
+                        ...n,
+                        id: createResponse.note.id,
+                        createdAt: new Date(createResponse.note.created_at).getTime(),
+                        updatedAt: new Date(createResponse.note.updated_at).getTime(),
+                      }
+                    : n
+                );
+              });
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn(`Failed to migrate note ${note.title} to server:`, error);
+            }
+          }
+        }
+        
+        if (process.env.NODE_ENV !== "production") {
+          console.log("✅ Local notes migrated to server");
+        }
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to migrate local notes to server:", error);
+      }
+    }
+  }, [applyNotesUpdate]);
+
   // Load and sync notes from both localStorage and server
   useEffect(() => {
     const loadAndSyncNotes = async () => {
@@ -84,14 +146,76 @@ export const useNotes = () => {
                 updatedAt: new Date(note.updated_at).getTime(),
               }));
 
-              // Merge: Server data is source of truth
-              const mergedNotes = serverNotes;
-              
-              // Save merged data to localStorage
-              applyNotesUpdate(() => mergedNotes);
-              
-              if (process.env.NODE_ENV !== 'production') {
-                console.log('✅ Notes synced from server');
+              if (serverNotes.length > 0) {
+                // Merge server notes with local notes (keep both, deduplicate)
+                // Create a map of server notes by title+artist for deduplication
+                const serverNotesMap = new Map<string, UserNote>();
+                serverNotes.forEach(note => {
+                  const key = `${note.title}|${note.artist}`;
+                  serverNotesMap.set(key, note);
+                });
+                
+                // Keep local notes that don't exist on server (by title+artist)
+                const localOnlyNotes = localNotes.filter(localNote => {
+                  const key = `${localNote.title}|${localNote.artist}`;
+                  return !serverNotesMap.has(key);
+                });
+                
+                // Merge: server notes (source of truth) + local-only notes
+                const mergedNotes = [...serverNotes, ...localOnlyNotes];
+                
+                applyNotesUpdate(() => mergedNotes);
+                
+                // Migrate local-only notes to server in background
+                if (localOnlyNotes.length > 0) {
+                  migrateLocalNotesToServer(localOnlyNotes).catch(err => {
+                    if (process.env.NODE_ENV !== 'production') {
+                      console.warn('Failed to migrate local-only notes:', err);
+                    }
+                  });
+                }
+                
+                syncDebug.log(`Notes merged successfully`, {
+                  operation: 'useNotes.mergeNotes',
+                  data: {
+                    serverNotesCount: serverNotes.length,
+                    localOnlyNotesCount: localOnlyNotes.length,
+                    totalNotesCount: mergedNotes.length,
+                  },
+                  status: 'success',
+                });
+              } else if (localNotes.length > 0) {
+                // Server is empty but local has data - migrate local to server
+                await migrateLocalNotesToServer(localNotes);
+                // After migration, fetch again to get updated data with server IDs
+                const updatedResponse = await userDataApi.getNotes();
+                if (updatedResponse.success && updatedResponse.notes && updatedResponse.notes.length > 0) {
+                  const updatedServerNotes: UserNote[] = updatedResponse.notes.map(note => ({
+                    id: note.id,
+                    title: note.note_title,
+                    artist: note.artist_name || '',
+                    lyrics: note.note_content,
+                    createdAt: new Date(note.created_at).getTime(),
+                    updatedAt: new Date(note.updated_at).getTime(),
+                  }));
+                  applyNotesUpdate(() => updatedServerNotes);
+                }
+              }
+            } else if (response.success && (!response.notes || response.notes.length === 0) && localNotes.length > 0) {
+              // Server is empty but local has data - migrate local to server
+              await migrateLocalNotesToServer(localNotes);
+              // After migration, fetch again to get updated data with server IDs
+              const updatedResponse = await userDataApi.getNotes();
+              if (updatedResponse.success && updatedResponse.notes && updatedResponse.notes.length > 0) {
+                const updatedServerNotes: UserNote[] = updatedResponse.notes.map(note => ({
+                  id: note.id,
+                  title: note.note_title,
+                  artist: note.artist_name || '',
+                  lyrics: note.note_content,
+                  createdAt: new Date(note.created_at).getTime(),
+                  updatedAt: new Date(note.updated_at).getTime(),
+                }));
+                applyNotesUpdate(() => updatedServerNotes);
               }
             }
           }
@@ -111,7 +235,7 @@ export const useNotes = () => {
     };
 
     loadAndSyncNotes();
-  }, [applyNotesUpdate, loadNotesFromStorage]);
+  }, [applyNotesUpdate, loadNotesFromStorage, migrateLocalNotesToServer]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

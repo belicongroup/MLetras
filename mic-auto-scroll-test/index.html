@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mic Auto-Scroll Test - iOS Style</title>
+    <link rel="stylesheet" href="styles-ios.css">
+</head>
+<body>
+    <div class="h-screen bg-background overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="header fixed top-0 left-0 right-0 z-50" id="header">
+            <div class="max-w-4xl mx-auto px-4 pb-4">
+                <!-- Back button and song title row -->
+                <div class="flex items-center justify-between mb-4 pt-safe-top">
+                    <button class="back-btn" id="backBtn">
+                        ←
+                    </button>
+
+                    <!-- Centered song title and artist -->
+                    <div class="text-center flex-1">
+                        <h1 class="song-title">Mic Auto-Scroll Test</h1>
+                        <p class="song-artist">iOS Style Viewer</p>
+                    </div>
+
+                    <!-- Invisible spacer to balance the back button -->
+                    <div class="w-10"></div>
+                </div>
+
+                <!-- Centered buttons -->
+                <div class="flex items-center justify-center gap-3">
+                    <button class="control-btn" id="startMic" title="Start Microphone">
+                        🎤
+                    </button>
+                    <button class="control-btn" id="stopMic" disabled title="Stop Microphone">
+                        ⏹
+                    </button>
+                    <button class="control-btn" id="boldBtn" title="Toggle Bold">
+                        <strong>B</strong>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lyrics Content -->
+        <div class="flex-1 overflow-hidden lyrics-content" style="margin-top: 160px;">
+            <div class="h-full max-w-4xl mx-auto safe-left safe-right safe-bottom px-4 pb-4 tablet-container" style="position: relative;">
+                <div
+                    class="h-full p-8 overflow-y-auto lyrics-scroll tablet-spacing"
+                    id="lyricsScroll"
+                    style="
+                        scrollbar-gutter: stable;
+                        touch-action: pan-y;
+                        overscroll-behavior: contain;
+                        -webkit-overflow-scrolling: touch;
+                        position: relative;
+                        isolation: isolate;
+                        padding-top: max(2rem, env(safe-area-inset-top));
+                    "
+                >
+                    <div
+                        class="lyrics-text text-center cursor-pointer"
+                        id="lyricsText"
+                        style="white-space: pre-line; line-height: 1.8; font-size: 18px;"
+                    >
+                    Háblame de ti,
+                    cuéntame de tu vida,
+                    sabes tú muy bien,
+                    que yo estoy convencida.
+                    
+                    De que tú no puedes,
+                    aunque intentes olvidarme,
+                    siempre volverás,
+                    una y otra vez
+                    una y otra vez,
+                    siempre volverás.
+                    
+                    Aunque ya no sientas más amor por mí, sólo rencor,
+                    yo tampoco tengo nada que sentir, y eso es peor,
+                    pero te extraño,
+                    también te extraño,
+                    no cabe duda que es verdad que la costumbre,
+                    es más fuerte que el amor.
+                    
+                    Sé que tú no puedes,
+                    aunque intentes olvidarme,
+                    siempre volverás,
+                    una y otra vez,
+                    una y otra vez,
+                    siempre volverás
+                    
+                    Aunque ya no sientas más amor por mí, sólo rencor,
+                    yo tampoco tengo nada que sentir, y eso es peor,
+                    pero te extraño,
+                    como te extraño,
+                    no cabe duda que es verdad que la costumbre,
+                    es más fuerte que el amor.
+                    </div>
+                    <div class="progress-overlay" id="progressOverlay"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Panel (Collapsible) -->
+        <div class="debug-panel-toggle" id="debugToggle">
+            <button class="debug-toggle-btn">🔍 Debug</button>
+        </div>
+        <div class="debug-panel" id="debugPanel" style="display: none;">
+            <div class="debug-header">
+                <h3>Debug Info</h3>
+                <button class="debug-close-btn" id="closeDebug">✕</button>
+            </div>
+            <div class="debug-content">
+                <div class="debug-item">
+                    <strong>Recognized Text:</strong>
+                    <div id="recognizedText" class="debug-value">-</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Current Line:</strong>
+                    <div id="currentLine" class="debug-value">-</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Match Confidence:</strong>
+                    <div id="matchConfidence" class="debug-value">-</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Audio Level:</strong>
+                    <div id="audioLevel" class="debug-value">-</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Mic Status:</strong>
+                    <div id="micStatus" class="debug-value">Off</div>
+                </div>
+                <div class="debug-item">
+                    <strong>Recognition:</strong>
+                    <div id="recognitionStatus" class="debug-value">Idle</div>
+                </div>
+            </div>
+            <div class="debug-console-section">
+                <div class="console-header">
+                    <h4>Console</h4>
+                    <button id="clearConsole" class="btn-small">Clear</button>
+                </div>
+                <div class="console-container" id="consoleContainer">
+                    <div class="console-log" id="consoleLogs">
+                        <div class="console-entry">Console ready...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Toggle debug panel
+        document.getElementById('debugToggle').addEventListener('click', () => {
+            const panel = document.getElementById('debugPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        document.getElementById('closeDebug').addEventListener('click', () => {
+            document.getElementById('debugPanel').style.display = 'none';
+        });
+        
+        // Back button (can navigate or just log)
+        document.getElementById('backBtn').addEventListener('click', () => {
+            console.log('Back button clicked');
+            // You can add navigation logic here if needed
+        });
+    </script>
+</body>
+</html>

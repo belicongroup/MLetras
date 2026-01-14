@@ -27,6 +27,12 @@ const config: CapacitorConfig = {
     allowMixedContent: false,  // Disable mixed content for production APIs
     captureInput: true,
     webContentsDebuggingEnabled: process.env.NODE_ENV === 'development'
+  },
+  ios: {
+    // Disable web view debugging in production for better performance
+    webContentsDebuggingEnabled: process.env.NODE_ENV === 'development',
+    // Allow navigation to app-bound domains (set to false for better security, but may affect some features)
+    limitsNavigationsToAppBoundDomains: false
   }
 };
 

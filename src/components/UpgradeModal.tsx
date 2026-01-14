@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
-import { Crown, Check, X, Loader2, ExternalLink } from "lucide-react";
+import { Crown, Check, X, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { subscriptionService } from "@/services/subscriptionService";
+import { subscriptionService, SUBSCRIPTION_PRODUCT_ID_MONTHLY, SUBSCRIPTION_PRODUCT_ID_YEARLY } from "@/services/subscriptionService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProStatus } from "@/hooks/useProStatus";
 import { getPlatform } from "@/lib/capacitor";
 import { toast } from "sonner";
 
@@ -19,20 +19,15 @@ interface UpgradeModalProps {
 }
 
 export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
-  const { refreshUser } = useAuth();
+  const { refreshUser, isAuthenticated } = useAuth();
+  const { isPro, isLoading: isProLoading } = useProStatus();
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
-  const [productPrice, setProductPrice] = useState<string>("$6.99");
-  const [productTitle, setProductTitle] = useState<string>("MLetras Pro");
-
-  const features = [
-    { name: "Song searches", free: "Unlimited", pro: "Unlimited" },
-    { name: "Folders", free: "1 folder", pro: "Unlimited" },
-    { name: "Notes", free: "3 notes", pro: "Unlimited" },
-    { name: "Auto-scroll", free: false, pro: true },
-    { name: "Dark theme", free: false, pro: true },
-    { name: "Priority support", free: false, pro: true },
-  ];
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
+  const [monthlyPrice, setMonthlyPrice] = useState<string>("$9.99");
+  const [yearlyPrice, setYearlyPrice] = useState<string>("$99.99");
+  const [monthlyTitle, setMonthlyTitle] = useState<string>("MLetras Pro");
+  const [yearlyTitle, setYearlyTitle] = useState<string>("MLetras Pro Yearly");
 
   // Load product info when modal opens
   useEffect(() => {
@@ -43,9 +38,22 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 
   const loadProductInfo = async () => {
     try {
-      const product = await subscriptionService.getProductInfo();
-      if (product.price) setProductPrice(product.price);
-      if (product.title) setProductTitle(product.title);
+      // Load monthly product info
+      const monthlyProduct = await subscriptionService.getProductInfo(SUBSCRIPTION_PRODUCT_ID_MONTHLY);
+      if (monthlyProduct.price) setMonthlyPrice(monthlyProduct.price);
+      if (monthlyProduct.title) setMonthlyTitle(monthlyProduct.title);
+
+      // Load yearly product info
+      try {
+        const yearlyProduct = await subscriptionService.getProductInfo(SUBSCRIPTION_PRODUCT_ID_YEARLY);
+        if (yearlyProduct.price) setYearlyPrice(yearlyProduct.price);
+        if (yearlyProduct.title) setYearlyTitle(yearlyProduct.title);
+      } catch (yearlyError) {
+        // Yearly product might not be available yet, that's okay - use default price
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Yearly product not available:', yearlyError);
+        }
+      }
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to load product info:', error);
@@ -56,24 +64,133 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const handlePurchase = async () => {
     setIsLoading(true);
     try {
-      const result = await subscriptionService.purchaseSubscription();
+      const productId = selectedPlan === 'monthly' ? SUBSCRIPTION_PRODUCT_ID_MONTHLY : SUBSCRIPTION_PRODUCT_ID_YEARLY;
+      const result = await subscriptionService.purchaseSubscription(productId);
       
       if (result.success) {
-        toast.success("Welcome to MLetras Pro! 🎉");
-        await refreshUser();
-        onClose();
+        // StoreKit may need a moment to update, so retry verification with delays
+        let verified = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (!verified && attempts < maxAttempts) {
+          // Wait a bit before checking (first attempt is immediate)
+          if (attempts > 0) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          
+          const status = await subscriptionService.checkSubscriptionStatus();
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`🔍 Verification attempt ${attempts + 1}/${maxAttempts}:`, status);
+          }
+          
+          if (status.isActive) {
+            verified = true;
+            toast.success("Welcome to MLetras Pro! 🎉");
+            
+            // Trigger subscription update event immediately (for all users)
+            window.dispatchEvent(new Event('subscription-updated'));
+            
+            // Only refresh user data if authenticated (for backend sync)
+            if (isAuthenticated) {
+              try {
+                await refreshUser();
+              } catch (error) {
+                if (process.env.NODE_ENV !== 'production') {
+                  console.warn('⚠️ Backend sync failed (non-blocking):', error);
+                }
+              }
+            } else {
+              if (process.env.NODE_ENV !== 'production') {
+                console.log('✅ Guest purchase successful - Pro features unlocked via StoreKit');
+              }
+            }
+            
+            // Close modal after a brief delay - allow all users to use app immediately
+            setTimeout(() => {
+              onClose();
+            }, 500);
+            break;
+          }
+          
+          attempts++;
+        }
+        
+        if (!verified) {
+          // StoreKit verification pending - dispatch event and show helpful message
+          // StoreKit might just need more time to update
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('⚠️ StoreKit verification pending - Pro features may activate shortly');
+          }
+          window.dispatchEvent(new Event('subscription-updated'));
+          
+          // Show informative message with next steps
+          toast.success("Purchase completed! Your purchase was successful. If Pro features don't unlock, please try restoring purchases or contact support.", {
+            duration: 5000,
+          });
+          
+          if (isAuthenticated) {
+            try {
+              await refreshUser();
+            } catch (error) {
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn('⚠️ Backend sync failed (non-blocking):', error);
+              }
+            }
+          } else {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('✅ Guest purchase successful - Pro features will unlock via StoreKit');
+            }
+          }
+          // Close modal for all users - allow immediate use of app
+          setTimeout(() => {
+            onClose();
+          }, 1000);
+        }
       } else {
         toast.error("Purchase failed. Please try again.");
       }
     } catch (error: any) {
-      if (error.message?.includes('cancel')) {
-        // User cancelled - don't show error
-        return;
+      // Handle user cancellation gracefully - check multiple error formats
+      const errorMessage = error?.message || error?.errorMessage || JSON.stringify(error);
+      const isCancelled = 
+        errorMessage?.toLowerCase().includes('cancel') ||
+        errorMessage?.toLowerCase().includes('cancelled') ||
+        error?.message === 'Request Canceled' ||
+        error?.errorMessage === 'Request Canceled';
+      
+      if (isCancelled) {
+        // User cancelled - don't show error, just close loading state
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('Purchase cancelled by user');
+        }
+      } else {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('❌ Purchase error:', error);
+        }
+        toast.error("Purchase failed. Please try again.");
       }
-      toast.error(error.message || "Purchase failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Calculate savings percentage for yearly plan
+  const calculateSavings = (): number => {
+    if (!monthlyPrice || !yearlyPrice) return 0;
+    
+    // Extract numeric values from price strings (e.g., "$6.99" -> 6.99)
+    const monthlyNum = parseFloat(monthlyPrice.replace(/[^0-9.]/g, ''));
+    const yearlyNum = parseFloat(yearlyPrice.replace(/[^0-9.]/g, ''));
+    
+    if (!monthlyNum || !yearlyNum) return 0;
+    
+    // Calculate: (12 * monthly - yearly) / (12 * monthly) * 100
+    const monthlyYearlyTotal = monthlyNum * 12;
+    const savings = monthlyYearlyTotal - yearlyNum;
+    const savingsPercent = Math.round((savings / monthlyYearlyTotal) * 100);
+    
+    return savingsPercent;
   };
 
   const handleRestore = async () => {
@@ -82,9 +199,31 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       const result = await subscriptionService.restorePurchases();
       
       if (result.restored) {
-        toast.success("Purchases restored! 🎉");
-        await refreshUser();
-        onClose();
+        // Verify subscription from StoreKit (works for both guests and authenticated users)
+        const status = await subscriptionService.checkSubscriptionStatus();
+        
+        if (status.isActive) {
+          toast.success("Purchases restored! 🎉");
+          
+          // Only refresh user data if authenticated (for backend sync)
+          // Guest users get Pro features immediately via StoreKit verification
+          if (isAuthenticated) {
+            await refreshUser();
+          } else {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log('✅ Guest restore successful - Pro features unlocked via StoreKit');
+            }
+            // Trigger update to enable Pro features
+            window.dispatchEvent(new Event('subscription-updated'));
+          }
+          
+          // Small delay to ensure StoreKit status is propagated
+          setTimeout(() => {
+            onClose();
+          }, 500);
+        } else {
+          toast.info("No active subscription found.");
+        }
       } else {
         toast.info("No previous purchases found.");
       }
@@ -95,202 +234,215 @@ export function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     }
   };
 
-  const handleManageSubscription = () => {
-    const platform = getPlatform();
-    if (platform === 'ios') {
-      // Open iOS subscription management page
-      window.open('https://apps.apple.com/account/subscriptions', '_blank');
-    } else {
-      // For Android or web, provide instructions
-      toast.info('Please manage your subscription through your device\'s app store settings.');
-    }
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-md sm:max-w-lg md:max-w-2xl max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
-        <DialogHeader className="px-4 sm:px-6 pt-5 sm:pt-6 pb-3 sm:pb-4 sticky top-0 bg-background z-20 border-b">
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="w-[95vw] max-w-md sm:max-w-lg p-0 !rounded-2xl overflow-y-auto max-h-[90vh] bg-gradient-to-b from-background via-background to-background">
+        <DialogHeader className="px-4 pt-4 pb-3 bg-background z-20">
           <button
             onClick={onClose}
-            className="absolute right-3 sm:right-4 top-3 sm:top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-10"
+            className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground z-10"
           >
-            <X className="h-4 w-4 sm:h-5 sm:w-5" />
+            <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </button>
-          <div className="flex items-center justify-center mb-3 sm:mb-4">
-            <div className="p-2.5 sm:p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg">
-              <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+          <div className="flex items-center justify-center mb-1">
+            <div className="p-1.5 bg-gradient-primary rounded-lg shadow-lg">
+              <Crown className="w-5 h-5 text-white" />
             </div>
           </div>
-          <DialogTitle className="text-center text-xl sm:text-2xl font-bold">
-            Upgrade to Pro
+          <DialogTitle className="text-center text-xl font-bold">
+            Upgrade to MLetras Pro
           </DialogTitle>
-          <DialogDescription className="text-center text-xs sm:text-sm text-muted-foreground px-2">
-            Unlock all premium features and enhance your lyrics experience
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 sm:space-y-6">
-          {/* Subscription Details - Required by Apple */}
-          <div className="bg-gradient-to-br from-muted/50 to-muted/30 rounded-xl p-3 sm:p-4 space-y-2 border shadow-sm">
-            <div className="text-center space-y-1">
-              <p className="font-semibold text-base sm:text-lg">{productTitle} Monthly</p>
-              <p className="text-2xl sm:text-3xl font-bold">{productPrice}</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">per month</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-relaxed">
-                Billed monthly. Cancel anytime.
-              </p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-2 leading-relaxed">
-                Auto-renewable subscription • 14-day free trial
-              </p>
-            </div>
+        <div className="px-4 pb-4 space-y-3">
+          {/* Features List */}
+          <div className="flex flex-col items-start space-y-2">
+            {[
+              "Hands-free auto-scrolling lyrics",
+              "Unlimited saved songs",
+              "Unlimited folders and notes",
+              "Dark theme for low-light environments"
+            ].map((feature, index) => (
+              <div key={index} className="flex items-center gap-2 w-full">
+                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+                <p className="text-sm text-foreground">{feature}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Pricing Comparison Table */}
-          <div className="space-y-3 sm:space-y-4">
-            {/* Plan Headers */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="text-center space-y-1 p-2 sm:p-3 rounded-lg bg-muted/30">
-                <p className="font-semibold text-base sm:text-lg">Free</p>
-                <div className="space-y-0">
-                  <p className="text-xl sm:text-2xl font-bold">$0</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">Forever</p>
+          {/* Subscription Options */}
+          <div className="space-y-2">
+            {/* Monthly Subscription Option */}
+            <div
+              onClick={() => setSelectedPlan('monthly')}
+              className={`bg-muted/50 rounded-lg p-3 border cursor-pointer transition-all ${
+                selectedPlan === 'monthly'
+                  ? 'border-primary ring-2 ring-primary/20'
+                  : 'border-border hover:border-primary/50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">Monthly</p>
+                  <p className="text-xl font-bold mt-0.5">{monthlyPrice}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">3-day Free Trial</p>
+                </div>
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                    selectedPlan === 'monthly'
+                      ? 'border-primary bg-primary'
+                      : 'border-border'
+                  }`}
+                >
+                  {selectedPlan === 'monthly' && (
+                    <div className="w-2 h-2 rounded-full bg-white"></div>
+                  )}
                 </div>
               </div>
-              <div className="text-center space-y-1 p-2 sm:p-3 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200 dark:border-green-800">
-                <p className="font-semibold text-base sm:text-lg">Pro</p>
-                <div className="space-y-0">
-                  <p className="text-xl sm:text-2xl font-bold">{productPrice}</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">per month</p>
+            </div>
+
+            {/* Yearly Subscription Option */}
+            {yearlyPrice && (
+              <div
+                onClick={() => setSelectedPlan('yearly')}
+                className={`bg-muted/50 rounded-lg p-3 border cursor-pointer transition-all relative ${
+                  selectedPlan === 'yearly'
+                    ? 'border-primary ring-2 ring-primary/20'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                {/* Savings badge */}
+                {selectedPlan === 'yearly' && (
+                  <div className="absolute -top-1.5 right-3 bg-primary text-white text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                    Best Value
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold text-sm">Yearly</p>
+                      {selectedPlan === 'yearly' && (
+                        <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+                          Save compared to monthly
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xl font-bold mt-0.5">{yearlyPrice}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">3-day Free Trial</p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      selectedPlan === 'yearly'
+                        ? 'border-primary bg-primary'
+                        : 'border-border'
+                    }`}
+                  >
+                    {selectedPlan === 'yearly' && (
+                      <div className="w-2 h-2 rounded-full bg-white"></div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Feature Rows */}
-            <div className="space-y-1.5 sm:space-y-2">
-              {features.map((feature, index) => (
-                <div key={index} className="grid grid-cols-3 gap-2 sm:gap-4 py-2 sm:py-3 border-t first:border-t-0">
-                  <div className="flex items-center">
-                    <p className="text-xs sm:text-sm font-medium leading-tight">{feature.name}</p>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    {typeof feature.free === 'string' ? (
-                      <p className="text-xs sm:text-sm text-center leading-tight">{feature.free}</p>
-                    ) : feature.free ? (
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                    ) : (
-                      <X className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-center">
-                    {typeof feature.pro === 'string' ? (
-                      <p className="text-xs sm:text-sm text-center leading-tight">{feature.pro}</p>
-                    ) : feature.pro ? (
-                      <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                    ) : (
-                      <X className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Trial Info */}
-            <div className="text-center pt-1 sm:pt-2">
-              <p className="text-[10px] sm:text-xs text-muted-foreground">
-                14-day free trial • Cancel anytime
-              </p>
-            </div>
+            )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-2.5 sm:space-y-3">
-            <Button
-              onClick={handlePurchase}
-              disabled={isLoading || isRestoring}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-4 sm:py-6 rounded-xl shadow-lg transition-all text-base sm:text-lg"
-              size="lg"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Crown className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                  Start Free Trial
-                </>
-              )}
-            </Button>
-            <p className="text-[10px] sm:text-xs text-muted-foreground text-center px-2 leading-relaxed">
-              Your App Store account will be charged after the trial ends.
-            </p>
+          {/* Cancel Anytime Transparency */}
+          <p className="text-center text-xs text-muted-foreground">
+            Cancel anytime in your Apple ID settings.
+          </p>
 
-            <Button
-              onClick={handleRestore}
-              disabled={isLoading || isRestoring}
-              variant="outline"
-              className="w-full py-3 sm:py-4 rounded-xl text-sm sm:text-base"
-              size="lg"
-            >
-              {isRestoring ? (
-                <>
-                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                  Restoring...
-                </>
-              ) : (
-                <>
-                  Restore Purchases
-                </>
-              )}
-            </Button>
+          {/* Action Button */}
+          <Button
+            onClick={handlePurchase}
+            disabled={isLoading || isRestoring}
+            className="w-full bg-gradient-primary hover:bg-gradient-accent text-white font-semibold py-3 rounded-xl shadow-lg transition-all text-sm"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Start Free Trial"
+            )}
+          </Button>
 
-            <button
-              onClick={onClose}
-              className="w-full text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-2.5"
-              disabled={isLoading || isRestoring}
-            >
-              Cancel
-            </button>
-          </div>
+          {/* Trial → Paid Conversion Clarity */}
+          <p className="text-center text-xs text-muted-foreground leading-tight">
+            After the 3-day free trial, the subscription will automatically renew at {selectedPlan === 'monthly' ? `${monthlyPrice}/month` : `${yearlyPrice}/year`} unless canceled.
+          </p>
 
-          {/* Footer Note */}
-          <div className="space-y-1.5 sm:space-y-2 pt-2 border-t">
-            <p className="text-[10px] sm:text-xs text-center text-muted-foreground leading-relaxed px-1">
-              By subscribing, you agree to our{" "}
-              <a
-                href="https://mletras.com/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline font-medium"
-                onClick={(e) => e.stopPropagation()}
+          {/* Auto-Renew Disclosure */}
+          <p className="text-center text-xs text-muted-foreground leading-tight">
+            Payment will be charged to your Apple ID. Subscription automatically renews unless canceled at least 24 hours before the end of the trial or current period.
+          </p>
+
+          {/* Footer Links */}
+          <div className="flex flex-col gap-3 pt-3 border-t">
+            {/* Manage Subscription - Show to all Pro users */}
+            {isPro && (
+              <button
+                onClick={() => {
+                  const platform = getPlatform();
+                  if (platform === 'ios') {
+                    window.open('https://apps.apple.com/account/subscriptions', '_blank');
+                  } else {
+                    // For Android or web, still provide link to Apple subscriptions (if user has Apple ID)
+                    window.open('https://apps.apple.com/account/subscriptions', '_blank');
+                  }
+                }}
+                className="text-xs text-primary hover:text-primary/80 transition-colors text-center"
               >
-                Terms of Service
-              </a>
-              {" "}and{" "}
-              <a
-                href="https://mletras.com/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline font-medium"
-                onClick={(e) => e.stopPropagation()}
+                Manage Subscription
+              </button>
+            )}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleRestore}
+                disabled={isLoading || isRestoring}
+                className="text-xs text-foreground hover:text-primary transition-colors"
               >
-                Privacy Policy
-              </a>
-              . Subscription automatically renews unless canceled.
-            </p>
-            <button
-              onClick={handleManageSubscription}
-              className="w-full text-[10px] sm:text-xs text-primary hover:underline flex items-center justify-center gap-1 py-1"
-            >
-              Manage Subscription
-              <ExternalLink className="w-3 h-3" />
-            </button>
+                {isRestoring ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin inline" />
+                    Restoring...
+                  </>
+                ) : (
+                  "Restore Purchases"
+                )}
+              </button>
+              <div className="flex items-center gap-1.5">
+                <a
+                  href="https://mletras.com/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Terms
+                </a>
+                <span className="text-xs text-foreground">&</span>
+                <a
+                  href="https://mletras.com/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Privacy
+                </a>
+              </div>
+            </div>
           </div>
+
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
